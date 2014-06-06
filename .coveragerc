@@ -1,0 +1,7 @@
+[run]
+branch = True
+source = os_net_config
+omit = os_net_config/tests/*,os_net_config/openstack/*
+
+[report]
+ignore-errors = True
