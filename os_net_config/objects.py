@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
 # a copy of the License at
@@ -20,9 +22,10 @@ class NetworkObjectException(Exception):
 class Route(object):
     """Base class for network routes."""
 
-    def __init__(self, netmask_cidr, gateway):
-        self.netmask_cidr = netmask_cidr
-        self.gateway = gateway
+    def __init__(self, next_hop, ip_netmask="", default=False):
+        self.next_hop = next_hop
+        self.ip_netmask = ip_netmask
+        self.default = default
 
 
 class Address(object):
@@ -41,10 +44,11 @@ class Interface(object):
     """Base class for network interfaces."""
 
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=[],
-                 mtu=1500):
+                 routes=[], mtu=1500):
         self.name = name
         self.mtu = mtu
         self.use_dhcp = use_dhcp
+        self.use_dhcpv6 = use_dhcpv6
         self.addresses = addresses
         self.bridge = None
         self.type = None

@@ -17,3 +17,17 @@ import pbr.version
 
 __version__ = pbr.version.VersionInfo(
     'os_net_config').version_string()
+
+
+class NotImplemented(Exception):
+    pass
+
+
+class NetworkConfig(object):
+    """Configure network interfaces using the ifcfg format."""
+
+    def addInterface(self, interface):
+        raise NotImplemented("addInterface is not implemented.")
+
+    def addRoutes(self, interface_name, routes=[]):
+        raise NotImplemented("addRoutes is not implemented.")
