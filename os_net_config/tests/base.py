@@ -18,6 +18,7 @@
 import os
 
 import fixtures
+import stubout
 import testtools
 
 _TRUE_VALUES = ('True', 'true', '1', 'yes')
@@ -31,6 +32,7 @@ class TestCase(testtools.TestCase):
         """Run before each test method to initialize test environment."""
 
         super(TestCase, self).setUp()
+        self.stubs = stubout.StubOutForTesting()
         test_timeout = os.environ.get('OS_TEST_TIMEOUT', 0)
         try:
             test_timeout = int(test_timeout)
@@ -51,3 +53,8 @@ class TestCase(testtools.TestCase):
             self.useFixture(fixtures.MonkeyPatch('sys.stderr', stderr))
 
         self.log_fixture = self.useFixture(fixtures.FakeLogger())
+
+    def tearDown(self):
+        self.stubs.UnsetAll()
+        self.stubs.SmartUnsetAll()
+        super(TestCase, self).tearDown()
