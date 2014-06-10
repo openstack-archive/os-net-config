@@ -50,6 +50,7 @@ class Interface(object):
         self.use_dhcp = use_dhcp
         self.use_dhcpv6 = use_dhcpv6
         self.addresses = addresses
+        self.routes = routes
         self.bridge = None
         self.type = None
 

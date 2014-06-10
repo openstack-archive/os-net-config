@@ -12,25 +12,19 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import pbr.version
+
+def write_config(filename, data):
+    with open(filename, "w") as f:
+        f.write(str(data))
 
 
-__version__ = pbr.version.VersionInfo(
-    'os_net_config').version_string()
+def get_file_data(filename):
+    try:
+        with open(filename, "r") as f:
+            return f.read()
+    except IOError:
+        return ""
 
 
-class NotImplemented(Exception):
-    pass
-
-
-class NetConfig(object):
-    """Configure network interfaces using the ifcfg format."""
-
-    def addInterface(self, interface):
-        raise NotImplemented("addInterface is not implemented.")
-
-    def addRoutes(self, interface_name, routes=[]):
-        raise NotImplemented("addRoutes is not implemented.")
-
-    def apply(self):
-        raise NotImplemented("apply is not implemented.")
+def diff(filename, data):
+    return not get_file_data(filename) == data

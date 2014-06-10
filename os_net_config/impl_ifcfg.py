@@ -12,6 +12,12 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import os_net_config
+from os_net_config import utils
+
+
+from os_net_config.openstack.common import processutils
+
 
 def ifcfg_config_path(name):
     return "/etc/sysconfig/network-scripts/ifcfg-%s" % name
@@ -21,21 +27,7 @@ def route_config_path(name):
     return "/etc/sysconfig/network-scripts/route-%s" % name
 
 
-def writeConfig(filename, data):
-    with open(filename, "w") as f:
-        f.write(str(data))
-
-
-def get_config(filename):
-    with open(filename, "r") as f:
-        return f.read()
-
-
-def diff(filename, data):
-    return get_config(filename) == data
-
-
-class IfcfgNetwork(object):
+class IfcfgNetConfig(os_net_config.NetConfig):
     """Configure network interfaces using the ifcfg format."""
 
     def __init__(self):
@@ -78,16 +70,38 @@ class IfcfgNetwork(object):
                 data += "IPV6ADDR=%s\n" % first_v6.ip
 
         self.interfaces[interface.name] = data
+        if interface.routes:
+            self.addRoutes(interface.name, interface.routes)
 
     def addRoutes(self, interface_name, routes=[]):
         data = ""
         first_line = ""
         for route in routes:
             if route.default:
-                first_line = "default %s dev %s\n" % (route.next_hop,
-                                                      interface_name)
+                first_line = "default via %s dev %s\n" % (route.next_hop,
+                                                          interface_name)
             else:
-                data += "%s via %s dev %s" % (route.ip_netmask,
-                                              route.next_hop,
-                                              interface_name)
-        self.routes[interface_name] == first_line + data
+                data += "%s via %s dev %s\n" % (route.ip_netmask,
+                                                route.next_hop,
+                                                interface_name)
+        self.routes[interface_name] = first_line + data
+
+    def apply(self):
+        restart_interfaces = []
+        update_files = {}
+        for interface_name, iface_data in self.interfaces.iteritems():
+            route_data = self.routes.get(interface_name)
+            if (utils.diff(ifcfg_config_path(interface_name), iface_data) or
+                utils.diff(route_config_path(interface_name), route_data)):
+                restart_interfaces.append(interface_name)
+                update_files[ifcfg_config_path(interface_name)] = iface_data
+                update_files[route_config_path(interface_name)] = route_data
+
+        for interface in restart_interfaces:
+            processutils.execute('/sbin/ifdown', interface)
+
+        for location, data in update_files.iteritems():
+            utils.write_config(location, data)
+
+        for interface in restart_interfaces:
+            processutils.execute('/sbin/ifup', interface)
