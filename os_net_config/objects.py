@@ -40,8 +40,8 @@ class Address(object):
         self.routes = routes
 
 
-class Interface(object):
-    """Base class for network interfaces."""
+class _BaseOpts(object):
+    """Base abstraction for logical port options."""
 
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=[],
                  routes=[], mtu=1500):
@@ -51,7 +51,7 @@ class Interface(object):
         self.use_dhcpv6 = use_dhcpv6
         self.addresses = addresses
         self.routes = routes
-        self.bridge = None
+        self.bridge_name = None
         self.type = None
 
     def v4_addresses(self):
@@ -69,3 +69,26 @@ class Interface(object):
                 v6_addresses.append(addr)
 
         return v6_addresses
+
+
+class Interface(_BaseOpts):
+    """Base class for network interfaces."""
+
+    def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=[],
+                 routes=[], mtu=1500):
+        super(Interface, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
+                                        routes, mtu)
+
+
+class OvsBridge(_BaseOpts):
+    """Base class for OVS bridges."""
+
+    def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=[],
+                 routes=[], members=[], mtu=1500):
+        super(OvsBridge, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
+                                        routes, mtu)
+        self.type = 'ovs_bridge'
+        self.members = members
+        for member in self.members:
+            member.bridge_name = name
+            member.type = 'ovs_port'

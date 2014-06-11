@@ -29,8 +29,8 @@ class NetConfig(object):
     def addInterface(self, interface):
         raise NotImplemented("addInterface is not implemented.")
 
-    def addRoutes(self, interface_name, routes=[]):
-        raise NotImplemented("addRoutes is not implemented.")
+    def addBridge(self, bridge):
+        raise NotImplemented("addBridge is not implemented.")
 
     def apply(self):
         raise NotImplemented("apply is not implemented.")
