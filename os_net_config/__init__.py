@@ -29,8 +29,14 @@ class NetConfig(object):
     def addInterface(self, interface):
         raise NotImplemented("addInterface is not implemented.")
 
+    def addVlan(self, bridge):
+        raise NotImplemented("addVlan is not implemented.")
+
     def addBridge(self, bridge):
         raise NotImplemented("addBridge is not implemented.")
+
+    def addBond(self, bridge):
+        raise NotImplemented("addBond is not implemented.")
 
     def apply(self):
         raise NotImplemented("apply is not implemented.")

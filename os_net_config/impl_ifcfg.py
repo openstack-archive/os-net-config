@@ -68,7 +68,19 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 data += "OVSBOOTPROTO=dhcp\n"
             if base_opt.members:
                 members = [member.name for member in base_opt.members]
-                data += ("OVSDHCPINTERFACES=%s\n" % " ".join(members))
+                data += ("OVSDHCPINTERFACES=\"%s\"\n" % " ".join(members))
+            if base_opt.ovs_options:
+                data += "OVS_OPTIONS=\"%s\"\n" % base_opt.ovs_options
+        elif isinstance(base_opt, objects.OvsBond):
+            data += "DEVICETYPE=ovs\n"
+            data += "TYPE=OVSBond\n"
+            if base_opt.use_dhcp:
+                data += "OVSBOOTPROTO=dhcp\n"
+            if base_opt.members:
+                members = [member.name for member in base_opt.members]
+                data += ("BOND_IFACES=\"%s\"\n" % " ".join(members))
+            if base_opt.ovs_options:
+                data += "OVS_OPTIONS=\"%s\"\n" % base_opt.ovs_options
         else:
             if base_opt.use_dhcp:
                 data += "BOOTPROTO=dhcp\n"
@@ -98,6 +110,19 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 data += "IPV6ADDR=%s\n" % first_v6.ip
         return data
 
+    def _addRoutes(self, interface_name, routes=[]):
+        data = ""
+        first_line = ""
+        for route in routes:
+            if route.default:
+                first_line = "default via %s dev %s\n" % (route.next_hop,
+                                                          interface_name)
+            else:
+                data += "%s via %s dev %s\n" % (route.ip_netmask,
+                                                route.next_hop,
+                                                interface_name)
+        self.routes[interface_name] = first_line + data
+
     def addInterface(self, interface):
         data = self._addCommon(interface)
         self.interfaces[interface.name] = data
@@ -116,18 +141,13 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         if bridge.routes:
             self._addRoutes(bridge.name, bridge.routes)
 
-    def _addRoutes(self, interface_name, routes=[]):
-        data = ""
-        first_line = ""
-        for route in routes:
-            if route.default:
-                first_line = "default via %s dev %s\n" % (route.next_hop,
-                                                          interface_name)
-            else:
-                data += "%s via %s dev %s\n" % (route.ip_netmask,
-                                                route.next_hop,
-                                                interface_name)
-        self.routes[interface_name] = first_line + data
+    def addBond(self, bond):
+        data = self._addCommon(bond)
+        #print 'bond name == %s' % bond.name
+        #print 'bond data == %s' % str(data)
+        self.interfaces[bond.name] = data
+        if bond.routes:
+            self._addRoutes(bond.name, bond.routes)
 
     def apply(self):
         restart_interfaces = []

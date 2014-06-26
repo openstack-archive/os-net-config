@@ -60,7 +60,7 @@ HOTPLUG=no
 DEVICETYPE=ovs
 TYPE=OVSBridge
 OVSBOOTPROTO=dhcp
-OVSDHCPINTERFACES=em1
+OVSDHCPINTERFACES="em1"
 """
 
 _BASE_VLAN = """DEVICE=vlan5
@@ -69,6 +69,7 @@ HOTPLUG=no
 VLAN=yes
 PHYSDEV=em1
 """
+
 
 _VLAN_NO_IP = _BASE_VLAN + "BOOTPROTO=none\n"
 
@@ -83,6 +84,16 @@ OVS_OPTIONS="tag=5"
 OVS_EXTRA=\"set Interface $DEVICE external-ids:iface-id=$(hostname -s\
 )-$DEVICE-vif\"
 BOOTPROTO=none
+"""
+
+
+_OVS_BOND_DHCP = """DEVICE=bond0
+ONBOOT=yes
+HOTPLUG=no
+DEVICETYPE=ovs
+TYPE=OVSBond
+OVSBOOTPROTO=dhcp
+BOND_IFACES="em1 em2"
 """
 
 
@@ -162,6 +173,25 @@ class TestIfcfgNetConfig(base.TestCase):
         self.provider.addVlan(vlan)
         self.provider.addBridge(bridge)
         self.assertEqual(_VLAN_OVS_BRIDGE, self.get_interface_config('vlan5'))
+
+    def test_ovs_bond(self):
+        interface1 = objects.Interface('em1')
+        interface2 = objects.Interface('em2')
+        bond = objects.OvsBond('bond0', use_dhcp=True,
+                               members=[interface1, interface2])
+        self.provider.addInterface(interface1)
+        self.provider.addInterface(interface2)
+        self.provider.addBond(bond)
+        self.assertEqual(_NO_IP, self.get_interface_config('em1'))
+
+        em2_config = """DEVICE=em2
+ONBOOT=yes
+HOTPLUG=no
+BOOTPROTO=none
+"""
+        self.assertEqual(em2_config, self.get_interface_config('em2'))
+        self.assertEqual(_OVS_BOND_DHCP,
+                         self.get_interface_config('bond0'))
 
 
 class TestIfcfgNetConfigApply(base.TestCase):

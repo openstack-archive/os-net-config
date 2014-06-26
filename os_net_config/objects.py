@@ -100,10 +100,22 @@ class OvsBridge(_BaseOpts):
     """Base class for OVS bridges."""
 
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=[],
-                 routes=[], members=[], mtu=1500):
+                 routes=[], members=[], mtu=1500, ovs_options=None):
         super(OvsBridge, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
                                         routes, mtu)
         self.members = members
+        self.ovs_options = ovs_options
         for member in self.members:
             member.bridge_name = name
             member.ovs_port = True
+
+
+class OvsBond(_BaseOpts):
+    """Base class for OVS bonds."""
+
+    def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=[],
+                 routes=[], members=[], mtu=1500, ovs_options=None):
+        super(OvsBond, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
+                                      routes, mtu)
+        self.members = members
+        self.ovs_options = ovs_options
