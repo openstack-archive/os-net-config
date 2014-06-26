@@ -82,7 +82,7 @@ class TestENINetConfig(base.TestCase):
 
     def test_add_ovs_port_interface(self):
         interface = self._default_interface()
-        interface.type = 'ovs_port'
+        interface.ovs_port = True
         interface.bridge_name = 'br0'
         interface.use_dhcp = True
         self.provider.addInterface(interface)

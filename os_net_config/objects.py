@@ -52,7 +52,7 @@ class _BaseOpts(object):
         self.addresses = addresses
         self.routes = routes
         self.bridge_name = None
-        self.type = None
+        self.ovs_port = False
 
     def v4_addresses(self):
         v4_addresses = []
@@ -80,6 +80,22 @@ class Interface(_BaseOpts):
                                         routes, mtu)
 
 
+class Vlan(_BaseOpts):
+    """Base class for VLANs.
+
+       NOTE: the name parameter must be formated w/ vlan#### where ####
+       matches the vlan ID being used. Example: vlan5
+    """
+
+    def __init__(self, device, vlan_id, use_dhcp=False, use_dhcpv6=False,
+                 addresses=[], routes=[], mtu=1500):
+        name = 'vlan%i' % vlan_id
+        super(Vlan, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
+                                   routes, mtu)
+        self.vlan_id = int(vlan_id)
+        self.device = device
+
+
 class OvsBridge(_BaseOpts):
     """Base class for OVS bridges."""
 
@@ -87,8 +103,7 @@ class OvsBridge(_BaseOpts):
                  routes=[], members=[], mtu=1500):
         super(OvsBridge, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
                                         routes, mtu)
-        self.type = 'ovs_bridge'
         self.members = members
         for member in self.members:
             member.bridge_name = name
-            member.type = 'ovs_port'
+            member.ovs_port = True

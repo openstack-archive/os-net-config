@@ -13,6 +13,7 @@
 # under the License.
 
 import os_net_config
+from os_net_config import objects
 from os_net_config import utils
 
 
@@ -40,66 +41,78 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         self.routes = {}
         self.bridges = {}
 
-    def _addCommon(self, interface):
-        data = "DEVICE=%s\n" % interface.name
+    def _addCommon(self, base_opt):
+        data = "DEVICE=%s\n" % base_opt.name
         data += "ONBOOT=yes\n"
         data += "HOTPLUG=no\n"
-        if interface.type == 'ovs_port':
+        if isinstance(base_opt, objects.Vlan):
+            data += "VLAN=yes\n"
+            data += "PHYSDEV=%s\n" % base_opt.device
+        if base_opt.ovs_port:
             data += "DEVICETYPE=ovs\n"
-            if interface.bridge_name:
-                data += "TYPE=OVSPort\n"
-                data += "OVS_BRIDGE=%s\n" % interface.bridge_name
-        if interface.type == 'ovs_bridge':
+            if base_opt.bridge_name:
+                if isinstance(base_opt, objects.Vlan):
+                    data += "TYPE=OVSIntPort\n"
+                    data += "OVS_BRIDGE=%s\n" % base_opt.bridge_name
+                    data += "OVS_OPTIONS=\"tag=%s\"\n" % base_opt.vlan_id
+                    data += "OVS_EXTRA=\"set Interface $DEVICE "
+                    data += "external-ids:iface-id=$(hostname -s)"
+                    data += "-$DEVICE-vif\"\n"
+                else:
+                    data += "TYPE=OVSPort\n"
+                    data += "OVS_BRIDGE=%s\n" % base_opt.bridge_name
+        if isinstance(base_opt, objects.OvsBridge):
             data += "DEVICETYPE=ovs\n"
             data += "TYPE=OVSBridge\n"
-            if interface.use_dhcp:
+            if base_opt.use_dhcp:
                 data += "OVSBOOTPROTO=dhcp\n"
-            if interface.members:
-                members = [member.name for member in interface.members]
+            if base_opt.members:
+                members = [member.name for member in base_opt.members]
                 data += ("OVSDHCPINTERFACES=%s\n" % " ".join(members))
         else:
-            if interface.use_dhcp:
+            if base_opt.use_dhcp:
                 data += "BOOTPROTO=dhcp\n"
-            elif not interface.addresses:
+            elif not base_opt.addresses:
                 data += "BOOTPROTO=none\n"
-        if interface.mtu != 1500:
-            data += "MTU=%i\n" % interface.mtu
-        if interface.use_dhcpv6 or interface.v6_addresses():
+        if base_opt.mtu != 1500:
+            data += "MTU=%i\n" % base_opt.mtu
+        if base_opt.use_dhcpv6 or base_opt.v6_addresses():
             data += "IPV6INIT=yes\n"
-            if interface.mtu != 1500:
-                data += "IPV6_MTU=%i\n" % interface.mtu
-        if interface.use_dhcpv6:
+            if base_opt.mtu != 1500:
+                data += "IPV6_MTU=%i\n" % base_opt.mtu
+        if base_opt.use_dhcpv6:
             data += "DHCPV6C=yes\n"
-        elif interface.addresses:
-            #TODO(dprince): support multiple addresses for each type
-            v4_addresses = interface.v4_addresses()
+        elif base_opt.addresses:
+            #TODO(dprince): Do we want to support multiple addresses?
+            v4_addresses = base_opt.v4_addresses()
             if v4_addresses:
                 first_v4 = v4_addresses[0]
                 data += "BOOTPROTO=static\n"
                 data += "IPADDR=%s\n" % first_v4.ip
                 data += "NETMASK=%s\n" % first_v4.netmask
 
-            v6_addresses = interface.v6_addresses()
+            v6_addresses = base_opt.v6_addresses()
             if v6_addresses:
                 first_v6 = v6_addresses[0]
                 data += "IPV6_AUTOCONF=no\n"
                 data += "IPV6ADDR=%s\n" % first_v6.ip
-
         return data
 
     def addInterface(self, interface):
         data = self._addCommon(interface)
-
         self.interfaces[interface.name] = data
         if interface.routes:
             self._addRoutes(interface.name, interface.routes)
 
+    def addVlan(self, vlan):
+        data = self._addCommon(vlan)
+        self.interfaces[vlan.name] = data
+        if vlan.routes:
+            self._addRoutes(vlan.name, vlan.routes)
+
     def addBridge(self, bridge):
         data = self._addCommon(bridge)
-
         self.bridges[bridge.name] = data
-        if bridge.routes:
-            self._addRoutes(bridge.name, bridge.routes)
         if bridge.routes:
             self._addRoutes(bridge.name, bridge.routes)
 

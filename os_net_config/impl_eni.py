@@ -15,6 +15,7 @@
 
 import netaddr
 import os_net_config
+from os_net_config import objects
 from os_net_config import utils
 
 from os_net_config.openstack.common import processutils
@@ -61,7 +62,7 @@ class ENINetConfig(os_net_config.NetConfig):
         else:
             _iface += "manual\n"
         data = ""
-        if interface.type == 'ovs_bridge':
+        if isinstance(interface, objects.OvsBridge):
             data += "allow-ovs %s\n" % interface.name
             data += _iface
             data += _static_addresses(_v4, _v6)
@@ -71,7 +72,7 @@ class ENINetConfig(os_net_config.NetConfig):
                 for i in interface.members:
                     data += " %s" % i.name
                 data += "\n"
-        elif interface.type == 'ovs_port':
+        elif interface.ovs_port:
             data += "allow-%s %s\n" % (interface.bridge_name, interface.name)
             data += _iface
             data += _static_addresses(_v4, _v6)

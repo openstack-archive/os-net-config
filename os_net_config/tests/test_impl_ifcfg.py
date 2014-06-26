@@ -63,6 +63,27 @@ OVSBOOTPROTO=dhcp
 OVSDHCPINTERFACES=em1
 """
 
+_BASE_VLAN = """DEVICE=vlan5
+ONBOOT=yes
+HOTPLUG=no
+VLAN=yes
+PHYSDEV=em1
+"""
+
+_VLAN_NO_IP = _BASE_VLAN + "BOOTPROTO=none\n"
+
+
+_VLAN_OVS = _BASE_VLAN + "DEVICETYPE=ovs\nBOOTPROTO=none\n"
+
+
+VLAN_EXTRA = "\"set Interface $DEVICE external-ids:iface-id=$(hostname -s" + \
+             ")-$DEVICE-vif\"\n"
+_VLAN_OVS_BRIDGE = _BASE_VLAN + """DEVICETYPE=ovs
+TYPE=OVSIntPort
+OVS_BRIDGE=br-ctlplane
+OVS_OPTIONS="tag=5"
+OVS_EXTRA=""" + VLAN_EXTRA + "BOOTPROTO=none\n"
+
 
 class TestIfcfgNetConfig(base.TestCase):
 
@@ -74,8 +95,8 @@ class TestIfcfgNetConfig(base.TestCase):
     def tearDown(self):
         super(TestIfcfgNetConfig, self).tearDown()
 
-    def get_interface_config(self):
-        return self.provider.interfaces['em1']
+    def get_interface_config(self, name='em1'):
+        return self.provider.interfaces[name]
 
     def get_route_config(self):
         return self.provider.routes['em1']
@@ -87,7 +108,7 @@ class TestIfcfgNetConfig(base.TestCase):
 
     def test_add_ovs_interface(self):
         interface = objects.Interface('em1')
-        interface.type = 'ovs_port'
+        interface.ovs_port = True
         self.provider.addInterface(interface)
         self.assertEqual(_OVS_IFCFG, self.get_interface_config())
 
@@ -121,6 +142,25 @@ class TestIfcfgNetConfig(base.TestCase):
         self.assertEqual(_OVS_INTERFACE, self.get_interface_config())
         self.assertEqual(_OVS_BRIDGE_DHCP,
                          self.provider.bridges['br-ctlplane'])
+
+    def test_add_vlan(self):
+        vlan = objects.Vlan('em1', 5)
+        self.provider.addVlan(vlan)
+        self.assertEqual(_VLAN_NO_IP, self.get_interface_config('vlan5'))
+
+    def test_add_vlan_ovs(self):
+        vlan = objects.Vlan('em1', 5)
+        vlan.ovs_port = True
+        self.provider.addVlan(vlan)
+        self.assertEqual(_VLAN_OVS, self.get_interface_config('vlan5'))
+
+    def test_add_ovs_bridge_with_vlan(self):
+        vlan = objects.Vlan('em1', 5)
+        bridge = objects.OvsBridge('br-ctlplane', use_dhcp=True,
+                                   members=[vlan])
+        self.provider.addVlan(vlan)
+        self.provider.addBridge(bridge)
+        self.assertEqual(_VLAN_OVS_BRIDGE, self.get_interface_config('vlan5'))
 
 
 class TestIfcfgNetConfigApply(base.TestCase):
@@ -182,3 +222,11 @@ class TestIfcfgNetConfigApply(base.TestCase):
         self.assertEqual(_OVS_INTERFACE, ifcfg_data)
         bridge_data = utils.get_file_data(self.temp_bridge_file.name)
         self.assertEqual(_OVS_BRIDGE_DHCP, bridge_data)
+
+    def test_vlan_apply(self):
+        vlan = objects.Vlan('em1', 5)
+        self.provider.addVlan(vlan)
+        self.provider.apply()
+
+        ifcfg_data = utils.get_file_data(self.temp_ifcfg_file.name)
+        self.assertEqual(_VLAN_NO_IP, ifcfg_data)
