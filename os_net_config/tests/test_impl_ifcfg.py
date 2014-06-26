@@ -76,13 +76,14 @@ _VLAN_NO_IP = _BASE_VLAN + "BOOTPROTO=none\n"
 _VLAN_OVS = _BASE_VLAN + "DEVICETYPE=ovs\nBOOTPROTO=none\n"
 
 
-VLAN_EXTRA = "\"set Interface $DEVICE external-ids:iface-id=$(hostname -s" + \
-             ")-$DEVICE-vif\"\n"
 _VLAN_OVS_BRIDGE = _BASE_VLAN + """DEVICETYPE=ovs
 TYPE=OVSIntPort
 OVS_BRIDGE=br-ctlplane
 OVS_OPTIONS="tag=5"
-OVS_EXTRA=""" + VLAN_EXTRA + "BOOTPROTO=none\n"
+OVS_EXTRA=\"set Interface $DEVICE external-ids:iface-id=$(hostname -s\
+)-$DEVICE-vif\"
+BOOTPROTO=none
+"""
 
 
 class TestIfcfgNetConfig(base.TestCase):
