@@ -143,8 +143,6 @@ class IfcfgNetConfig(os_net_config.NetConfig):
 
     def addBond(self, bond):
         data = self._addCommon(bond)
-        #print 'bond name == %s' % bond.name
-        #print 'bond data == %s' % str(data)
         self.interfaces[bond.name] = data
         if bond.routes:
             self._addRoutes(bond.name, bond.routes)
