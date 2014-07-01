@@ -15,6 +15,8 @@
 import pbr.version
 
 
+from os_net_config import objects
+
 __version__ = pbr.version.VersionInfo(
     'os_net_config').version_string()
 
@@ -26,16 +28,30 @@ class NotImplemented(Exception):
 class NetConfig(object):
     """Configure network interfaces using the ifcfg format."""
 
+    def addObject(self, obj):
+        if isinstance(obj, objects.Interface):
+            self.addInterface(obj)
+        elif isinstance(obj, objects.Vlan):
+            self.addVlan(obj)
+        elif isinstance(obj, objects.OvsBridge):
+            self.addBridge(obj)
+            for member in obj.members:
+                self.addObject(member)
+        elif isinstance(obj, objects.OvsBond):
+            self.addBond(obj)
+            for member in obj.members:
+                self.addObject(member)
+
     def addInterface(self, interface):
         raise NotImplemented("addInterface is not implemented.")
 
-    def addVlan(self, bridge):
+    def addVlan(self, vlan):
         raise NotImplemented("addVlan is not implemented.")
 
     def addBridge(self, bridge):
         raise NotImplemented("addBridge is not implemented.")
 
-    def addBond(self, bridge):
+    def addBond(self, bond):
         raise NotImplemented("addBond is not implemented.")
 
     def apply(self):
