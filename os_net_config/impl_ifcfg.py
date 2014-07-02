@@ -55,9 +55,6 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                     data += "TYPE=OVSIntPort\n"
                     data += "OVS_BRIDGE=%s\n" % base_opt.bridge_name
                     data += "OVS_OPTIONS=\"tag=%s\"\n" % base_opt.vlan_id
-                    data += "OVS_EXTRA=\"set Interface $DEVICE "
-                    data += "external-ids:iface-id=$(hostname -s)"
-                    data += "-$DEVICE-vif\"\n"
                 else:
                     data += "TYPE=OVSPort\n"
                     data += "OVS_BRIDGE=%s\n" % base_opt.bridge_name

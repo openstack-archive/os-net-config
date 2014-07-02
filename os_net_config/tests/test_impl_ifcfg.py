@@ -81,8 +81,6 @@ _VLAN_OVS_BRIDGE = _BASE_VLAN + """DEVICETYPE=ovs
 TYPE=OVSIntPort
 OVS_BRIDGE=br-ctlplane
 OVS_OPTIONS="tag=5"
-OVS_EXTRA=\"set Interface $DEVICE external-ids:iface-id=$(hostname -s\
-)-$DEVICE-vif\"
 BOOTPROTO=none
 """
 
