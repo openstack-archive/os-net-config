@@ -23,31 +23,32 @@ from os_net_config import utils
 
 _AUTO = "auto eth0\n"
 
-_BASE_IFACE = "iface eth0"
+_v4_IFACE_NO_IP = _AUTO + "iface eth0 inet manual\n"
 
-_v4_IFACE_NO_IP = _AUTO + _BASE_IFACE + " inet manual\n"
-
-_V4_IFACE_STATIC_IP = _AUTO + _BASE_IFACE + """ inet static
-address 192.168.1.2
-netmask 255.255.255.0
+_V4_IFACE_STATIC_IP = _AUTO + """iface eth0 inet static
+    address 192.168.1.2
+    netmask 255.255.255.0
 """
 
-_V6_IFACE_STATIC_IP = _AUTO + _BASE_IFACE + """ inet6 static
-address fe80::2677:3ff:fe7d:4c
-netmask ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+_V6_IFACE_STATIC_IP = _AUTO + """iface eth0 inet6 static
+    address fe80::2677:3ff:fe7d:4c
+    netmask ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff
 """
 
-_OVS_PORT_BASE = "allow-br0 eth0\n"
+_IFACE_DHCP = _AUTO + "iface eth0 inet dhcp\n"
 
-_OVS_IFACE_DHCP = _BASE_IFACE + " inet dhcp\n"
+_OVS_PORT_BASE = _AUTO + "allow-br0 eth0\n"
 
-_OVS_PORT_IFACE = _OVS_PORT_BASE + _OVS_IFACE_DHCP + """ovs_bridge br0
-ovs_type OVSPort\n"""
+_OVS_PORT_IFACE = _OVS_PORT_BASE + """iface eth0 inet manual
+    ovs_bridge br0
+    ovs_type OVSPort
+"""
 
 _OVS_BRIDGE_DHCP = """allow-ovs br0
 iface br0 inet dhcp
-ovs_type OVSBridge
-ovs_ports eth0
+    ovs_type OVSBridge
+    ovs_ports eth0
+    pre-up ip addr flush dev eth0
 """
 
 _RTS = """up route add -net 172.19.0.0 netmask 255.255.255.0 gw 192.168.1.1
@@ -75,18 +76,10 @@ class TestENINetConfig(base.TestCase):
     def _default_interface(self, addr=[], rts=[]):
         return objects.Interface(self.if_name, addresses=addr, routes=rts)
 
-    def test_add_base_interface(self):
+    def test_interface_no_ip(self):
         interface = self._default_interface()
         self.provider.addInterface(interface)
         self.assertEqual(_v4_IFACE_NO_IP, self.get_interface_config())
-
-    def test_add_ovs_port_interface(self):
-        interface = self._default_interface()
-        interface.ovs_port = True
-        interface.bridge_name = 'br0'
-        interface.use_dhcp = True
-        self.provider.addInterface(interface)
-        self.assertEqual(_OVS_PORT_IFACE, self.get_interface_config())
 
     def test_add_interface_with_v4(self):
         v4_addr = objects.Address('192.168.1.2/24')
@@ -100,6 +93,27 @@ class TestENINetConfig(base.TestCase):
         self.provider.addInterface(interface)
         self.assertEqual(_V6_IFACE_STATIC_IP, self.get_interface_config())
 
+    def test_add_interface_dhcp(self):
+        interface = self._default_interface()
+        interface.use_dhcp = True
+        self.provider.addInterface(interface)
+        self.assertEqual(_IFACE_DHCP, self.get_interface_config())
+
+    def test_add_interface_with_both_v4_and_v6(self):
+        v4_addr = objects.Address('192.168.1.2/24')
+        v6_addr = objects.Address('fe80::2677:3ff:fe7d:4c')
+        interface = self._default_interface([v4_addr, v6_addr])
+        self.provider.addInterface(interface)
+        self.assertEqual(_V4_IFACE_STATIC_IP + _V6_IFACE_STATIC_IP,
+                         self.get_interface_config())
+
+    def test_add_ovs_port_interface(self):
+        interface = self._default_interface()
+        interface.ovs_port = True
+        interface.bridge_name = 'br0'
+        self.provider.addInterface(interface)
+        self.assertEqual(_OVS_PORT_IFACE, self.get_interface_config())
+
     def test_network_with_routes(self):
         route1 = objects.Route('192.168.1.1', '172.19.0.0/24')
         v4_addr = objects.Address('192.168.1.2/24')
@@ -110,7 +124,6 @@ class TestENINetConfig(base.TestCase):
 
     def test_network_ovs_bridge_with_dhcp(self):
         interface = self._default_interface()
-        interface.use_dhcp = True
         bridge = objects.OvsBridge('br0', use_dhcp=True,
                                    members=[interface])
         self.provider.addBridge(bridge)
@@ -152,7 +165,6 @@ class TestENINetConfigApply(base.TestCase):
 
     def test_dhcp_ovs_bridge_network_apply(self):
         interface = objects.Interface('eth0')
-        interface.use_dhcp = True
         bridge = objects.OvsBridge('br0', use_dhcp=True,
                                    members=[interface])
         self.provider.addInterface(interface)

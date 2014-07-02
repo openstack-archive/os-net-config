@@ -27,7 +27,7 @@ def _network_config_path():
 
 
 class ENINetConfig(os_net_config.NetConfig):
-    """Ubuntu/Debian implementation for network config
+    """Debian/Ubuntu implementation for network config
 
        Configure iface/bridge/routes using debian/ubuntu
        /etc/network/interfaces format.
@@ -38,20 +38,27 @@ class ENINetConfig(os_net_config.NetConfig):
         self.routes = {}
         self.bridges = {}
 
-    def _addCommon(self, interface):
+    def _addCommon(self, interface, static_addr=None):
 
-        def _static_addresses(_v4, _v6):
-            addr = _v4 + _v6
-            address_data = ""
-            if addr:
-                address_data += "address %s\n" % addr[0].ip
-                address_data += "netmask %s\n" % addr[0].netmask
-            return address_data
+        data = ""
+        address_data = ""
+        if static_addr:
+            address_data += "    address %s\n" % static_addr.ip
+            address_data += "    netmask %s\n" % static_addr.netmask
+        else:
+            v4_addresses = interface.v4_addresses()
+            if v4_addresses:
+                data += self._addCommon(interface, v4_addresses[0])
 
-        _v6 = interface.v6_addresses()
-        _v4 = interface.v4_addresses()
+            v6_addresses = interface.v6_addresses()
+            if v6_addresses:
+                data += self._addCommon(interface, v6_addresses[0])
+
+            if data:
+                return data
+
         _iface = "iface %s " % interface.name
-        if _v6:
+        if static_addr and static_addr.version == 6:
             _iface += "inet6 "
         else:
             _iface += "inet "
@@ -61,27 +68,29 @@ class ENINetConfig(os_net_config.NetConfig):
             _iface += "static\n"
         else:
             _iface += "manual\n"
-        data = ""
         if isinstance(interface, objects.OvsBridge):
             data += "allow-ovs %s\n" % interface.name
             data += _iface
-            data += _static_addresses(_v4, _v6)
-            data += "ovs_type OVSBridge\n"
+            data += address_data
+            data += "    ovs_type OVSBridge\n"
             if interface.members:
-                data += "ovs_ports"
+                data += "    ovs_ports"
                 for i in interface.members:
                     data += " %s" % i.name
                 data += "\n"
+                for i in interface.members:
+                    data += "    pre-up ip addr flush dev %s\n" % i.name
         elif interface.ovs_port:
+            data += "auto %s\n" % interface.name
             data += "allow-%s %s\n" % (interface.bridge_name, interface.name)
             data += _iface
-            data += _static_addresses(_v4, _v6)
-            data += "ovs_bridge %s\n" % interface.bridge_name
-            data += "ovs_type OVSPort\n"
+            data += address_data
+            data += "    ovs_bridge %s\n" % interface.bridge_name
+            data += "    ovs_type OVSPort\n"
         else:
             data += "auto %s\n" % interface.name
             data += _iface
-            data += _static_addresses(_v4, _v6)
+            data += address_data
         return data
 
     def addInterface(self, interface):
