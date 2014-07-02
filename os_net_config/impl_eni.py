@@ -106,8 +106,6 @@ class ENINetConfig(os_net_config.NetConfig):
         self.bridges[bridge.name] = data
         if bridge.routes:
             self._addRoutes(bridge.name, bridge.routes)
-        if bridge.routes:
-            self._addRoutes(bridge.name, bridge.routes)
 
     def _addRoutes(self, interface_name, routes=[]):
         data = ""
@@ -140,3 +138,9 @@ class ENINetConfig(os_net_config.NetConfig):
                                      check_exit_code=False)
 
             utils.write_config(_network_config_path(), new_config)
+
+            for bridge in self.bridges.keys():
+                processutils.execute('/sbin/ifup', bridge)
+
+            for interface in self.interfaces.keys():
+                processutils.execute('/sbin/ifup', interface)
