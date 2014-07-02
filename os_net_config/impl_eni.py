@@ -111,6 +111,8 @@ class ENINetConfig(os_net_config.NetConfig):
             data += "auto %s\n" % interface.name
             data += _iface
             data += address_data
+        if interface.mtu != 1500:
+            data += "    mtu %i\n" % interface.mtu
         return data
 
     def addInterface(self, interface):
