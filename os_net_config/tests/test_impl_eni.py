@@ -51,6 +51,19 @@ iface br0 inet dhcp
     pre-up ip addr flush dev eth0
 """
 
+_VLAN_NO_IP = """auto vlan5
+iface vlan5 inet manual
+    vlan-raw-device eth0
+"""
+
+_VLAN_OVS_PORT = """auto vlan5
+allow-br0 vlan5
+iface vlan5 inet manual
+    ovs_bridge br0
+    ovs_type OVSIntPort
+    ovs_options tag=5
+"""
+
 _RTS = """up route add -net 172.19.0.0 netmask 255.255.255.0 gw 192.168.1.1
 down route del -net 172.19.0.0 netmask 255.255.255.0 gw 192.168.1.1
 """
@@ -67,8 +80,8 @@ class TestENINetConfig(base.TestCase):
     def tearDown(self):
         super(TestENINetConfig, self).tearDown()
 
-    def get_interface_config(self):
-        return self.provider.interfaces[self.if_name]
+    def get_interface_config(self, name="eth0"):
+        return self.provider.interfaces[name]
 
     def get_route_config(self):
         return self.provider.routes[self.if_name]
@@ -130,6 +143,19 @@ class TestENINetConfig(base.TestCase):
         self.provider.addInterface(interface)
         self.assertEqual(_OVS_PORT_IFACE, self.get_interface_config())
         self.assertEqual(_OVS_BRIDGE_DHCP, self.provider.bridges['br0'])
+
+    def test_vlan(self):
+        vlan = objects.Vlan('eth0', 5)
+        self.provider.addVlan(vlan)
+        self.assertEqual(_VLAN_NO_IP, self.get_interface_config('vlan5'))
+
+    def test_vlan_ovs_bridge_int_port(self):
+        vlan = objects.Vlan('eth0', 5)
+        bridge = objects.OvsBridge('br0', use_dhcp=True,
+                                   members=[vlan])
+        self.provider.addBridge(bridge)
+        self.provider.addVlan(vlan)
+        self.assertEqual(_VLAN_OVS_PORT, self.get_interface_config('vlan5'))
 
 
 class TestENINetConfigApply(base.TestCase):

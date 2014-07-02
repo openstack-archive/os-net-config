@@ -57,7 +57,10 @@ class ENINetConfig(os_net_config.NetConfig):
             if data:
                 return data
 
-        _iface = "iface %s " % interface.name
+        if isinstance(interface, objects.Vlan):
+            _iface = "iface vlan%i " % interface.vlan_id
+        else:
+            _iface = "iface %s " % interface.name
         if static_addr and static_addr.version == 6:
             _iface += "inet6 "
         else:
@@ -81,12 +84,29 @@ class ENINetConfig(os_net_config.NetConfig):
                 for i in interface.members:
                     data += "    pre-up ip addr flush dev %s\n" % i.name
         elif interface.ovs_port:
-            data += "auto %s\n" % interface.name
-            data += "allow-%s %s\n" % (interface.bridge_name, interface.name)
+            if isinstance(interface, objects.Vlan):
+                data += "auto vlan%i\n" % interface.vlan_id
+                data += "allow-%s vlan%i\n" % (interface.bridge_name,
+                                               interface.vlan_id)
+                data += _iface
+                data += address_data
+                data += "    ovs_bridge %s\n" % interface.bridge_name
+                data += "    ovs_type OVSIntPort\n"
+                data += "    ovs_options tag=%s\n" % interface.vlan_id
+
+            else:
+                data += "auto %s\n" % interface.name
+                data += "allow-%s %s\n" % (interface.bridge_name,
+                                           interface.name)
+                data += _iface
+                data += address_data
+                data += "    ovs_bridge %s\n" % interface.bridge_name
+                data += "    ovs_type OVSPort\n"
+        elif isinstance(interface, objects.Vlan):
+            data += "auto vlan%i\n" % interface.vlan_id
             data += _iface
             data += address_data
-            data += "    ovs_bridge %s\n" % interface.bridge_name
-            data += "    ovs_type OVSPort\n"
+            data += "    vlan-raw-device %s\n" % interface.device
         else:
             data += "auto %s\n" % interface.name
             data += _iface
@@ -106,6 +126,13 @@ class ENINetConfig(os_net_config.NetConfig):
         self.bridges[bridge.name] = data
         if bridge.routes:
             self._addRoutes(bridge.name, bridge.routes)
+
+    def addVlan(self, vlan):
+        data = self._addCommon(vlan)
+
+        self.interfaces[vlan.name] = data
+        if vlan.routes:
+            self._addRoutes(vlan.name, vlan.routes)
 
     def _addRoutes(self, interface_name, routes=[]):
         data = ""
