@@ -72,6 +72,7 @@ class ENINetConfig(os_net_config.NetConfig):
         else:
             _iface += "manual\n"
         if isinstance(interface, objects.OvsBridge):
+            data += "auto %s\n" % interface.name
             data += "allow-ovs %s\n" % interface.name
             data += _iface
             data += address_data

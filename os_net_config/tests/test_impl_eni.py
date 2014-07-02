@@ -44,7 +44,8 @@ _OVS_PORT_IFACE = _OVS_PORT_BASE + """iface eth0 inet manual
     ovs_type OVSPort
 """
 
-_OVS_BRIDGE_DHCP = """allow-ovs br0
+_OVS_BRIDGE_DHCP = """auto br0
+allow-ovs br0
 iface br0 inet dhcp
     ovs_type OVSBridge
     ovs_ports eth0
