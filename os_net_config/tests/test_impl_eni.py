@@ -198,4 +198,4 @@ class TestENINetConfigApply(base.TestCase):
         self.provider.addBridge(bridge)
         self.provider.apply()
         iface_data = utils.get_file_data(self.temp_config_file.name)
-        self.assertEqual((_OVS_PORT_IFACE + _OVS_BRIDGE_DHCP), iface_data)
+        self.assertEqual((_OVS_BRIDGE_DHCP + _OVS_PORT_IFACE), iface_data)
