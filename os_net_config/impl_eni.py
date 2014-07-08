@@ -14,12 +14,17 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import logging
+
 import netaddr
 import os_net_config
 from os_net_config import objects
 from os_net_config import utils
 
 from os_net_config.openstack.common import processutils
+
+
+logger = logging.getLogger(__name__)
 
 
 # TODO(?): should move to interfaces.d
@@ -38,6 +43,7 @@ class ENINetConfig(os_net_config.NetConfig):
         self.interfaces = {}
         self.routes = {}
         self.bridges = {}
+        logger.info('Ifcfg net config provider created.')
 
     def _addCommon(self, interface, static_addr=None):
 
@@ -118,27 +124,31 @@ class ENINetConfig(os_net_config.NetConfig):
         return data
 
     def addInterface(self, interface):
+        logger.info('adding interface: %s' % interface.name)
         data = self._addCommon(interface)
-
+        logger.debug('interface data: %s' % data)
         self.interfaces[interface.name] = data
         if interface.routes:
             self._addRoutes(interface.name, interface.routes)
 
     def addBridge(self, bridge):
+        logger.info('adding bridge: %s' % bridge.name)
         data = self._addCommon(bridge)
-
+        logger.debug('bridge data: %s' % data)
         self.bridges[bridge.name] = data
         if bridge.routes:
             self._addRoutes(bridge.name, bridge.routes)
 
     def addVlan(self, vlan):
+        logger.info('adding vlan: %s' % vlan.name)
         data = self._addCommon(vlan)
-
+        logger.debug('vlan data: %s' % data)
         self.interfaces[vlan.name] = data
         if vlan.routes:
             self._addRoutes(vlan.name, vlan.routes)
 
     def _addRoutes(self, interface_name, routes=[]):
+        logger.info('adding custom route for interface: %s' % interface_name)
         data = ""
         for route in routes:
             rt = netaddr.IPNetwork(route.ip_netmask)
@@ -147,6 +157,7 @@ class ENINetConfig(os_net_config.NetConfig):
             data += "down route del -net %s netmask %s gw %s\n" % (
                     str(rt.ip), str(rt.netmask), route.next_hop)
         self.routes[interface_name] = data
+        logger.debug('route data: %s' % self.routes[interface_name])
 
     def apply(self):
         new_config = ""
@@ -165,17 +176,24 @@ class ENINetConfig(os_net_config.NetConfig):
 
         if (utils.diff(_network_config_path(), new_config)):
             for interface in self.interfaces.keys():
+                logger.info('running ifdown on interface: %s' % interface)
                 processutils.execute('/sbin/ifdown', interface,
                                      check_exit_code=False)
 
             for bridge in self.bridges.keys():
+                logger.info('running ifdown on bridge: %s' % bridge)
                 processutils.execute('/sbin/ifdown', bridge,
                                      check_exit_code=False)
 
+            logger.info('writing config file')
             utils.write_config(_network_config_path(), new_config)
 
             for bridge in self.bridges.keys():
+                logger.info('running ifup on bridge: %s' % bridge)
                 processutils.execute('/sbin/ifup', bridge)
 
             for interface in self.interfaces.keys():
+                logger.info('running ifup on interface: %s' % interface)
                 processutils.execute('/sbin/ifup', interface)
+        else:
+            logger.info('No interface changes are required.')

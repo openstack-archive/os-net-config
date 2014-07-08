@@ -175,6 +175,9 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 restart_interfaces.append(interface_name)
                 update_files[ifcfg_config_path(interface_name)] = iface_data
                 update_files[route_config_path(interface_name)] = route_data
+            else:
+                logger.info('No changes required for interface: %s' %
+                            interface_name)
 
         for bridge_name, bridge_data in self.bridges.iteritems():
             route_data = self.routes.get(bridge_name)
@@ -183,6 +186,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 restart_bridges.append(bridge_name)
                 update_files[bridge_config_path(bridge_name)] = bridge_data
                 update_files[route_config_path(bridge_name)] = route_data
+            else:
+                logger.info('No changes required for bridge: %s' % bridge_name)
 
         for interface in restart_interfaces:
             logger.info('running ifdown on interface: %s' % interface)
@@ -190,7 +195,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                                  check_exit_code=False)
 
         for bridge in restart_bridges:
-            logger.info('running ifdown on bridge: %s' % interface)
+            logger.info('running ifdown on bridge: %s' % bridge)
             processutils.execute('/sbin/ifdown', bridge,
                                  check_exit_code=False)
 
@@ -199,7 +204,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             utils.write_config(location, data)
 
         for bridge in restart_bridges:
-            logger.info('running ifup on bridge: %s' % interface)
+            logger.info('running ifup on bridge: %s' % bridge)
             processutils.execute('/sbin/ifup', bridge)
 
         for interface in restart_interfaces:
