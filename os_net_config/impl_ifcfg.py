@@ -14,12 +14,17 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import logging
+
 import os_net_config
 from os_net_config import objects
 from os_net_config import utils
 
 
 from os_net_config.openstack.common import processutils
+
+
+logger = logging.getLogger(__name__)
 
 
 def ifcfg_config_path(name):
@@ -42,6 +47,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         self.interfaces = {}
         self.routes = {}
         self.bridges = {}
+        logger.info('Ifcfg net config provider created.')
 
     def _addCommon(self, base_opt):
         data = "DEVICE=%s\n" % base_opt.name
@@ -110,6 +116,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         return data
 
     def _addRoutes(self, interface_name, routes=[]):
+        logger.info('adding custom route for interface: %s' % interface_name)
         data = ""
         first_line = ""
         for route in routes:
@@ -121,32 +128,42 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                                                 route.next_hop,
                                                 interface_name)
         self.routes[interface_name] = first_line + data
+        logger.debug('route data: %s' % self.routes[interface_name])
 
     def addInterface(self, interface):
+        logger.info('adding interface: %s' % interface.name)
         data = self._addCommon(interface)
+        logger.debug('interface data: %s' % data)
         self.interfaces[interface.name] = data
         if interface.routes:
             self._addRoutes(interface.name, interface.routes)
 
     def addVlan(self, vlan):
+        logger.info('adding vlan: %s' % vlan.name)
         data = self._addCommon(vlan)
+        logger.debug('vlan data: %s' % data)
         self.interfaces[vlan.name] = data
         if vlan.routes:
             self._addRoutes(vlan.name, vlan.routes)
 
     def addBridge(self, bridge):
+        logger.info('adding bridge: %s' % bridge.name)
         data = self._addCommon(bridge)
+        logger.debug('bridge data: %s' % data)
         self.bridges[bridge.name] = data
         if bridge.routes:
             self._addRoutes(bridge.name, bridge.routes)
 
     def addBond(self, bond):
+        logger.info('adding bond: %s' % bond.name)
         data = self._addCommon(bond)
+        logger.debug('bond data: %s' % data)
         self.interfaces[bond.name] = data
         if bond.routes:
             self._addRoutes(bond.name, bond.routes)
 
     def apply(self):
+        logger.info('applying network configs...')
         restart_interfaces = []
         restart_bridges = []
         update_files = {}
@@ -168,18 +185,23 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 update_files[route_config_path(bridge_name)] = route_data
 
         for interface in restart_interfaces:
+            logger.info('running ifdown on interface: %s' % interface)
             processutils.execute('/sbin/ifdown', interface,
                                  check_exit_code=False)
 
         for bridge in restart_bridges:
+            logger.info('running ifdown on bridge: %s' % interface)
             processutils.execute('/sbin/ifdown', bridge,
                                  check_exit_code=False)
 
         for location, data in update_files.iteritems():
+            logger.info('writing config file: %s' % location)
             utils.write_config(location, data)
 
         for bridge in restart_bridges:
+            logger.info('running ifup on bridge: %s' % interface)
             processutils.execute('/sbin/ifup', bridge)
 
         for interface in restart_interfaces:
+            logger.info('running ifup on interface: %s' % interface)
             processutils.execute('/sbin/ifup', interface)
