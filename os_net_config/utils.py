@@ -14,6 +14,11 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import logging
+
+
+logger = logging.getLogger(__name__)
+
 
 def write_config(filename, data):
     with open(filename, "w") as f:
@@ -25,8 +30,13 @@ def get_file_data(filename):
         with open(filename, "r") as f:
             return f.read()
     except IOError:
+        logger.error("Error reading file: %s" % filename)
         return ""
 
 
 def diff(filename, data):
-    return not get_file_data(filename) == data
+    file_data = get_file_data(filename)
+    logger.debug("Diff file data:\n%s" % file_data)
+    logger.debug("Diff data:\n%s" % data)
+    # convert to string as JSON may have unicode in it
+    return not file_data == data
