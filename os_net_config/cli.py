@@ -28,6 +28,9 @@ from os_net_config import impl_iproute
 from os_net_config import objects
 
 
+logger = logging.getLogger(__name__)
+
+
 def parse_opts(argv):
     parser = argparse.ArgumentParser(
         description='Configure host network interfaces using a JSON'
@@ -39,6 +42,19 @@ def parse_opts(argv):
                         help="""The provider to use."""
                         """One of: ifcfg, eni, iproute.""",
                         default=None)
+    parser.add_argument(
+        '-d', '--debug',
+        dest="debug",
+        action='store_true',
+        help="Print debugging output.",
+        required=False)
+    parser.add_argument(
+        '-v', '--verbose',
+        dest="verbose",
+        action='store_true',
+        help="Print verbose output.",
+        required=False)
+
     parser.add_argument('--version', action='version',
                         version=os_net_config.__version__)
     opts = parser.parse_args(argv[1:])
@@ -46,8 +62,23 @@ def parse_opts(argv):
     return opts
 
 
+def configure_logger(verbose=False, debug=False):
+    LOG_FORMAT = '[%(asctime)s] [%(levelname)s] %(message)s'
+    DATE_FORMAT = '%Y/%m/%d %I:%M:%S %p'
+    log_level = logging.WARN
+
+    if verbose:
+        log_level = logging.DEBUG
+    elif debug:
+        log_level = logging.INFO
+
+    logging.basicConfig(format=LOG_FORMAT, datefmt=DATE_FORMAT,
+                        level=log_level)
+
+
 def main(argv=sys.argv):
     opts = parse_opts(argv)
+    configure_logger(opts.verbose, opts.debug)
     logger.info('Using config file at: %s' % opts.config_file)
     iface_array = []
 
@@ -84,22 +115,9 @@ def main(argv=sys.argv):
     for iface_json in iface_array:
         obj = objects.object_from_json(iface_json)
         provider.addObject(obj)
-    provider.apply()
+    #provider.apply()
     return 0
 
-
-LOG_FORMAT = '[%(asctime)s] [%(levelname)s] %(message)s'
-DATE_FORMAT = '%Y/%m/%d %I:%M:%S %p'
-
-
-def add_handler(logger, handler):
-    handler.setFormatter(logging.Formatter(LOG_FORMAT, datefmt=DATE_FORMAT))
-    logger.addHandler(handler)
-logger = logging.getLogger('os-net-config')
-logger.setLevel(logging.INFO)
-add_handler(logger, logging.StreamHandler())
-if os.geteuid() == 0:
-    add_handler(logger, logging.FileHandler('/var/log/os-net-config.log'))
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))
