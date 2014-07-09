@@ -110,8 +110,8 @@ class TestIfcfgNetConfig(base.TestCase):
     def get_interface_config(self, name='em1'):
         return self.provider.interfaces[name]
 
-    def get_route_config(self):
-        return self.provider.routes['em1']
+    def get_route_config(self, name='em1'):
+        return self.provider.routes.get(name, '')
 
     def test_add_base_interface(self):
         interface = objects.Interface('em1')
@@ -129,11 +129,13 @@ class TestIfcfgNetConfig(base.TestCase):
         interface = objects.Interface('em1', addresses=[v4_addr])
         self.provider.addInterface(interface)
         self.assertEqual(_V4_IFCFG, self.get_interface_config())
+        self.assertEqual('', self.get_route_config())
 
     def test_add_interface_with_v6(self):
         v6_addr = objects.Address('2001:abc:a::/64')
         interface = objects.Interface('em1', addresses=[v6_addr])
         self.provider.addInterface(interface)
+        self.assertEqual(_V6_IFCFG, self.get_interface_config())
 
     def test_network_with_routes(self):
         route1 = objects.Route('192.168.1.1', default=True)
@@ -253,6 +255,8 @@ class TestIfcfgNetConfigApply(base.TestCase):
         self.assertEqual(_OVS_INTERFACE, ifcfg_data)
         bridge_data = utils.get_file_data(self.temp_bridge_file.name)
         self.assertEqual(_OVS_BRIDGE_DHCP, bridge_data)
+        route_data = utils.get_file_data(self.temp_route_file.name)
+        self.assertEqual("", route_data)
 
     def test_vlan_apply(self):
         vlan = objects.Vlan('em1', 5)

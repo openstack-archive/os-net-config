@@ -169,7 +169,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         update_files = {}
 
         for interface_name, iface_data in self.interfaces.iteritems():
-            route_data = self.routes.get(interface_name)
+            route_data = self.routes.get(interface_name, '')
             if (utils.diff(ifcfg_config_path(interface_name), iface_data) or
                 utils.diff(route_config_path(interface_name), route_data)):
                 restart_interfaces.append(interface_name)
@@ -180,7 +180,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                             interface_name)
 
         for bridge_name, bridge_data in self.bridges.iteritems():
-            route_data = self.routes.get(bridge_name)
+            route_data = self.routes.get(bridge_name, '')
             if (utils.diff(ifcfg_config_path(bridge_name), bridge_data) or
                 utils.diff(route_config_path(bridge_name), route_data)):
                 restart_bridges.append(bridge_name)
