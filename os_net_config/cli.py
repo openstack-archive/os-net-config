@@ -115,7 +115,7 @@ def main(argv=sys.argv):
     for iface_json in iface_array:
         obj = objects.object_from_json(iface_json)
         provider.addObject(obj)
-    #provider.apply()
+    provider.apply()
     return 0
 
 
