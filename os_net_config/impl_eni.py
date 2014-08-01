@@ -159,7 +159,7 @@ class ENINetConfig(os_net_config.NetConfig):
         self.routes[interface_name] = data
         logger.debug('route data: %s' % self.routes[interface_name])
 
-    def apply(self):
+    def apply(self, mock=False):
         new_config = ""
 
         # write out bridges first. This ensures that an ifup -a
@@ -175,6 +175,8 @@ class ENINetConfig(os_net_config.NetConfig):
             new_config += iface_data
 
         if (utils.diff(_network_config_path(), new_config)):
+            if mock:
+                return new_config
             for interface in self.interfaces.keys():
                 logger.info('running ifdown on interface: %s' % interface)
                 processutils.execute('/sbin/ifdown', interface,

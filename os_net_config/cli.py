@@ -57,6 +57,13 @@ def parse_opts(argv):
 
     parser.add_argument('--version', action='version',
                         version=os_net_config.__version__)
+    parser.add_argument(
+        '-m', '--mock',
+        dest="mock",
+        action='store_true',
+        help="Return the configuration commands, without applying them.",
+        required=False)
+
     opts = parser.parse_args(argv[1:])
 
     return opts
@@ -89,7 +96,7 @@ def main(argv=sys.argv):
         elif opts.provider == 'eni':
             provider = impl_eni.ENINetConfig()
         elif opts.provider == 'iproute':
-            provider = impl_iproute.IprouteNetConfig()
+            provider = impl_iproute.IPRouteNetConfig()
         else:
             logger.error('Invalid provider specified.')
             return 1
@@ -115,8 +122,12 @@ def main(argv=sys.argv):
     for iface_json in iface_array:
         obj = objects.object_from_json(iface_json)
         provider.addObject(obj)
-    provider.apply()
-    return 0
+    if opts.mock:
+        res = provider.apply(mock=True)
+        print res
+    else:
+        provider.apply()
+        return 0
 
 
 if __name__ == '__main__':

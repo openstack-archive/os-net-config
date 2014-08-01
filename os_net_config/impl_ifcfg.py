@@ -162,8 +162,9 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         if bond.routes:
             self._addRoutes(bond.name, bond.routes)
 
-    def apply(self):
-        logger.info('applying network configs...')
+    def apply(self, mock=False):
+        if not mock:
+            logger.info('applying network configs...')
         restart_interfaces = []
         restart_bridges = []
         update_files = {}
@@ -175,7 +176,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 restart_interfaces.append(interface_name)
                 update_files[ifcfg_config_path(interface_name)] = iface_data
                 update_files[route_config_path(interface_name)] = route_data
-            else:
+            elif not mock:
                 logger.info('No changes required for interface: %s' %
                             interface_name)
 
@@ -186,8 +187,14 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 restart_bridges.append(bridge_name)
                 update_files[bridge_config_path(bridge_name)] = bridge_data
                 update_files[route_config_path(bridge_name)] = route_data
-            else:
+            elif not mock:
                 logger.info('No changes required for bridge: %s' % bridge_name)
+
+        if mock:
+            mock_str = ""
+            for location, data in update_files.iteritems():
+                mock_str += "%s:\n%s" % (location, data)
+            return mock_str
 
         for interface in restart_interfaces:
             logger.info('running ifdown on interface: %s' % interface)
