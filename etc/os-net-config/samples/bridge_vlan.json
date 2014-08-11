@@ -1,0 +1,21 @@
+{ "network_config": [
+        {
+            "type": "ovs_bridge",
+            "name": "br-ctlplane",
+            "members": [
+                {
+                    "type": "vlan",
+                    "device": "em1",
+                    "vlan_id": "16",
+                    "addresses": [{
+                        "ip_netmask": "192.0.2.1/24"
+                    }],
+                    "routes": [{
+                        "next_hop": "192.0.2.1",
+                        "ip_netmask": "192.0.2.1/24"
+                    }]
+                }
+            ]
+        }
+    ]
+}

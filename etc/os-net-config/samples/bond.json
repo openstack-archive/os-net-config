@@ -1,0 +1,19 @@
+{ "network_config": [
+        {
+            "type": "ovs_bridge",
+            "name": "br-ctlplane",
+            "use_dhcp": "true",
+            "members": [
+                {
+                    "type": "ovs_bond",
+                    "name": "bond1",
+                    "use_dhcp": "true",
+                    "members": [
+                        { "type": "interface", "name": "em1" },
+                        { "type": "interface", "name": "em2" }
+                    ]
+                }
+            ]
+        }
+    ]
+}
