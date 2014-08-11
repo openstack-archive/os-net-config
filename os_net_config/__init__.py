@@ -56,5 +56,12 @@ class NetConfig(object):
     def addBond(self, bond):
         raise NotImplemented("addBond is not implemented.")
 
-    def apply(self):
+    def apply(self, noop=False):
+        """Apply the network configuration.
+
+        :param noop: A boolean which indicates whether this is a no-op.
+        :returns: a dict of the format: filename/data which contains info
+            for each file that was changed (or would be changed if in --noop
+            mode).
+        """
         raise NotImplemented("apply is not implemented.")

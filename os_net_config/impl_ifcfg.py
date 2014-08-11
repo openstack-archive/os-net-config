@@ -162,9 +162,15 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         if bond.routes:
             self._addRoutes(bond.name, bond.routes)
 
-    def apply(self, mock=False):
-        if not mock:
-            logger.info('applying network configs...')
+    def apply(self, noop=False):
+        """Apply the network configuration.
+
+        :param noop: A boolean which indicates whether this is a no-op.
+        :returns: a dict of the format: filename/data which contains info
+            for each file that was changed (or would be changed if in --noop
+            mode).
+        """
+        logger.info('applying network configs...')
         restart_interfaces = []
         restart_bridges = []
         update_files = {}
@@ -176,7 +182,6 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 restart_interfaces.append(interface_name)
                 update_files[ifcfg_config_path(interface_name)] = iface_data
                 update_files[route_config_path(interface_name)] = route_data
-            elif not mock:
                 logger.info('No changes required for interface: %s' %
                             interface_name)
 
@@ -187,14 +192,10 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 restart_bridges.append(bridge_name)
                 update_files[bridge_config_path(bridge_name)] = bridge_data
                 update_files[route_config_path(bridge_name)] = route_data
-            elif not mock:
                 logger.info('No changes required for bridge: %s' % bridge_name)
 
-        if mock:
-            mock_str = ""
-            for location, data in update_files.iteritems():
-                mock_str += "%s:\n%s" % (location, data)
-            return mock_str
+        if noop:
+            return update_files
 
         for interface in restart_interfaces:
             logger.info('running ifdown on interface: %s' % interface)
@@ -217,3 +218,5 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         for interface in restart_interfaces:
             logger.info('running ifup on interface: %s' % interface)
             processutils.execute('/sbin/ifup', interface)
+
+        return update_files

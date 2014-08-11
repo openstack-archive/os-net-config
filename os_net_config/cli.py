@@ -58,8 +58,8 @@ def parse_opts(argv):
     parser.add_argument('--version', action='version',
                         version=os_net_config.__version__)
     parser.add_argument(
-        '-m', '--mock',
-        dest="mock",
+        '--noop',
+        dest="noop",
         action='store_true',
         help="Return the configuration commands, without applying them.",
         required=False)
@@ -122,12 +122,13 @@ def main(argv=sys.argv):
     for iface_json in iface_array:
         obj = objects.object_from_json(iface_json)
         provider.addObject(obj)
-    if opts.mock:
-        res = provider.apply(mock=True)
-        print res
-    else:
-        provider.apply()
-        return 0
+    files_changed = provider.apply(noop=opts.noop)
+    if opts.noop:
+        for location, data in files_changed.iteritems():
+            print "File: %s\n" % location
+            print data
+            print "----"
+    return 0
 
 
 if __name__ == '__main__':
