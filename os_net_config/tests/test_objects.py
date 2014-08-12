@@ -152,6 +152,37 @@ class TestBridge(base.TestCase):
         self.assertEqual(True, interface1.ovs_port)
         self.assertEqual("br-foo", interface1.bridge_name)
 
+    def test_from_json_primary_interface(self):
+        data = """{
+"type": "ovs_bridge",
+"name": "br-foo",
+"use_dhcp": true,
+"members": [
+    {
+    "type": "interface",
+    "name": "em1",
+    "primary": "true"
+    },
+    {
+    "type": "interface",
+    "name": "em2"
+    }]
+}
+"""
+        bridge = objects.object_from_json(json.loads(data))
+        self.assertEqual("br-foo", bridge.name)
+        self.assertEqual(True, bridge.use_dhcp)
+        self.assertEqual("em1", bridge.primary_interface_name)
+        interface1 = bridge.members[0]
+        self.assertEqual("em1", interface1.name)
+        self.assertEqual(True, interface1.ovs_port)
+        self.assertEqual(True, interface1.primary)
+        self.assertEqual("br-foo", interface1.bridge_name)
+        interface2 = bridge.members[1]
+        self.assertEqual("em2", interface2.name)
+        self.assertEqual(True, interface2.ovs_port)
+        self.assertEqual("br-foo", interface2.bridge_name)
+
 
 class TestBond(base.TestCase):
 

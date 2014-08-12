@@ -91,6 +91,11 @@ class ENINetConfig(os_net_config.NetConfig):
                 data += "\n"
                 for i in interface.members:
                     data += "    pre-up ip addr flush dev %s\n" % i.name
+                if interface.primary_interface_name:
+                    mac = utils.interface_mac(interface.primary_interface_name)
+                    data += ("    ovs_extra set bridge %s "
+                             "other-config:hwaddr=%s\n"
+                             % (interface.name, mac))
         elif interface.ovs_port:
             if isinstance(interface, objects.Vlan):
                 data += "auto vlan%i\n" % interface.vlan_id

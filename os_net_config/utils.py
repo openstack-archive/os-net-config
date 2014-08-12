@@ -34,6 +34,15 @@ def get_file_data(filename):
         return ""
 
 
+def interface_mac(name):
+    try:
+        with open('/sys/class/net/%s/address' % name, "r") as f:
+            return f.read().rstrip()
+    except IOError:
+        logger.error("Unable to read file: %s" % name)
+        raise
+
+
 def diff(filename, data):
     file_data = get_file_data(filename)
     logger.debug("Diff file data:\n%s" % file_data)

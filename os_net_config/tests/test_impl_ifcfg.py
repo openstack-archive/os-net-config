@@ -65,6 +65,9 @@ OVSBOOTPROTO=dhcp
 OVSDHCPINTERFACES="em1"
 """
 
+_OVS_BRIDGE_DHCP_PRIMARY_INTERFACE = _OVS_BRIDGE_DHCP + \
+    "OVS_EXTRA=\"set bridge br-ctlplane other-config:hwaddr=a1:b2:c3:d4:e5\"\n"
+
 _BASE_VLAN = """DEVICE=vlan5
 ONBOOT=yes
 HOTPLUG=no
@@ -155,6 +158,20 @@ class TestIfcfgNetConfig(base.TestCase):
         self.provider.addBridge(bridge)
         self.assertEqual(_OVS_INTERFACE, self.get_interface_config())
         self.assertEqual(_OVS_BRIDGE_DHCP,
+                         self.provider.bridges['br-ctlplane'])
+
+    def test_network_ovs_bridge_with_dhcp_primary_interface(self):
+        def test_interface_mac(name):
+            return "a1:b2:c3:d4:e5"
+        self.stubs.Set(utils, 'interface_mac', test_interface_mac)
+
+        interface = objects.Interface('em1', primary=True)
+        bridge = objects.OvsBridge('br-ctlplane', use_dhcp=True,
+                                   members=[interface])
+        self.provider.addInterface(interface)
+        self.provider.addBridge(bridge)
+        self.assertEqual(_OVS_INTERFACE, self.get_interface_config())
+        self.assertEqual(_OVS_BRIDGE_DHCP_PRIMARY_INTERFACE,
                          self.provider.bridges['br-ctlplane'])
 
     def test_add_vlan(self):

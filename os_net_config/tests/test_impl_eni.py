@@ -53,6 +53,9 @@ iface br0 inet dhcp
     pre-up ip addr flush dev eth0
 """
 
+_OVS_BRIDGE_DHCP_PRIMARY_INTERFACE = _OVS_BRIDGE_DHCP + \
+    "    ovs_extra set bridge br0 other-config:hwaddr=a1:b2:c3:d4:e5\n"
+
 _VLAN_NO_IP = """auto vlan5
 iface vlan5 inet manual
     vlan-raw-device eth0
@@ -145,6 +148,21 @@ class TestENINetConfig(base.TestCase):
         self.provider.addInterface(interface)
         self.assertEqual(_OVS_PORT_IFACE, self.get_interface_config())
         self.assertEqual(_OVS_BRIDGE_DHCP, self.provider.bridges['br0'])
+
+    def test_network_ovs_bridge_with_dhcp_and_primary_interface(self):
+
+        def test_interface_mac(name):
+            return "a1:b2:c3:d4:e5"
+        self.stubs.Set(utils, 'interface_mac', test_interface_mac)
+
+        interface = objects.Interface(self.if_name, primary=True)
+        bridge = objects.OvsBridge('br0', use_dhcp=True,
+                                   members=[interface])
+        self.provider.addBridge(bridge)
+        self.provider.addInterface(interface)
+        self.assertEqual(_OVS_PORT_IFACE, self.get_interface_config())
+        self.assertEqual(_OVS_BRIDGE_DHCP_PRIMARY_INTERFACE,
+                         self.provider.bridges['br0'])
 
     def test_vlan(self):
         vlan = objects.Vlan('eth0', 5)

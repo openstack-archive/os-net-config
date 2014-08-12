@@ -79,15 +79,17 @@ class _BaseOpts(object):
     """Base abstraction for logical port options."""
 
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=[],
-                 routes=[], mtu=1500):
+                 routes=[], mtu=1500, primary=False):
         self.name = name
         self.mtu = mtu
         self.use_dhcp = use_dhcp
         self.use_dhcpv6 = use_dhcpv6
         self.addresses = addresses
         self.routes = routes
-        self.bridge_name = None
-        self.ovs_port = False
+        self.primary = primary
+        self.bridge_name = None  # internal
+        self.ovs_port = False  # internal
+        self.primary_interface_name = None  # internal
 
     def v4_addresses(self):
         v4_addresses = []
@@ -106,11 +108,12 @@ class _BaseOpts(object):
         return v6_addresses
 
     @staticmethod
-    def base_opts_from_json(json):
+    def base_opts_from_json(json, include_primary=True):
         use_dhcp = strutils.bool_from_string(str(json.get('use_dhcp', False)))
         use_dhcpv6 = strutils.bool_from_string(str(json.get('use_dhcpv6',
                                                False)))
         mtu = json.get('mtu', 1500)
+        primary = strutils.bool_from_string(str(json.get('primary', False)))
         addresses = []
         routes = []
 
@@ -134,16 +137,19 @@ class _BaseOpts(object):
                 msg = 'Routes must be a list.'
                 raise InvalidConfigException(msg)
 
-        return (use_dhcp, use_dhcpv6, addresses, routes, mtu)
+        if include_primary:
+            return (use_dhcp, use_dhcpv6, addresses, routes, mtu, primary)
+        else:
+            return (use_dhcp, use_dhcpv6, addresses, routes, mtu)
 
 
 class Interface(_BaseOpts):
     """Base class for network interfaces."""
 
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=[],
-                 routes=[], mtu=1500):
+                 routes=[], mtu=1500, primary=False):
         super(Interface, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
-                                        routes, mtu)
+                                        routes, mtu, primary)
 
     @staticmethod
     def from_json(json):
@@ -160,10 +166,10 @@ class Vlan(_BaseOpts):
     """
 
     def __init__(self, device, vlan_id, use_dhcp=False, use_dhcpv6=False,
-                 addresses=[], routes=[], mtu=1500):
+                 addresses=[], routes=[], mtu=1500, primary=False):
         name = 'vlan%i' % vlan_id
         super(Vlan, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
-                                   routes, mtu)
+                                   routes, mtu, primary)
         self.vlan_id = int(vlan_id)
         self.device = device
 
@@ -181,17 +187,25 @@ class OvsBridge(_BaseOpts):
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=[],
                  routes=[], mtu=1500, members=[], ovs_options=None):
         super(OvsBridge, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
-                                        routes, mtu)
+                                        routes, mtu, False)
         self.members = members
         self.ovs_options = ovs_options
         for member in self.members:
             member.bridge_name = name
             member.ovs_port = True
+            if member.primary:
+                if self.primary_interface_name:
+                    msg = 'Only one primary interface allowed per bridge.'
+                    raise InvalidConfigException(msg)
+                if member.primary_interface_name:
+                    self.primary_interface_name = member.primary_interface_name
+                else:
+                    self.primary_interface_name = member.name
 
     @staticmethod
     def from_json(json):
         name = _get_required_field(json, 'name', 'OvsBridge')
-        opts = _BaseOpts.base_opts_from_json(json)
+        opts = _BaseOpts.base_opts_from_json(json, include_primary=False)
         ovs_options = json.get('ovs_options')
         members = []
 
@@ -212,11 +226,21 @@ class OvsBond(_BaseOpts):
     """Base class for OVS bonds."""
 
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=[],
-                 routes=[], mtu=1500, members=[], ovs_options=None):
+                 routes=[], mtu=1500, primary=False, members=[],
+                 ovs_options=None):
         super(OvsBond, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
-                                      routes, mtu)
+                                      routes, mtu, primary)
         self.members = members
         self.ovs_options = ovs_options
+        for member in self.members:
+            if member.primary:
+                if self.primary_interface_name:
+                    msg = 'Only one primary interface allowed per bond.'
+                    raise InvalidConfigException(msg)
+                if member.primary_interface_name:
+                    self.primary_interface_name = member.primary_interface_name
+                else:
+                    self.primary_interface_name = member.name
 
     @staticmethod
     def from_json(json):
