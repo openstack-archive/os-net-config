@@ -128,7 +128,7 @@ def main(argv=sys.argv):
         return 1
     for iface_json in iface_array:
         obj = objects.object_from_json(iface_json)
-        provider.addObject(obj)
+        provider.add_object(obj)
     files_changed = provider.apply(noop=opts.noop, cleanup=opts.cleanup)
     if opts.noop:
         for location, data in files_changed.iteritems():
