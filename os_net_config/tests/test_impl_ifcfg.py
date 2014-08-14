@@ -14,6 +14,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import os.path
 import tempfile
 
 from os_net_config import impl_ifcfg
@@ -220,6 +221,7 @@ class TestIfcfgNetConfigApply(base.TestCase):
         self.temp_ifcfg_file = tempfile.NamedTemporaryFile()
         self.temp_route_file = tempfile.NamedTemporaryFile()
         self.temp_bridge_file = tempfile.NamedTemporaryFile()
+        self.temp_cleanup_file = tempfile.NamedTemporaryFile()
 
         def test_ifcfg_path(name):
             return self.temp_ifcfg_file.name
@@ -233,6 +235,10 @@ class TestIfcfgNetConfigApply(base.TestCase):
             return self.temp_bridge_file.name
         self.stubs.Set(impl_ifcfg, 'bridge_config_path', test_bridge_path)
 
+        def test_cleanup_pattern():
+            return self.temp_cleanup_file.name
+        self.stubs.Set(impl_ifcfg, 'cleanup_pattern', test_cleanup_pattern)
+
         def test_execute(*args, **kwargs):
             pass
         self.stubs.Set(processutils, 'execute', test_execute)
@@ -243,6 +249,8 @@ class TestIfcfgNetConfigApply(base.TestCase):
         self.temp_ifcfg_file.close()
         self.temp_route_file.close()
         self.temp_bridge_file.close()
+        if os.path.exists(self.temp_cleanup_file.name):
+            self.temp_cleanup_file.close()
         super(TestIfcfgNetConfigApply, self).tearDown()
 
     def test_network_apply(self):
@@ -282,3 +290,7 @@ class TestIfcfgNetConfigApply(base.TestCase):
 
         ifcfg_data = utils.get_file_data(self.temp_ifcfg_file.name)
         self.assertEqual(_VLAN_NO_IP, ifcfg_data)
+
+    def test_cleanup(self):
+        self.provider.apply(cleanup=True)
+        self.assertTrue(not os.path.exists(self.temp_cleanup_file.name))

@@ -64,6 +64,13 @@ def parse_opts(argv):
         help="Return the configuration commands, without applying them.",
         required=False)
 
+    parser.add_argument(
+        '--cleanup',
+        dest="cleanup",
+        action='store_true',
+        help="Cleanup unconfigured interfaces.",
+        required=False)
+
     opts = parser.parse_args(argv[1:])
 
     return opts
@@ -122,7 +129,7 @@ def main(argv=sys.argv):
     for iface_json in iface_array:
         obj = objects.object_from_json(iface_json)
         provider.addObject(obj)
-    files_changed = provider.apply(noop=opts.noop)
+    files_changed = provider.apply(noop=opts.noop, cleanup=opts.cleanup)
     if opts.noop:
         for location, data in files_changed.iteritems():
             print "File: %s\n" % location

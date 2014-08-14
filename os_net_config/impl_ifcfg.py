@@ -14,7 +14,9 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import glob
 import logging
+import os
 
 import os_net_config
 from os_net_config import objects
@@ -38,6 +40,10 @@ def bridge_config_path(name):
 
 def route_config_path(name):
     return "/etc/sysconfig/network-scripts/route-%s" % name
+
+
+def cleanup_pattern():
+    return "/etc/sysconfig/network-scripts/ifcfg-*"
 
 
 class IfcfgNetConfig(os_net_config.NetConfig):
@@ -166,10 +172,13 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         if bond.routes:
             self._add_routes(bond.name, bond.routes)
 
-    def apply(self, noop=False):
+    def apply(self, noop=False, cleanup=False):
         """Apply the network configuration.
 
         :param noop: A boolean which indicates whether this is a no-op.
+        :param cleanup: A boolean which indicates whether any undefined
+            (existing but not present in the object model) interfaces
+            should be disabled and deleted.
         :returns: a dict of the format: filename/data which contains info
             for each file that was changed (or would be changed if in --noop
             mode).
@@ -178,28 +187,46 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         restart_interfaces = []
         restart_bridges = []
         update_files = {}
+        all_file_names = []
 
         for interface_name, iface_data in self.interfaces.iteritems():
             route_data = self.routes.get(interface_name, '')
-            if (utils.diff(ifcfg_config_path(interface_name), iface_data) or
-                utils.diff(route_config_path(interface_name), route_data)):
+            interface_path = ifcfg_config_path(interface_name)
+            route_path = route_config_path(interface_name)
+            all_file_names.append(interface_path)
+            all_file_names.append(route_path)
+            if (utils.diff(interface_path, iface_data) or
+                utils.diff(route_path, route_data)):
                 restart_interfaces.append(interface_name)
-                update_files[ifcfg_config_path(interface_name)] = iface_data
-                update_files[route_config_path(interface_name)] = route_data
+                update_files[interface_path] = iface_data
+                update_files[route_path] = route_data
                 logger.info('No changes required for interface: %s' %
                             interface_name)
 
         for bridge_name, bridge_data in self.bridges.iteritems():
             route_data = self.routes.get(bridge_name, '')
-            if (utils.diff(ifcfg_config_path(bridge_name), bridge_data) or
-                utils.diff(route_config_path(bridge_name), route_data)):
+            bridge_path = bridge_config_path(bridge_name)
+            bridge_route_path = route_config_path(bridge_name)
+            all_file_names.append(bridge_path)
+            all_file_names.append(bridge_route_path)
+            if (utils.diff(bridge_path, bridge_data) or
+                utils.diff(bridge_route_path, route_data)):
                 restart_bridges.append(bridge_name)
-                update_files[bridge_config_path(bridge_name)] = bridge_data
-                update_files[route_config_path(bridge_name)] = route_data
+                update_files[bridge_path] = bridge_data
+                update_files[bridge_route_path] = route_data
                 logger.info('No changes required for bridge: %s' % bridge_name)
 
         if noop:
             return update_files
+
+        if cleanup:
+            for ifcfg_file in glob.iglob(cleanup_pattern()):
+                if ifcfg_file not in all_file_names:
+                    interface_name = ifcfg_file[37:]
+                    logger.info('cleaning up interface: %s' % interface_name)
+                    processutils.execute('/sbin/ifdown', interface_name,
+                                         check_exit_code=False)
+                    os.remove(ifcfg_file)
 
         for interface in restart_interfaces:
             logger.info('running ifdown on interface: %s' % interface)

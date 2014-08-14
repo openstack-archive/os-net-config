@@ -164,7 +164,7 @@ class ENINetConfig(os_net_config.NetConfig):
         self.routes[interface_name] = data
         logger.debug('route data: %s' % self.routes[interface_name])
 
-    def apply(self, noop=False):
+    def apply(self, noop=False, cleanup=False):
         """Apply the network configuration.
 
         :param noop: A boolean which indicates whether this is a no-op.

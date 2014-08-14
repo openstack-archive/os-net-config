@@ -56,10 +56,13 @@ class NetConfig(object):
     def add_bond(self, bond):
         raise NotImplemented("add_bond is not implemented.")
 
-    def apply(self, noop=False):
+    def apply(self, noop=False, cleanup=False):
         """Apply the network configuration.
 
         :param noop: A boolean which indicates whether this is a no-op.
+        :param cleanup: A boolean which indicates whether any undefined
+            (existing but not present in the object model) interfaces
+            should be disabled and deleted.
         :returns: a dict of the format: filename/data which contains info
             for each file that was changed (or would be changed if in --noop
             mode).
