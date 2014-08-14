@@ -31,6 +31,11 @@ class NetConfig(object):
     """Configure network interfaces using the ifcfg format."""
 
     def add_object(self, obj):
+        """Convenience method to add any type of object to the network config.
+           See objects.py.
+
+        :param obj: The object to add.
+        """
         if isinstance(obj, objects.Interface):
             self.add_interface(obj)
         elif isinstance(obj, objects.Vlan):
@@ -45,15 +50,31 @@ class NetConfig(object):
                 self.add_object(member)
 
     def add_interface(self, interface):
+        """Add an Interface object to the net config object.
+
+        :param interface: The Interface object to add.
+        """
         raise NotImplemented("add_interface is not implemented.")
 
     def add_vlan(self, vlan):
+        """Add a Vlan object to the net config object.
+
+        :param vlan: The vlan object to add.
+        """
         raise NotImplemented("add_vlan is not implemented.")
 
     def add_bridge(self, bridge):
+        """Add an OvsBridge object to the net config object.
+
+        :param bridge: The OvsBridge object to add.
+        """
         raise NotImplemented("add_bridge is not implemented.")
 
     def add_bond(self, bond):
+        """Add an OvsBond object to the net config object.
+
+        :param bridge: The OvsBond object to add.
+        """
         raise NotImplemented("add_bond is not implemented.")
 
     def apply(self, noop=False, cleanup=False):

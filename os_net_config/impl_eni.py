@@ -129,6 +129,10 @@ class ENINetConfig(os_net_config.NetConfig):
         return data
 
     def add_interface(self, interface):
+        """Add an Interface object to the net config object.
+
+        :param interface: The Interface object to add.
+        """
         logger.info('adding interface: %s' % interface.name)
         data = self._add_common(interface)
         logger.debug('interface data: %s' % data)
@@ -137,6 +141,10 @@ class ENINetConfig(os_net_config.NetConfig):
             self._add_routes(interface.name, interface.routes)
 
     def add_bridge(self, bridge):
+        """Add an OvsBridge object to the net config object.
+
+        :param bridge: The OvsBridge object to add.
+        """
         logger.info('adding bridge: %s' % bridge.name)
         data = self._add_common(bridge)
         logger.debug('bridge data: %s' % data)
@@ -145,6 +153,10 @@ class ENINetConfig(os_net_config.NetConfig):
             self._add_routes(bridge.name, bridge.routes)
 
     def add_vlan(self, vlan):
+        """Add a Vlan object to the net config object.
+
+        :param vlan: The vlan object to add.
+        """
         logger.info('adding vlan: %s' % vlan.name)
         data = self._add_common(vlan)
         logger.debug('vlan data: %s' % data)
