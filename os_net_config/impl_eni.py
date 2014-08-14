@@ -45,7 +45,7 @@ class ENINetConfig(os_net_config.NetConfig):
         self.bridges = {}
         logger.info('Ifcfg net config provider created.')
 
-    def _addCommon(self, interface, static_addr=None):
+    def _add_common(self, interface, static_addr=None):
 
         data = ""
         address_data = ""
@@ -55,11 +55,11 @@ class ENINetConfig(os_net_config.NetConfig):
         else:
             v4_addresses = interface.v4_addresses()
             if v4_addresses:
-                data += self._addCommon(interface, v4_addresses[0])
+                data += self._add_common(interface, v4_addresses[0])
 
             v6_addresses = interface.v6_addresses()
             if v6_addresses:
-                data += self._addCommon(interface, v6_addresses[0])
+                data += self._add_common(interface, v6_addresses[0])
 
             if data:
                 return data
@@ -128,31 +128,31 @@ class ENINetConfig(os_net_config.NetConfig):
             data += "    mtu %i\n" % interface.mtu
         return data
 
-    def addInterface(self, interface):
+    def add_interface(self, interface):
         logger.info('adding interface: %s' % interface.name)
-        data = self._addCommon(interface)
+        data = self._add_common(interface)
         logger.debug('interface data: %s' % data)
         self.interfaces[interface.name] = data
         if interface.routes:
-            self._addRoutes(interface.name, interface.routes)
+            self._add_routes(interface.name, interface.routes)
 
-    def addBridge(self, bridge):
+    def add_bridge(self, bridge):
         logger.info('adding bridge: %s' % bridge.name)
-        data = self._addCommon(bridge)
+        data = self._add_common(bridge)
         logger.debug('bridge data: %s' % data)
         self.bridges[bridge.name] = data
         if bridge.routes:
-            self._addRoutes(bridge.name, bridge.routes)
+            self._add_routes(bridge.name, bridge.routes)
 
-    def addVlan(self, vlan):
+    def add_vlan(self, vlan):
         logger.info('adding vlan: %s' % vlan.name)
-        data = self._addCommon(vlan)
+        data = self._add_common(vlan)
         logger.debug('vlan data: %s' % data)
         self.interfaces[vlan.name] = data
         if vlan.routes:
-            self._addRoutes(vlan.name, vlan.routes)
+            self._add_routes(vlan.name, vlan.routes)
 
-    def _addRoutes(self, interface_name, routes=[]):
+    def _add_routes(self, interface_name, routes=[]):
         logger.info('adding custom route for interface: %s' % interface_name)
         data = ""
         for route in routes:

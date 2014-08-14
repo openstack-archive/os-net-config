@@ -96,32 +96,32 @@ class TestENINetConfig(base.TestCase):
 
     def test_interface_no_ip(self):
         interface = self._default_interface()
-        self.provider.addInterface(interface)
+        self.provider.add_interface(interface)
         self.assertEqual(_v4_IFACE_NO_IP, self.get_interface_config())
 
     def test_add_interface_with_v4(self):
         v4_addr = objects.Address('192.168.1.2/24')
         interface = self._default_interface([v4_addr])
-        self.provider.addInterface(interface)
+        self.provider.add_interface(interface)
         self.assertEqual(_V4_IFACE_STATIC_IP, self.get_interface_config())
 
     def test_add_interface_with_v6(self):
         v6_addr = objects.Address('fe80::2677:3ff:fe7d:4c')
         interface = self._default_interface([v6_addr])
-        self.provider.addInterface(interface)
+        self.provider.add_interface(interface)
         self.assertEqual(_V6_IFACE_STATIC_IP, self.get_interface_config())
 
     def test_add_interface_dhcp(self):
         interface = self._default_interface()
         interface.use_dhcp = True
-        self.provider.addInterface(interface)
+        self.provider.add_interface(interface)
         self.assertEqual(_IFACE_DHCP, self.get_interface_config())
 
     def test_add_interface_with_both_v4_and_v6(self):
         v4_addr = objects.Address('192.168.1.2/24')
         v6_addr = objects.Address('fe80::2677:3ff:fe7d:4c')
         interface = self._default_interface([v4_addr, v6_addr])
-        self.provider.addInterface(interface)
+        self.provider.add_interface(interface)
         self.assertEqual(_V4_IFACE_STATIC_IP + _V6_IFACE_STATIC_IP,
                          self.get_interface_config())
 
@@ -129,14 +129,14 @@ class TestENINetConfig(base.TestCase):
         interface = self._default_interface()
         interface.ovs_port = True
         interface.bridge_name = 'br0'
-        self.provider.addInterface(interface)
+        self.provider.add_interface(interface)
         self.assertEqual(_OVS_PORT_IFACE, self.get_interface_config())
 
     def test_network_with_routes(self):
         route1 = objects.Route('192.168.1.1', '172.19.0.0/24')
         v4_addr = objects.Address('192.168.1.2/24')
         interface = self._default_interface([v4_addr], [route1])
-        self.provider.addInterface(interface)
+        self.provider.add_interface(interface)
         self.assertEqual(_V4_IFACE_STATIC_IP, self.get_interface_config())
         self.assertEqual(_RTS, self.get_route_config())
 
@@ -144,8 +144,8 @@ class TestENINetConfig(base.TestCase):
         interface = self._default_interface()
         bridge = objects.OvsBridge('br0', use_dhcp=True,
                                    members=[interface])
-        self.provider.addBridge(bridge)
-        self.provider.addInterface(interface)
+        self.provider.add_bridge(bridge)
+        self.provider.add_interface(interface)
         self.assertEqual(_OVS_PORT_IFACE, self.get_interface_config())
         self.assertEqual(_OVS_BRIDGE_DHCP, self.provider.bridges['br0'])
 
@@ -158,23 +158,23 @@ class TestENINetConfig(base.TestCase):
         interface = objects.Interface(self.if_name, primary=True)
         bridge = objects.OvsBridge('br0', use_dhcp=True,
                                    members=[interface])
-        self.provider.addBridge(bridge)
-        self.provider.addInterface(interface)
+        self.provider.add_bridge(bridge)
+        self.provider.add_interface(interface)
         self.assertEqual(_OVS_PORT_IFACE, self.get_interface_config())
         self.assertEqual(_OVS_BRIDGE_DHCP_PRIMARY_INTERFACE,
                          self.provider.bridges['br0'])
 
     def test_vlan(self):
         vlan = objects.Vlan('eth0', 5)
-        self.provider.addVlan(vlan)
+        self.provider.add_vlan(vlan)
         self.assertEqual(_VLAN_NO_IP, self.get_interface_config('vlan5'))
 
     def test_vlan_ovs_bridge_int_port(self):
         vlan = objects.Vlan('eth0', 5)
         bridge = objects.OvsBridge('br0', use_dhcp=True,
                                    members=[vlan])
-        self.provider.addBridge(bridge)
-        self.provider.addVlan(vlan)
+        self.provider.add_bridge(bridge)
+        self.provider.add_vlan(vlan)
         self.assertEqual(_VLAN_OVS_PORT, self.get_interface_config('vlan5'))
 
 
@@ -203,7 +203,7 @@ class TestENINetConfigApply(base.TestCase):
         v4_addr = objects.Address('192.168.1.2/24')
         interface = objects.Interface('eth0', addresses=[v4_addr],
                                       routes=[route])
-        self.provider.addInterface(interface)
+        self.provider.add_interface(interface)
 
         self.provider.apply()
         iface_data = utils.get_file_data(self.temp_config_file.name)
@@ -213,8 +213,8 @@ class TestENINetConfigApply(base.TestCase):
         interface = objects.Interface('eth0')
         bridge = objects.OvsBridge('br0', use_dhcp=True,
                                    members=[interface])
-        self.provider.addInterface(interface)
-        self.provider.addBridge(bridge)
+        self.provider.add_interface(interface)
+        self.provider.add_bridge(bridge)
         self.provider.apply()
         iface_data = utils.get_file_data(self.temp_config_file.name)
         self.assertEqual((_OVS_BRIDGE_DHCP + _OVS_PORT_IFACE), iface_data)

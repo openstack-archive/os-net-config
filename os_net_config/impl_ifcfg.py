@@ -49,7 +49,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         self.bridges = {}
         logger.info('Ifcfg net config provider created.')
 
-    def _addCommon(self, base_opt):
+    def _add_common(self, base_opt):
         data = "DEVICE=%s\n" % base_opt.name
         data += "ONBOOT=yes\n"
         data += "HOTPLUG=no\n"
@@ -119,7 +119,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 data += "IPV6ADDR=%s\n" % first_v6.ip
         return data
 
-    def _addRoutes(self, interface_name, routes=[]):
+    def _add_routes(self, interface_name, routes=[]):
         logger.info('adding custom route for interface: %s' % interface_name)
         data = ""
         first_line = ""
@@ -134,37 +134,37 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         self.routes[interface_name] = first_line + data
         logger.debug('route data: %s' % self.routes[interface_name])
 
-    def addInterface(self, interface):
+    def add_interface(self, interface):
         logger.info('adding interface: %s' % interface.name)
-        data = self._addCommon(interface)
+        data = self._add_common(interface)
         logger.debug('interface data: %s' % data)
         self.interfaces[interface.name] = data
         if interface.routes:
-            self._addRoutes(interface.name, interface.routes)
+            self._add_routes(interface.name, interface.routes)
 
-    def addVlan(self, vlan):
+    def add_vlan(self, vlan):
         logger.info('adding vlan: %s' % vlan.name)
-        data = self._addCommon(vlan)
+        data = self._add_common(vlan)
         logger.debug('vlan data: %s' % data)
         self.interfaces[vlan.name] = data
         if vlan.routes:
-            self._addRoutes(vlan.name, vlan.routes)
+            self._add_routes(vlan.name, vlan.routes)
 
-    def addBridge(self, bridge):
+    def add_bridge(self, bridge):
         logger.info('adding bridge: %s' % bridge.name)
-        data = self._addCommon(bridge)
+        data = self._add_common(bridge)
         logger.debug('bridge data: %s' % data)
         self.bridges[bridge.name] = data
         if bridge.routes:
-            self._addRoutes(bridge.name, bridge.routes)
+            self._add_routes(bridge.name, bridge.routes)
 
-    def addBond(self, bond):
+    def add_bond(self, bond):
         logger.info('adding bond: %s' % bond.name)
-        data = self._addCommon(bond)
+        data = self._add_common(bond)
         logger.debug('bond data: %s' % data)
         self.interfaces[bond.name] = data
         if bond.routes:
-            self._addRoutes(bond.name, bond.routes)
+            self._add_routes(bond.name, bond.routes)
 
     def apply(self, noop=False):
         """Apply the network configuration.

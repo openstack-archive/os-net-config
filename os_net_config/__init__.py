@@ -30,31 +30,31 @@ class NotImplemented(Exception):
 class NetConfig(object):
     """Configure network interfaces using the ifcfg format."""
 
-    def addObject(self, obj):
+    def add_object(self, obj):
         if isinstance(obj, objects.Interface):
-            self.addInterface(obj)
+            self.add_interface(obj)
         elif isinstance(obj, objects.Vlan):
-            self.addVlan(obj)
+            self.add_vlan(obj)
         elif isinstance(obj, objects.OvsBridge):
-            self.addBridge(obj)
+            self.add_bridge(obj)
             for member in obj.members:
-                self.addObject(member)
+                self.add_object(member)
         elif isinstance(obj, objects.OvsBond):
-            self.addBond(obj)
+            self.add_bond(obj)
             for member in obj.members:
-                self.addObject(member)
+                self.add_object(member)
 
-    def addInterface(self, interface):
-        raise NotImplemented("addInterface is not implemented.")
+    def add_interface(self, interface):
+        raise NotImplemented("add_interface is not implemented.")
 
-    def addVlan(self, vlan):
-        raise NotImplemented("addVlan is not implemented.")
+    def add_vlan(self, vlan):
+        raise NotImplemented("add_vlan is not implemented.")
 
-    def addBridge(self, bridge):
-        raise NotImplemented("addBridge is not implemented.")
+    def add_bridge(self, bridge):
+        raise NotImplemented("add_bridge is not implemented.")
 
-    def addBond(self, bond):
-        raise NotImplemented("addBond is not implemented.")
+    def add_bond(self, bond):
+        raise NotImplemented("add_bond is not implemented.")
 
     def apply(self, noop=False):
         """Apply the network configuration.
