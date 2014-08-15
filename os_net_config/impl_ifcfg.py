@@ -238,11 +238,13 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         if cleanup:
             for ifcfg_file in glob.iglob(cleanup_pattern()):
                 if ifcfg_file not in all_file_names:
-                    interface_name = ifcfg_file[37:]
-                    logger.info('cleaning up interface: %s' % interface_name)
-                    processutils.execute('/sbin/ifdown', interface_name,
-                                         check_exit_code=False)
-                    os.remove(ifcfg_file)
+                    interface_name = ifcfg_file[len(cleanup_pattern()) - 1:]
+                    if interface_name != 'lo':
+                        logger.info('cleaning up interface: %s' %
+                                    interface_name)
+                        processutils.execute('/sbin/ifdown', interface_name,
+                                             check_exit_code=False)
+                        os.remove(ifcfg_file)
 
         for interface in restart_interfaces:
             logger.info('running ifdown on interface: %s' % interface)

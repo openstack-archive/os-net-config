@@ -221,7 +221,7 @@ class TestIfcfgNetConfigApply(base.TestCase):
         self.temp_ifcfg_file = tempfile.NamedTemporaryFile()
         self.temp_route_file = tempfile.NamedTemporaryFile()
         self.temp_bridge_file = tempfile.NamedTemporaryFile()
-        self.temp_cleanup_file = tempfile.NamedTemporaryFile()
+        self.temp_cleanup_file = tempfile.NamedTemporaryFile(delete=False)
 
         def test_ifcfg_path(name):
             return self.temp_ifcfg_file.name
@@ -294,3 +294,15 @@ class TestIfcfgNetConfigApply(base.TestCase):
     def test_cleanup(self):
         self.provider.apply(cleanup=True)
         self.assertTrue(not os.path.exists(self.temp_cleanup_file.name))
+
+    def test_cleanup_not_loopback(self):
+        tmp_lo_file = '%s-lo' % self.temp_cleanup_file.name
+        utils.write_config(tmp_lo_file, 'foo')
+
+        def test_cleanup_pattern():
+            return '%s-*' % self.temp_cleanup_file.name
+        self.stubs.Set(impl_ifcfg, 'cleanup_pattern', test_cleanup_pattern)
+
+        self.provider.apply(cleanup=True)
+        self.assertTrue(os.path.exists(tmp_lo_file))
+        os.remove(tmp_lo_file)
