@@ -21,6 +21,8 @@ import fixtures
 import stubout
 import testtools
 
+from os_net_config import objects
+
 _TRUE_VALUES = ('True', 'true', '1', 'yes')
 
 
@@ -33,6 +35,11 @@ class TestCase(testtools.TestCase):
 
         super(TestCase, self).setUp()
         self.stubs = stubout.StubOutForTesting()
+
+        def test_numbered_nics():
+            return {}
+        self.stubs.Set(objects, '_numbered_nics', test_numbered_nics)
+
         test_timeout = os.environ.get('OS_TEST_TIMEOUT', 0)
         try:
             test_timeout = int(test_timeout)

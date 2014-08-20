@@ -92,6 +92,16 @@ class TestInterface(base.TestCase):
         self.assertEqual("em1", interface.name)
         self.assertEqual(True, interface.use_dhcp)
 
+    def test_from_json_dhcp_nic1(self):
+        def test_numbered_nics():
+            return {"nic1": "em3"}
+        self.stubs.Set(objects, '_numbered_nics', test_numbered_nics)
+
+        data = '{"type": "interface", "name": "nic1", "use_dhcp": true}'
+        interface = objects.object_from_json(json.loads(data))
+        self.assertEqual("em3", interface.name)
+        self.assertEqual(True, interface.use_dhcp)
+
     def test_from_json_with_addresses(self):
         data = """{
 "type": "interface",
@@ -130,6 +140,18 @@ class TestVlan(base.TestCase):
         self.assertEqual(16, vlan.vlan_id)
         self.assertEqual(True, vlan.use_dhcp)
 
+    def test_from_json_dhcp_nic1(self):
+        def test_numbered_nics():
+            return {"nic1": "em4"}
+        self.stubs.Set(objects, '_numbered_nics', test_numbered_nics)
+
+        data = '{"type": "vlan", "device": "nic1", "vlan_id": 16,' \
+               '"use_dhcp": true}'
+        vlan = objects.object_from_json(json.loads(data))
+        self.assertEqual("em4", vlan.device)
+        self.assertEqual(16, vlan.vlan_id)
+        self.assertEqual(True, vlan.use_dhcp)
+
 
 class TestBridge(base.TestCase):
 
@@ -149,6 +171,29 @@ class TestBridge(base.TestCase):
         self.assertEqual(True, bridge.use_dhcp)
         interface1 = bridge.members[0]
         self.assertEqual("em1", interface1.name)
+        self.assertEqual(True, interface1.ovs_port)
+        self.assertEqual("br-foo", interface1.bridge_name)
+
+    def test_from_json_dhcp_with_nic1(self):
+        def test_numbered_nics():
+            return {"nic1": "em5"}
+        self.stubs.Set(objects, '_numbered_nics', test_numbered_nics)
+
+        data = """{
+"type": "ovs_bridge",
+"name": "br-foo",
+"use_dhcp": true,
+"members": [{
+    "type": "interface",
+    "name": "nic1"
+}]
+}
+"""
+        bridge = objects.object_from_json(json.loads(data))
+        self.assertEqual("br-foo", bridge.name)
+        self.assertEqual(True, bridge.use_dhcp)
+        interface1 = bridge.members[0]
+        self.assertEqual("em5", interface1.name)
         self.assertEqual(True, interface1.ovs_port)
         self.assertEqual("br-foo", interface1.bridge_name)
 
@@ -199,6 +244,36 @@ class TestBond(base.TestCase):
     {
     "type": "interface",
     "name": "em2"
+    }
+]
+}
+"""
+        bridge = objects.object_from_json(json.loads(data))
+        self.assertEqual("bond1", bridge.name)
+        self.assertEqual(True, bridge.use_dhcp)
+        interface1 = bridge.members[0]
+        self.assertEqual("em1", interface1.name)
+        interface2 = bridge.members[1]
+        self.assertEqual("em2", interface2.name)
+
+    def test_from_json_dhcp_with_nic1_nic2(self):
+
+        def test_numbered_nics():
+            return {"nic1": "em1", "nic2": "em2"}
+        self.stubs.Set(objects, '_numbered_nics', test_numbered_nics)
+
+        data = """{
+"type": "ovs_bond",
+"name": "bond1",
+"use_dhcp": true,
+"members": [
+    {
+    "type": "interface",
+    "name": "nic1"
+    },
+    {
+    "type": "interface",
+    "name": "nic2"
     }
 ]
 }

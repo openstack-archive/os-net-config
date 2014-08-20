@@ -14,8 +14,16 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import logging
 import netaddr
 from openstack.common import strutils
+
+from os_net_config import utils
+
+
+logger = logging.getLogger(__name__)
+
+_NUMBERED_NICS = None
 
 
 class InvalidConfigException(ValueError):
@@ -41,6 +49,19 @@ def _get_required_field(json, name, object_name):
               % (object_name, name)
         raise InvalidConfigException(msg)
     return field
+
+
+def _numbered_nics():
+    global _NUMBERED_NICS
+    if _NUMBERED_NICS:
+        return _NUMBERED_NICS
+    _NUMBERED_NICS = {}
+    count = 0
+    for nic in utils.ordered_active_nics():
+        count += 1
+        _NUMBERED_NICS["nic%i" % count] = nic
+        logger.info("nic%i mapped to: %s" % (count, nic))
+    return _NUMBERED_NICS
 
 
 class Route(object):
@@ -80,7 +101,11 @@ class _BaseOpts(object):
 
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=[],
                  routes=[], mtu=1500, primary=False):
-        self.name = name
+        numbered_nic_names = _numbered_nics()
+        if name in numbered_nic_names:
+            self.name = numbered_nic_names[name]
+        else:
+            self.name = name
         self.mtu = mtu
         self.use_dhcp = use_dhcp
         self.use_dhcpv6 = use_dhcpv6
@@ -171,7 +196,12 @@ class Vlan(_BaseOpts):
         super(Vlan, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
                                    routes, mtu, primary)
         self.vlan_id = int(vlan_id)
-        self.device = device
+
+        numbered_nic_names = _numbered_nics()
+        if device in numbered_nic_names:
+            self.device = numbered_nic_names[device]
+        else:
+            self.device = device
 
     @staticmethod
     def from_json(json):
