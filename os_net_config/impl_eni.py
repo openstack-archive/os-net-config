@@ -200,7 +200,7 @@ class ENINetConfig(os_net_config.NetConfig):
 
         if (utils.diff(_network_config_path(), new_config)):
             if noop:
-                return {"/etc/network/interfaces", new_config}
+                return {"/etc/network/interfaces": new_config}
             for interface in self.interfaces.keys():
                 logger.info('running ifdown on interface: %s' % interface)
                 processutils.execute('/sbin/ifdown', interface,
