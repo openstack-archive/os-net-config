@@ -6,7 +6,7 @@
                 {
                     "type": "vlan",
                     "device": "em1",
-                    "vlan_id": "16",
+                    "vlan_id": 16,
                     "addresses": [{
                         "ip_netmask": "192.0.2.1/24"
                     }],

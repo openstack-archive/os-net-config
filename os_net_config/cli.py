@@ -16,10 +16,10 @@
 
 
 import argparse
-import json
 import logging
 import os
 import sys
+import yaml
 
 import os_net_config
 from os_net_config import impl_eni
@@ -37,7 +37,7 @@ def parse_opts(argv):
         ' config file format.')
     parser.add_argument('-c', '--config-file', metavar='CONFIG_FILE',
                         help="""path to the configuration file.""",
-                        default='/etc/os-net-config/config.json')
+                        default='/etc/os-net-config/config.yaml')
     parser.add_argument('-p', '--provider', metavar='PROVIDER',
                         help="""The provider to use."""
                         """One of: ifcfg, eni, iproute.""",
@@ -118,7 +118,7 @@ def main(argv=sys.argv):
 
     if os.path.exists(opts.config_file):
         with open(opts.config_file) as cf:
-            iface_array = json.loads(cf.read()).get("network_config")
+            iface_array = yaml.load(cf.read()).get("network_config")
             logger.debug('network_config JSON: %s' % str(iface_array))
     else:
         logger.error('No config file exists at: %s' % opts.config_file)

@@ -6,3 +6,4 @@ eventlet>=0.13.0
 iso8601>=0.1.9
 netaddr>=0.7.6
 oslo.config>=1.2.0
+PyYAML>=3.1.0
