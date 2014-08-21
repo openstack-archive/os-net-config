@@ -89,8 +89,9 @@ class ENINetConfig(os_net_config.NetConfig):
                 for i in interface.members:
                     data += " %s" % i.name
                 data += "\n"
-                for i in interface.members:
-                    data += "    pre-up ip addr flush dev %s\n" % i.name
+                for mem in interface.members:
+                    if isinstance(mem, objects.Interface):
+                        data += "    pre-up ip addr flush dev %s\n" % mem.name
                 if interface.primary_interface_name:
                     mac = utils.interface_mac(interface.primary_interface_name)
                     data += ("    ovs_extra set bridge %s "

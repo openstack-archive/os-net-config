@@ -205,7 +205,8 @@ class Vlan(_BaseOpts):
 
     @staticmethod
     def from_json(json):
-        device = _get_required_field(json, 'device', 'Vlan')
+        # A vlan on an OVS bridge won't require a device (OVS Int Port)
+        device = json.get('device')
         vlan_id = _get_required_field(json, 'vlan_id', 'Vlan')
         opts = _BaseOpts.base_opts_from_json(json)
         return Vlan(device, vlan_id, *opts)
