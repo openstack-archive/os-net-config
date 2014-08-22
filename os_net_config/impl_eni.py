@@ -95,8 +95,8 @@ class ENINetConfig(os_net_config.NetConfig):
                         data += "    pre-up ip addr flush dev %s\n" % mem.name
                 if interface.primary_interface_name:
                     mac = utils.interface_mac(interface.primary_interface_name)
-                    ovs_extra.append ("set bridge %s other-config:hwaddr=%s" %
-                                      (interface.name, mac))
+                    ovs_extra.append("set bridge %s other-config:hwaddr=%s" %
+                                     (interface.name, mac))
             ovs_extra.extend(interface.ovs_extra)
         elif interface.ovs_port:
             if isinstance(interface, objects.Vlan):

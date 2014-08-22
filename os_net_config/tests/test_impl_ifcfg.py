@@ -181,7 +181,6 @@ class TestIfcfgNetConfig(base.TestCase):
         self.assertEqual(_OVS_BRIDGE_DHCP_PRIMARY_INTERFACE,
                          self.provider.bridges['br-ctlplane'])
 
-
     def test_network_ovs_bridge_with_dhcp_primary_interface_with_extra(self):
         def test_interface_mac(name):
             return "a1:b2:c3:d4:e5"
@@ -197,7 +196,6 @@ class TestIfcfgNetConfig(base.TestCase):
         self.assertEqual(_OVS_INTERFACE, self.get_interface_config())
         self.assertEqual(_OVS_BRIDGE_DHCP_OVS_EXTRA,
                          self.provider.bridges['br-ctlplane'])
-
 
     def test_add_vlan(self):
         vlan = objects.Vlan('em1', 5)
