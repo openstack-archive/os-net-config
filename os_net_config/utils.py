@@ -16,6 +16,7 @@
 
 import glob
 import logging
+import os
 
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,9 @@ def write_config(filename, data):
 
 
 def get_file_data(filename):
+    if not os.path.exists(filename):
+        return ''
+
     try:
         with open(filename, 'r') as f:
             return f.read()
@@ -41,7 +45,7 @@ def interface_mac(name):
         with open('/sys/class/net/%s/address' % name, 'r') as f:
             return f.read().rstrip()
     except IOError:
-        logger.error("Unable to read file: %s" % name)
+        logger.error("Unable to read mac address: %s" % name)
         raise
 
 
