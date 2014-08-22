@@ -56,6 +56,9 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         logger.info('Ifcfg net config provider created.')
 
     def _add_common(self, base_opt):
+
+        ovs_extra = []
+
         data = "DEVICE=%s\n" % base_opt.name
         data += "ONBOOT=yes\n"
         data += "HOTPLUG=no\n"
@@ -83,10 +86,11 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 data += ("OVSDHCPINTERFACES=\"%s\"\n" % " ".join(members))
             if base_opt.primary_interface_name:
                 mac = utils.interface_mac(base_opt.primary_interface_name)
-                data += ("OVS_EXTRA=\"set bridge %s "
-                         "other-config:hwaddr=%s\"\n" % (base_opt.name, mac))
+                ovs_extra.append("set bridge %s other-config:hwaddr=%s" %
+                                 (base_opt.name, mac))
             if base_opt.ovs_options:
                 data += "OVS_OPTIONS=\"%s\"\n" % base_opt.ovs_options
+            ovs_extra.extend(base_opt.ovs_extra)
         elif isinstance(base_opt, objects.OvsBond):
             data += "DEVICETYPE=ovs\n"
             data += "TYPE=OVSBond\n"
@@ -97,6 +101,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 data += ("BOND_IFACES=\"%s\"\n" % " ".join(members))
             if base_opt.ovs_options:
                 data += "OVS_OPTIONS=\"%s\"\n" % base_opt.ovs_options
+            ovs_extra.extend(base_opt.ovs_extra)
         else:
             if base_opt.use_dhcp:
                 data += "BOOTPROTO=dhcp\n"
@@ -124,6 +129,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 first_v6 = v6_addresses[0]
                 data += "IPV6_AUTOCONF=no\n"
                 data += "IPV6ADDR=%s\n" % first_v6.ip
+        if ovs_extra:
+            data += "OVS_EXTRA=\"%s\"\n" % " -- ".join(ovs_extra)
         return data
 
     def _add_routes(self, interface_name, routes=[]):

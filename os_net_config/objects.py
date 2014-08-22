@@ -216,11 +216,13 @@ class OvsBridge(_BaseOpts):
     """Base class for OVS bridges."""
 
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=[],
-                 routes=[], mtu=1500, members=[], ovs_options=None):
+                 routes=[], mtu=1500, members=[], ovs_options=None,
+                 ovs_extra=[]):
         super(OvsBridge, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
                                         routes, mtu, False)
         self.members = members
         self.ovs_options = ovs_options
+        self.ovs_extra = ovs_extra
         for member in self.members:
             member.bridge_name = name
             member.ovs_port = True
@@ -238,6 +240,7 @@ class OvsBridge(_BaseOpts):
         name = _get_required_field(json, 'name', 'OvsBridge')
         opts = _BaseOpts.base_opts_from_json(json, include_primary=False)
         ovs_options = json.get('ovs_options')
+        ovs_extra = json.get('ovs_extra', [])
         members = []
 
         # members
@@ -250,7 +253,8 @@ class OvsBridge(_BaseOpts):
                 msg = 'Members must be a list.'
                 raise InvalidConfigException(msg)
 
-        return OvsBridge(name, *opts, members=members, ovs_options=ovs_options)
+        return OvsBridge(name, *opts, members=members, ovs_options=ovs_options,
+                         ovs_extra=ovs_extra)
 
 
 class OvsBond(_BaseOpts):
@@ -258,11 +262,12 @@ class OvsBond(_BaseOpts):
 
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=[],
                  routes=[], mtu=1500, primary=False, members=[],
-                 ovs_options=None):
+                 ovs_options=None, ovs_extra=[]):
         super(OvsBond, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
                                       routes, mtu, primary)
         self.members = members
         self.ovs_options = ovs_options
+        self.ovs_extra = ovs_extra
         for member in self.members:
             if member.primary:
                 if self.primary_interface_name:
@@ -278,6 +283,7 @@ class OvsBond(_BaseOpts):
         name = _get_required_field(json, 'name', 'OvsBond')
         opts = _BaseOpts.base_opts_from_json(json)
         ovs_options = json.get('ovs_options')
+        ovs_extra = json.get('ovs_extra', [])
         members = []
 
         # members
@@ -290,4 +296,5 @@ class OvsBond(_BaseOpts):
                 msg = 'Members must be a list.'
                 raise InvalidConfigException(msg)
 
-        return OvsBond(name, *opts, members=members, ovs_options=ovs_options)
+        return OvsBond(name, *opts, members=members, ovs_options=ovs_options,
+                       ovs_extra=ovs_extra)

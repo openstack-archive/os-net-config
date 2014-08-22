@@ -47,6 +47,7 @@ class ENINetConfig(os_net_config.NetConfig):
 
     def _add_common(self, interface, static_addr=None):
 
+        ovs_extra = []
         data = ""
         address_data = ""
         if static_addr:
@@ -94,9 +95,9 @@ class ENINetConfig(os_net_config.NetConfig):
                         data += "    pre-up ip addr flush dev %s\n" % mem.name
                 if interface.primary_interface_name:
                     mac = utils.interface_mac(interface.primary_interface_name)
-                    data += ("    ovs_extra set bridge %s "
-                             "other-config:hwaddr=%s\n"
-                             % (interface.name, mac))
+                    ovs_extra.append ("set bridge %s other-config:hwaddr=%s" %
+                                      (interface.name, mac))
+            ovs_extra.extend(interface.ovs_extra)
         elif interface.ovs_port:
             if isinstance(interface, objects.Vlan):
                 data += "auto vlan%i\n" % interface.vlan_id
@@ -127,6 +128,10 @@ class ENINetConfig(os_net_config.NetConfig):
             data += address_data
         if interface.mtu != 1500:
             data += "    mtu %i\n" % interface.mtu
+
+        if ovs_extra:
+            data += "    ovs_extra %s\n" % " -- ".join(ovs_extra)
+
         return data
 
     def add_interface(self, interface):

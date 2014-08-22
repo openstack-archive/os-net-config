@@ -69,6 +69,12 @@ OVSDHCPINTERFACES="em1"
 _OVS_BRIDGE_DHCP_PRIMARY_INTERFACE = _OVS_BRIDGE_DHCP + \
     "OVS_EXTRA=\"set bridge br-ctlplane other-config:hwaddr=a1:b2:c3:d4:e5\"\n"
 
+
+_OVS_BRIDGE_DHCP_OVS_EXTRA = _OVS_BRIDGE_DHCP + \
+    "OVS_EXTRA=\"set bridge br-ctlplane other-config:hwaddr=a1:b2:c3:d4:e5" + \
+    " -- br-set-external-id br-ctlplane bridge-id br-ctlplane\"\n"
+
+
 _BASE_VLAN = """DEVICE=vlan5
 ONBOOT=yes
 HOTPLUG=no
@@ -174,6 +180,24 @@ class TestIfcfgNetConfig(base.TestCase):
         self.assertEqual(_OVS_INTERFACE, self.get_interface_config())
         self.assertEqual(_OVS_BRIDGE_DHCP_PRIMARY_INTERFACE,
                          self.provider.bridges['br-ctlplane'])
+
+
+    def test_network_ovs_bridge_with_dhcp_primary_interface_with_extra(self):
+        def test_interface_mac(name):
+            return "a1:b2:c3:d4:e5"
+        self.stubs.Set(utils, 'interface_mac', test_interface_mac)
+
+        interface = objects.Interface('em1', primary=True)
+        ovs_extra = "br-set-external-id br-ctlplane bridge-id br-ctlplane"
+        bridge = objects.OvsBridge('br-ctlplane', use_dhcp=True,
+                                   members=[interface],
+                                   ovs_extra=[ovs_extra])
+        self.provider.add_interface(interface)
+        self.provider.add_bridge(bridge)
+        self.assertEqual(_OVS_INTERFACE, self.get_interface_config())
+        self.assertEqual(_OVS_BRIDGE_DHCP_OVS_EXTRA,
+                         self.provider.bridges['br-ctlplane'])
+
 
     def test_add_vlan(self):
         vlan = objects.Vlan('em1', 5)
