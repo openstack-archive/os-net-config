@@ -50,10 +50,21 @@ class IfcfgNetConfig(os_net_config.NetConfig):
     """Configure network interfaces using the ifcfg format."""
 
     def __init__(self):
-        self.interfaces = {}
-        self.routes = {}
-        self.bridges = {}
+        self.interface_data = {}
+        self.route_data = {}
+        self.bridge_data = {}
+        self.member_names = {}
         logger.info('Ifcfg net config provider created.')
+
+    def child_members(self, name):
+        children = []
+        try:
+            for member in self.member_names[name]:
+                #children.append(member)
+                children.extend(self.child_members(member))
+        except KeyError:
+            children.append(name)
+        return children
 
     def _add_common(self, base_opt):
 
@@ -83,6 +94,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 data += "OVSBOOTPROTO=dhcp\n"
             if base_opt.members:
                 members = [member.name for member in base_opt.members]
+                self.member_names[base_opt.name] = members
                 data += ("OVSDHCPINTERFACES=\"%s\"\n" % " ".join(members))
             if base_opt.primary_interface_name:
                 mac = utils.interface_mac(base_opt.primary_interface_name)
@@ -98,6 +110,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 data += "OVSBOOTPROTO=dhcp\n"
             if base_opt.members:
                 members = [member.name for member in base_opt.members]
+                self.member_names[base_opt.name] = members
                 data += ("BOND_IFACES=\"%s\"\n" % " ".join(members))
             if base_opt.ovs_options:
                 data += "OVS_OPTIONS=\"%s\"\n" % base_opt.ovs_options
@@ -145,8 +158,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 data += "%s via %s dev %s\n" % (route.ip_netmask,
                                                 route.next_hop,
                                                 interface_name)
-        self.routes[interface_name] = first_line + data
-        logger.debug('route data: %s' % self.routes[interface_name])
+        self.route_data[interface_name] = first_line + data
+        logger.debug('route data: %s' % self.route_data[interface_name])
 
     def add_interface(self, interface):
         """Add an Interface object to the net config object.
@@ -156,7 +169,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         logger.info('adding interface: %s' % interface.name)
         data = self._add_common(interface)
         logger.debug('interface data: %s' % data)
-        self.interfaces[interface.name] = data
+        self.interface_data[interface.name] = data
         if interface.routes:
             self._add_routes(interface.name, interface.routes)
 
@@ -168,7 +181,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         logger.info('adding vlan: %s' % vlan.name)
         data = self._add_common(vlan)
         logger.debug('vlan data: %s' % data)
-        self.interfaces[vlan.name] = data
+        self.interface_data[vlan.name] = data
         if vlan.routes:
             self._add_routes(vlan.name, vlan.routes)
 
@@ -180,7 +193,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         logger.info('adding bridge: %s' % bridge.name)
         data = self._add_common(bridge)
         logger.debug('bridge data: %s' % data)
-        self.bridges[bridge.name] = data
+        self.bridge_data[bridge.name] = data
         if bridge.routes:
             self._add_routes(bridge.name, bridge.routes)
 
@@ -192,7 +205,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         logger.info('adding bond: %s' % bond.name)
         data = self._add_common(bond)
         logger.debug('bond data: %s' % data)
-        self.interfaces[bond.name] = data
+        self.interface_data[bond.name] = data
         if bond.routes:
             self._add_routes(bond.name, bond.routes)
 
@@ -201,7 +214,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
 
         :param noop: A boolean which indicates whether this is a no-op.
         :param cleanup: A boolean which indicates whether any undefined
-            (existing but not present in the object model) interfaces
+            (existing but not present in the object model) interface
             should be disabled and deleted.
         :returns: a dict of the format: filename/data which contains info
             for each file that was changed (or would be changed if in --noop
@@ -213,8 +226,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         update_files = {}
         all_file_names = []
 
-        for interface_name, iface_data in self.interfaces.iteritems():
-            route_data = self.routes.get(interface_name, '')
+        for interface_name, iface_data in self.interface_data.iteritems():
+            route_data = self.route_data.get(interface_name, '')
             interface_path = ifcfg_config_path(interface_name)
             route_path = route_config_path(interface_name)
             all_file_names.append(interface_path)
@@ -222,13 +235,14 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             if (utils.diff(interface_path, iface_data) or
                 utils.diff(route_path, route_data)):
                 restart_interfaces.append(interface_name)
+                restart_interfaces.extend(self.child_members(interface_name))
                 update_files[interface_path] = iface_data
                 update_files[route_path] = route_data
                 logger.info('No changes required for interface: %s' %
                             interface_name)
 
-        for bridge_name, bridge_data in self.bridges.iteritems():
-            route_data = self.routes.get(bridge_name, '')
+        for bridge_name, bridge_data in self.bridge_data.iteritems():
+            route_data = self.route_data.get(bridge_name, '')
             bridge_path = bridge_config_path(bridge_name)
             bridge_route_path = route_config_path(bridge_name)
             all_file_names.append(bridge_path)
@@ -236,6 +250,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             if (utils.diff(bridge_path, bridge_data) or
                 utils.diff(bridge_route_path, route_data)):
                 restart_bridges.append(bridge_name)
+                restart_interfaces.extend(self.child_members(bridge_name))
                 update_files[bridge_path] = bridge_data
                 update_files[bridge_route_path] = route_data
                 logger.info('No changes required for bridge: %s' % bridge_name)

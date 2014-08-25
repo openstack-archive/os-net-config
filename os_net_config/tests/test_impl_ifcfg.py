@@ -118,10 +118,10 @@ class TestIfcfgNetConfig(base.TestCase):
         super(TestIfcfgNetConfig, self).tearDown()
 
     def get_interface_config(self, name='em1'):
-        return self.provider.interfaces[name]
+        return self.provider.interface_data[name]
 
     def get_route_config(self, name='em1'):
-        return self.provider.routes.get(name, '')
+        return self.provider.route_data.get(name, '')
 
     def test_add_base_interface(self):
         interface = objects.Interface('em1')
@@ -165,7 +165,7 @@ class TestIfcfgNetConfig(base.TestCase):
         self.provider.add_bridge(bridge)
         self.assertEqual(_OVS_INTERFACE, self.get_interface_config())
         self.assertEqual(_OVS_BRIDGE_DHCP,
-                         self.provider.bridges['br-ctlplane'])
+                         self.provider.bridge_data['br-ctlplane'])
 
     def test_network_ovs_bridge_with_dhcp_primary_interface(self):
         def test_interface_mac(name):
@@ -179,7 +179,7 @@ class TestIfcfgNetConfig(base.TestCase):
         self.provider.add_bridge(bridge)
         self.assertEqual(_OVS_INTERFACE, self.get_interface_config())
         self.assertEqual(_OVS_BRIDGE_DHCP_PRIMARY_INTERFACE,
-                         self.provider.bridges['br-ctlplane'])
+                         self.provider.bridge_data['br-ctlplane'])
 
     def test_network_ovs_bridge_with_dhcp_primary_interface_with_extra(self):
         def test_interface_mac(name):
@@ -195,7 +195,7 @@ class TestIfcfgNetConfig(base.TestCase):
         self.provider.add_bridge(bridge)
         self.assertEqual(_OVS_INTERFACE, self.get_interface_config())
         self.assertEqual(_OVS_BRIDGE_DHCP_OVS_EXTRA,
-                         self.provider.bridges['br-ctlplane'])
+                         self.provider.bridge_data['br-ctlplane'])
 
     def test_add_vlan(self):
         vlan = objects.Vlan('em1', 5)
@@ -244,6 +244,7 @@ class TestIfcfgNetConfigApply(base.TestCase):
         self.temp_route_file = tempfile.NamedTemporaryFile()
         self.temp_bridge_file = tempfile.NamedTemporaryFile()
         self.temp_cleanup_file = tempfile.NamedTemporaryFile(delete=False)
+        self.ifup_interface_names = []
 
         def test_ifcfg_path(name):
             return self.temp_ifcfg_file.name
@@ -262,6 +263,8 @@ class TestIfcfgNetConfigApply(base.TestCase):
         self.stubs.Set(impl_ifcfg, 'cleanup_pattern', test_cleanup_pattern)
 
         def test_execute(*args, **kwargs):
+            if args[0] == '/sbin/ifup':
+                self.ifup_interface_names.append(args[1])
             pass
         self.stubs.Set(processutils, 'execute', test_execute)
 
@@ -304,6 +307,53 @@ class TestIfcfgNetConfigApply(base.TestCase):
         self.assertEqual(_OVS_BRIDGE_DHCP, bridge_data)
         route_data = utils.get_file_data(self.temp_route_file.name)
         self.assertEqual("", route_data)
+
+    def test_restart_children_on_change(self):
+        # setup and apply a bridge
+        interface = objects.Interface('em1')
+        bridge = objects.OvsBridge('br-ctlplane', use_dhcp=True,
+                                   members=[interface])
+        self.provider.add_interface(interface)
+        self.provider.add_bridge(bridge)
+        self.provider.apply()
+
+        # changing the bridge should restart the interface too
+        self.ifup_interface_names = []
+        bridge = objects.OvsBridge('br-ctlplane', use_dhcp=False,
+                                   members=[interface])
+        self.provider.add_interface(interface)
+        self.provider.add_bridge(bridge)
+        self.provider.apply()
+        self.assertIn('em1', self.ifup_interface_names)
+        self.assertIn('br-ctlplane', self.ifup_interface_names)
+
+        # setup and apply a bond on a bridge
+        self.ifup_interface_names = []
+        interface1 = objects.Interface('em1')
+        interface2 = objects.Interface('em2')
+        bond = objects.OvsBond('bond0',
+                               members=[interface1, interface2])
+        bridge = objects.OvsBridge('br-ctlplane', use_dhcp=True,
+                                   members=[bond])
+        self.provider.add_interface(interface1)
+        self.provider.add_interface(interface2)
+        self.provider.add_bond(bond)
+        self.provider.add_bridge(bridge)
+        self.provider.apply()
+
+        # changing the bridge should restart everything
+        self.ifup_interface_names = []
+        bridge = objects.OvsBridge('br-ctlplane', use_dhcp=False,
+                                   members=[bond])
+        self.provider.add_interface(interface1)
+        self.provider.add_interface(interface2)
+        self.provider.add_bond(bond)
+        self.provider.add_bridge(bridge)
+        self.provider.apply()
+        self.assertIn('br-ctlplane', self.ifup_interface_names)
+        self.assertIn('bond0', self.ifup_interface_names)
+        self.assertIn('em1', self.ifup_interface_names)
+        self.assertIn('em2', self.ifup_interface_names)
 
     def test_vlan_apply(self):
         vlan = objects.Vlan('em1', 5)
