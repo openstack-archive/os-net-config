@@ -4,9 +4,9 @@ os-net-config
 
 host network configuration tool
 
-This is an initial implementation towards the 'network configuration' spec @
-https://review.openstack.org/#/c/97859/ The intention is for this code to be
-moved under the tripleo project in due course.
+An implementation of the 'network configuration' spec @
+https://review.openstack.org/#/c/97859/.
+The intention is for this code to be moved under the tripleo project in due course.
 
 * Free software: Apache license
 * Documentation: http://docs.openstack.org/developer/os-net-config
