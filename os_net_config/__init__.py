@@ -14,13 +14,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import pbr.version
-
-
 from os_net_config import objects
-
-__version__ = pbr.version.VersionInfo(
-    'os_net_config').version_string()
 
 
 class NotImplemented(Exception):

@@ -21,11 +21,11 @@ import os
 import sys
 import yaml
 
-import os_net_config
 from os_net_config import impl_eni
 from os_net_config import impl_ifcfg
 from os_net_config import impl_iproute
 from os_net_config import objects
+from os_net_config import version
 
 
 logger = logging.getLogger(__name__)
@@ -56,7 +56,7 @@ def parse_opts(argv):
         required=False)
 
     parser.add_argument('--version', action='version',
-                        version=os_net_config.__version__)
+                        version=version.version_info.version_string())
     parser.add_argument(
         '--noop',
         dest="noop",
