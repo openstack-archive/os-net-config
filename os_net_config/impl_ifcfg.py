@@ -57,13 +57,13 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         logger.info('Ifcfg net config provider created.')
 
     def child_members(self, name):
-        children = []
+        children = set()
         try:
             for member in self.member_names[name]:
-                #children.append(member)
-                children.extend(self.child_members(member))
+                children.add(member)
+                children.update(self.child_members(member))
         except KeyError:
-            children.append(name)
+            children.add(name)
         return children
 
     def _add_common(self, base_opt):

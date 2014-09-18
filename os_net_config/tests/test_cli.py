@@ -49,8 +49,10 @@ class TestCli(base.TestCase):
     def test_bond_noop_output(self):
         bond_yaml = os.path.join(SAMPLE_BASE, 'bond.yaml')
         bond_json = os.path.join(SAMPLE_BASE, 'bond.json')
-        stdout_yaml, stderr = self.run_cli('ARG0 -d --noop -c %s' % bond_yaml)
-        stdout_json, stderr = self.run_cli('ARG0 -d --noop -c %s' % bond_json)
+        stdout_yaml, stderr = self.run_cli('ARG0 -d --provider=ifcfg --noop '
+                                           '-c %s' % bond_yaml)
+        stdout_json, stderr = self.run_cli('ARG0 -d --provider=ifcfg --noop '
+                                           '-c %s' % bond_json)
         self.assertEqual(stdout_yaml, stdout_json)
 
     def test_bridge_noop_output(self):
