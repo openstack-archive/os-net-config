@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*- Coding: utf-8 -*-
 
 # Copyright 2014 Red Hat, Inc.
 #
@@ -174,7 +174,10 @@ class ENINetConfig(os_net_config.NetConfig):
         logger.info('adding custom route for interface: %s' % interface_name)
         data = ""
         for route in routes:
-            rt = netaddr.IPNetwork(route.ip_netmask)
+            if route.default and not route.ip_netmask:
+                rt = netaddr.IPNetwork("0.0.0.0/0")
+            else:
+                rt = netaddr.IPNetwork(route.ip_netmask)
             data += "up route add -net %s netmask %s gw %s\n" % (
                     str(rt.ip), str(rt.netmask), route.next_hop)
             data += "down route del -net %s netmask %s gw %s\n" % (
