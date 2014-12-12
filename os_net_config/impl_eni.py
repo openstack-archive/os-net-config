@@ -43,7 +43,7 @@ class ENINetConfig(os_net_config.NetConfig):
         self.interfaces = {}
         self.routes = {}
         self.bridges = {}
-        logger.info('Ifcfg net config provider created.')
+        logger.info('ENI net config provider created.')
 
     def _add_common(self, interface, static_addr=None):
 
