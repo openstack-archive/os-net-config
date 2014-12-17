@@ -82,9 +82,9 @@ def configure_logger(verbose=False, debug=False):
     log_level = logging.WARN
 
     if verbose:
-        log_level = logging.DEBUG
-    elif debug:
         log_level = logging.INFO
+    elif debug:
+        log_level = logging.DEBUG
 
     logging.basicConfig(format=LOG_FORMAT, datefmt=DATE_FORMAT,
                         level=log_level)
