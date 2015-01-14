@@ -22,7 +22,9 @@ from os_net_config.tests import base
 import six
 
 
-SAMPLE_BASE = os.path.join('.', 'etc', 'os-net-config', 'samples')
+REALPATH = os.path.dirname(os.path.realpath(__file__))
+SAMPLE_BASE = os.path.join(REALPATH, '../../', 'etc',
+                           'os-net-config', 'samples')
 
 
 class TestCli(base.TestCase):
