@@ -30,20 +30,18 @@ class TestCli(base.TestCase):
     def run_cli(self, argstr, exitcodes=(0,)):
         orig = sys.stdout
         orig_stderr = sys.stderr
-        try:
-            sys.stdout = six.StringIO()
-            sys.stderr = six.StringIO()
-            cli.main(argstr.split())
-        except SystemExit:
-            exc_type, exc_value, exc_traceback = sys.exc_info()
-            self.assertIn(exc_value.code, exitcodes)
-        finally:
-            stdout = sys.stdout.getvalue()
-            sys.stdout.close()
-            sys.stdout = orig
-            stderr = sys.stderr.getvalue()
-            sys.stderr.close()
-            sys.stderr = orig_stderr
+
+        sys.stdout = six.StringIO()
+        sys.stderr = six.StringIO()
+        ret = cli.main(argstr.split())
+        self.assertIn(ret, exitcodes)
+
+        stdout = sys.stdout.getvalue()
+        sys.stdout.close()
+        sys.stdout = orig
+        stderr = sys.stderr.getvalue()
+        sys.stderr.close()
+        sys.stderr = orig_stderr
         return (stdout, stderr)
 
     def test_bond_noop_output(self):
