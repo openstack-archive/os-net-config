@@ -49,33 +49,66 @@ class TestCli(base.TestCase):
     def test_bond_noop_output(self):
         bond_yaml = os.path.join(SAMPLE_BASE, 'bond.yaml')
         bond_json = os.path.join(SAMPLE_BASE, 'bond.json')
-        stdout_yaml, stderr = self.run_cli('ARG0 -d --provider=ifcfg --noop '
+        stdout_yaml, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
                                            '-c %s' % bond_yaml)
-        stdout_json, stderr = self.run_cli('ARG0 -d --provider=ifcfg --noop '
+        self.assertEqual('', stderr)
+        stdout_json, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
                                            '-c %s' % bond_json)
+        self.assertEqual('', stderr)
+        sanity_devices = ['DEVICE=br-ctlplane',
+                          'DEVICE=em2',
+                          'DEVICE=em1',
+                          'DEVICE=bond1',
+                          'DEVICETYPE=ovs']
+        for dev in sanity_devices:
+            self.assertIn(dev, stdout_yaml)
         self.assertEqual(stdout_yaml, stdout_json)
 
     def test_bridge_noop_output(self):
         bridge_yaml = os.path.join(SAMPLE_BASE, 'bridge_dhcp.yaml')
         bridge_json = os.path.join(SAMPLE_BASE, 'bridge_dhcp.json')
-        stdout_yaml, stderr = self.run_cli('ARG0 -d --noop -c %s' %
+        stdout_yaml, stderr = self.run_cli('ARG0 --provider=eni --noop -c %s' %
                                            bridge_yaml)
-        stdout_json, stderr = self.run_cli('ARG0 -d --noop -c %s' %
+        self.assertEqual('', stderr)
+        stdout_json, stderr = self.run_cli('ARG0 --provider=eni --noop -c %s' %
                                            bridge_json)
+        self.assertEqual('', stderr)
+        sanity_devices = ['iface br-ctlplane inet dhcp',
+                          'iface em1',
+                          'ovs_type OVSBridge']
+        for dev in sanity_devices:
+            self.assertIn(dev, stdout_yaml)
         self.assertEqual(stdout_yaml, stdout_json)
 
     def test_vlan_noop_output(self):
         vlan_yaml = os.path.join(SAMPLE_BASE, 'bridge_vlan.yaml')
         vlan_json = os.path.join(SAMPLE_BASE, 'bridge_vlan.json')
-        stdout_yaml, stderr = self.run_cli('ARG0 -d --noop -c %s' % vlan_yaml)
-        stdout_json, stderr = self.run_cli('ARG0 -d --noop -c %s' % vlan_json)
+        stdout_yaml, stderr = self.run_cli('ARG0 --provider=ifcfg --noop -c %s'
+                                           % vlan_yaml)
+        self.assertEqual('', stderr)
+        stdout_json, stderr = self.run_cli('ARG0 --provider=ifcfg --noop -c %s'
+                                           % vlan_json)
+        self.assertEqual('', stderr)
+        sanity_devices = ['DEVICE=br-ctlplane',
+                          'DEVICE=em1',
+                          'DEVICE=vlan16',
+                          'DEVICETYPE=ovs']
+        for dev in sanity_devices:
+            self.assertIn(dev, stdout_yaml)
         self.assertEqual(stdout_yaml, stdout_json)
 
     def test_interface_noop_output(self):
         interface_yaml = os.path.join(SAMPLE_BASE, 'interface.yaml')
         interface_json = os.path.join(SAMPLE_BASE, 'interface.json')
-        stdout_yaml, stderr = self.run_cli('ARG0 -d --noop -c %s'
+        stdout_yaml, stderr = self.run_cli('ARG0 --provider=ifcfg --noop -c %s'
                                            % interface_yaml)
-        stdout_json, stderr = self.run_cli('ARG0 -d --noop -c %s'
+        self.assertEqual('', stderr)
+        stdout_json, stderr = self.run_cli('ARG0 --provider=ifcfg --noop -c %s'
                                            % interface_json)
+        self.assertEqual('', stderr)
+        sanity_devices = ['DEVICE=em1',
+                          'BOOTPROTO=static',
+                          'IPADDR=192.0.2.1']
+        for dev in sanity_devices:
+            self.assertIn(dev, stdout_yaml)
         self.assertEqual(stdout_yaml, stdout_json)
