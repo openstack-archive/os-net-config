@@ -1,0 +1,13 @@
+{"network_config": [
+    {
+      "type": "interface",
+      "name": "em1",
+      "use_dhcp": false,
+      "addresses": [
+        {
+          "ip_netmask": "192.0.2.1/24"
+        }
+      ]
+    }
+  ]
+}

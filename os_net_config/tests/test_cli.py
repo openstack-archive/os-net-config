@@ -70,3 +70,12 @@ class TestCli(base.TestCase):
         stdout_yaml, stderr = self.run_cli('ARG0 -d --noop -c %s' % vlan_yaml)
         stdout_json, stderr = self.run_cli('ARG0 -d --noop -c %s' % vlan_json)
         self.assertEqual(stdout_yaml, stdout_json)
+
+    def test_interface_noop_output(self):
+        interface_yaml = os.path.join(SAMPLE_BASE, 'interface.yaml')
+        interface_json = os.path.join(SAMPLE_BASE, 'interface.json')
+        stdout_yaml, stderr = self.run_cli('ARG0 -d --noop -c %s'
+                                           % interface_yaml)
+        stdout_json, stderr = self.run_cli('ARG0 -d --noop -c %s'
+                                           % interface_json)
+        self.assertEqual(stdout_yaml, stdout_json)
