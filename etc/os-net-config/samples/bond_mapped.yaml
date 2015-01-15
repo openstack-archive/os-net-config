@@ -1,0 +1,23 @@
+# Example showing use of the optional nicN abstraction
+# for device naming, which defaults to an ordered
+# translation to biodev names based on which interfaces
+# are active on the system.
+# Optionally the default mapping may be overriden by
+# a mapping file via the -m option.
+network_config:
+  -
+     type: ovs_bridge
+     name: br-ctlplane
+     use_dhcp: true
+     members:
+       -
+         type: ovs_bond
+         name: bond1
+         use_dhcp: true
+         members:
+           -
+             type: interface
+             name: nic1
+           -
+             type: interface
+             name: nic2

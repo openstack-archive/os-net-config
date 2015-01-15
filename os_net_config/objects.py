@@ -51,16 +51,45 @@ def _get_required_field(json, name, object_name):
     return field
 
 
-def _numbered_nics():
+def _numbered_nics(nic_mapping=None):
+    mapping = nic_mapping or {}
     global _NUMBERED_NICS
     if _NUMBERED_NICS:
         return _NUMBERED_NICS
     _NUMBERED_NICS = {}
     count = 0
-    for nic in utils.ordered_active_nics():
+    active_nics = utils.ordered_active_nics()
+    for nic in active_nics:
         count += 1
-        _NUMBERED_NICS["nic%i" % count] = nic
-        logger.info("nic%i mapped to: %s" % (count, nic))
+        nic_alias = "nic%i" % count
+        nic_mapped = mapping.get(nic_alias, nic)
+
+        # The mapping is either invalid, or specifies a mac
+        if nic_mapped not in active_nics:
+            for active in active_nics:
+                try:
+                    active_mac = utils.interface_mac(active)
+                except IOError:
+                    continue
+                if nic_mapped == active_mac:
+                    logger.debug("%s matches device %s" % (nic_mapped, active))
+                    nic_mapped = active
+                    break
+            else:
+                # The mapping can't specify a non-active or non-existent nic
+                logger.warning('interface %s is not in an active nic (%s)'
+                               % (nic_mapped, ', '.join(active_nics)))
+                continue
+
+        # Duplicate mappings are not allowed
+        if nic_mapped in _NUMBERED_NICS.values():
+            msg = ('interface %s already mapped, '
+                   'check mapping file for duplicates'
+                   % nic_mapped)
+            raise InvalidConfigException(msg)
+
+        _NUMBERED_NICS[nic_alias] = nic_mapped
+        logger.info("%s mapped to: %s" % (nic_alias, nic_mapped))
     return _NUMBERED_NICS
 
 
@@ -100,8 +129,8 @@ class _BaseOpts(object):
     """Base abstraction for logical port options."""
 
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=[],
-                 routes=[], mtu=1500, primary=False):
-        numbered_nic_names = _numbered_nics()
+                 routes=[], mtu=1500, primary=False, nic_mapping=None):
+        numbered_nic_names = _numbered_nics(nic_mapping)
         if name in numbered_nic_names:
             self.name = numbered_nic_names[name]
         else:
@@ -162,19 +191,23 @@ class _BaseOpts(object):
                 msg = 'Routes must be a list.'
                 raise InvalidConfigException(msg)
 
+        nic_mapping = json.get('nic_mapping')
+
         if include_primary:
-            return (use_dhcp, use_dhcpv6, addresses, routes, mtu, primary)
+            return (use_dhcp, use_dhcpv6, addresses, routes, mtu, primary,
+                    nic_mapping)
         else:
-            return (use_dhcp, use_dhcpv6, addresses, routes, mtu)
+            return (use_dhcp, use_dhcpv6, addresses, routes, mtu,
+                    nic_mapping)
 
 
 class Interface(_BaseOpts):
     """Base class for network interfaces."""
 
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=[],
-                 routes=[], mtu=1500, primary=False):
+                 routes=[], mtu=1500, primary=False, nic_mapping=None):
         super(Interface, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
-                                        routes, mtu, primary)
+                                        routes, mtu, primary, nic_mapping)
 
     @staticmethod
     def from_json(json):
@@ -191,13 +224,14 @@ class Vlan(_BaseOpts):
     """
 
     def __init__(self, device, vlan_id, use_dhcp=False, use_dhcpv6=False,
-                 addresses=[], routes=[], mtu=1500, primary=False):
+                 addresses=[], routes=[], mtu=1500, primary=False,
+                 nic_mapping=None):
         name = 'vlan%i' % vlan_id
         super(Vlan, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
-                                   routes, mtu, primary)
+                                   routes, mtu, primary, nic_mapping)
         self.vlan_id = int(vlan_id)
 
-        numbered_nic_names = _numbered_nics()
+        numbered_nic_names = _numbered_nics(nic_mapping)
         if device in numbered_nic_names:
             self.device = numbered_nic_names[device]
         else:
@@ -217,9 +251,9 @@ class OvsBridge(_BaseOpts):
 
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=[],
                  routes=[], mtu=1500, members=[], ovs_options=None,
-                 ovs_extra=[]):
+                 ovs_extra=[], nic_mapping=None):
         super(OvsBridge, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
-                                        routes, mtu, False)
+                                        routes, mtu, False, nic_mapping)
         self.members = members
         self.ovs_options = ovs_options
         self.ovs_extra = ovs_extra
@@ -238,7 +272,8 @@ class OvsBridge(_BaseOpts):
     @staticmethod
     def from_json(json):
         name = _get_required_field(json, 'name', 'OvsBridge')
-        opts = _BaseOpts.base_opts_from_json(json, include_primary=False)
+        (use_dhcp, use_dhcpv6, addresses, routes, mtu, nic_mapping
+         ) = _BaseOpts.base_opts_from_json(json, include_primary=False)
         ovs_options = json.get('ovs_options')
         ovs_extra = json.get('ovs_extra', [])
         members = []
@@ -253,8 +288,10 @@ class OvsBridge(_BaseOpts):
                 msg = 'Members must be a list.'
                 raise InvalidConfigException(msg)
 
-        return OvsBridge(name, *opts, members=members, ovs_options=ovs_options,
-                         ovs_extra=ovs_extra)
+        return OvsBridge(name, use_dhcp=use_dhcp, use_dhcpv6=use_dhcpv6,
+                         addresses=addresses, routes=routes, mtu=mtu,
+                         members=members, ovs_options=ovs_options,
+                         ovs_extra=ovs_extra, nic_mapping=nic_mapping)
 
 
 class OvsBond(_BaseOpts):
@@ -262,9 +299,9 @@ class OvsBond(_BaseOpts):
 
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=[],
                  routes=[], mtu=1500, primary=False, members=[],
-                 ovs_options=None, ovs_extra=[]):
+                 ovs_options=None, ovs_extra=[], nic_mapping=None):
         super(OvsBond, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
-                                      routes, mtu, primary)
+                                      routes, mtu, primary, nic_mapping)
         self.members = members
         self.ovs_options = ovs_options
         self.ovs_extra = ovs_extra
@@ -281,7 +318,8 @@ class OvsBond(_BaseOpts):
     @staticmethod
     def from_json(json):
         name = _get_required_field(json, 'name', 'OvsBond')
-        opts = _BaseOpts.base_opts_from_json(json)
+        (use_dhcp, use_dhcpv6, addresses, routes, mtu, nic_mapping
+         ) = _BaseOpts.base_opts_from_json(json, include_primary=False)
         ovs_options = json.get('ovs_options')
         ovs_extra = json.get('ovs_extra', [])
         members = []
@@ -296,5 +334,7 @@ class OvsBond(_BaseOpts):
                 msg = 'Members must be a list.'
                 raise InvalidConfigException(msg)
 
-        return OvsBond(name, *opts, members=members, ovs_options=ovs_options,
-                       ovs_extra=ovs_extra)
+        return OvsBond(name, use_dhcp=use_dhcp, use_dhcpv6=use_dhcpv6,
+                       addresses=addresses, routes=routes, mtu=mtu,
+                       members=members, ovs_options=ovs_options,
+                       ovs_extra=ovs_extra, nic_mapping=nic_mapping)

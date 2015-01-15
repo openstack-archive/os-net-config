@@ -38,6 +38,9 @@ def parse_opts(argv):
     parser.add_argument('-c', '--config-file', metavar='CONFIG_FILE',
                         help="""path to the configuration file.""",
                         default='/etc/os-net-config/config.yaml')
+    parser.add_argument('-m', '--mapping-file', metavar='MAPPING_FILE',
+                        help="""path to the interface mapping file.""",
+                        default='/etc/os-net-config/mapping.yaml')
     parser.add_argument('-p', '--provider', metavar='PROVIDER',
                         help="""The provider to use."""
                         """One of: ifcfg, eni, iproute.""",
@@ -94,6 +97,8 @@ def main(argv=sys.argv):
     opts = parse_opts(argv)
     configure_logger(opts.verbose, opts.debug)
     logger.info('Using config file at: %s' % opts.config_file)
+    if opts.mapping_file:
+        logger.info('Using mapping file at: %s' % opts.mapping_file)
     iface_array = []
 
     provider = None
@@ -116,6 +121,7 @@ def main(argv=sys.argv):
             logger.error('Unable to set provider for this operating system.')
             return 1
 
+    # Read config file containing network configs to apply
     if os.path.exists(opts.config_file):
         with open(opts.config_file) as cf:
             iface_array = yaml.load(cf.read()).get("network_config")
@@ -123,10 +129,23 @@ def main(argv=sys.argv):
     else:
         logger.error('No config file exists at: %s' % opts.config_file)
         return 1
+
     if not isinstance(iface_array, list):
         logger.error('No interfaces defined in config: %s' % opts.config_file)
         return 1
+
+    # Read the interface mapping file, if it exists
+    # This allows you to override the default network naming abstraction
+    # mappings by specifying a specific nicN->name or nicN->MAC mapping
+    if os.path.exists(opts.mapping_file):
+        with open(opts.mapping_file) as cf:
+            iface_mapping = yaml.load(cf.read()).get("interface_mapping")
+            logger.debug('interface_mapping JSON: %s' % str(iface_mapping))
+    else:
+        iface_mapping = None
+
     for iface_json in iface_array:
+        iface_json.update({'nic_mapping': iface_mapping})
         obj = objects.object_from_json(iface_json)
         provider.add_object(obj)
     files_changed = provider.apply(noop=opts.noop, cleanup=opts.cleanup)
