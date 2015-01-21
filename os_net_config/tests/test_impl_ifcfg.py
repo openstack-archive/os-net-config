@@ -36,6 +36,8 @@ IPADDR=192.168.1.2
 NETMASK=255.255.255.0
 """
 
+_V4_IFCFG_MAPPED = _V4_IFCFG.replace('em1', 'nic1') + "HWADDR=a1:b2:c3:d4:e5\n"
+
 _V6_IFCFG = _BASE_IFCFG + """IPV6INIT=yes
 IPV6_AUTOCONF=no
 IPV6ADDR=2001:abc:a::
@@ -140,6 +142,23 @@ class TestIfcfgNetConfig(base.TestCase):
         self.provider.add_interface(interface)
         self.assertEqual(_V4_IFCFG, self.get_interface_config())
         self.assertEqual('', self.get_route_config())
+
+    def test_add_interface_map_persisted(self):
+        def test_interface_mac(name):
+            macs = {'em1': 'a1:b2:c3:d4:e5'}
+            return macs[name]
+        self.stubs.Set(utils, 'interface_mac', test_interface_mac)
+
+        nic_mapping = {'nic1': 'em1'}
+        self.stubbed_numbered_nics = nic_mapping
+        v4_addr = objects.Address('192.168.1.2/24')
+        interface = objects.Interface('nic1', addresses=[v4_addr],
+                                      nic_mapping=nic_mapping,
+                                      persist_mapping=True)
+        self.assertEqual('a1:b2:c3:d4:e5', interface.hwaddr)
+        self.provider.add_interface(interface)
+        self.assertEqual(_V4_IFCFG_MAPPED, self.get_interface_config('nic1'))
+        self.assertEqual('', self.get_route_config('nic1'))
 
     def test_add_interface_with_v6(self):
         v6_addr = objects.Address('2001:abc:a::/64')

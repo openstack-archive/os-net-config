@@ -142,6 +142,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 first_v6 = v6_addresses[0]
                 data += "IPV6_AUTOCONF=no\n"
                 data += "IPV6ADDR=%s\n" % first_v6.ip
+        if base_opt.hwaddr:
+            data += "HWADDR=%s\n" % base_opt.hwaddr
         if ovs_extra:
             data += "OVS_EXTRA=\"%s\"\n" % " -- ".join(ovs_extra)
         return data

@@ -129,6 +129,9 @@ class ENINetConfig(os_net_config.NetConfig):
         if interface.mtu != 1500:
             data += "    mtu %i\n" % interface.mtu
 
+        if interface.hwaddr:
+            raise NotImplemented("hwaddr is not implemented.")
+
         if ovs_extra:
             data += "    ovs_extra %s\n" % " -- ".join(ovs_extra)
 

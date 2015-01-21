@@ -74,6 +74,14 @@ def parse_opts(argv):
         help="Cleanup unconfigured interfaces.",
         required=False)
 
+    parser.add_argument(
+        '--persist-mapping',
+        dest="persist_mapping",
+        action='store_true',
+        help="Make aliases defined in the mapping file permanent "
+             "(WARNING, permanently renames nics).",
+        required=False)
+
     opts = parser.parse_args(argv[1:])
 
     return opts
@@ -139,13 +147,18 @@ def main(argv=sys.argv):
     # mappings by specifying a specific nicN->name or nicN->MAC mapping
     if os.path.exists(opts.mapping_file):
         with open(opts.mapping_file) as cf:
-            iface_mapping = yaml.load(cf.read()).get("interface_mapping")
+            iface_map = yaml.load(cf.read())
+            iface_mapping = iface_map.get("interface_mapping")
             logger.debug('interface_mapping JSON: %s' % str(iface_mapping))
+            persist_mapping = opts.persist_mapping
+            logger.debug('persist_mapping: %s' % persist_mapping)
     else:
         iface_mapping = None
+        persist_mapping = False
 
     for iface_json in iface_array:
         iface_json.update({'nic_mapping': iface_mapping})
+        iface_json.update({'persist_mapping': persist_mapping})
         obj = objects.object_from_json(iface_json)
         provider.add_object(obj)
     files_changed = provider.apply(noop=opts.noop, cleanup=opts.cleanup)

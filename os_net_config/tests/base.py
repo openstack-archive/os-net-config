@@ -36,9 +36,10 @@ class TestCase(testtools.TestCase):
 
         super(TestCase, self).setUp()
         self.stubs = stubout.StubOutForTesting()
+        self.stubbed_numbered_nics = {}
 
         def dummy_numbered_nics(nic_mapping=None):
-            return {}
+            return self.stubbed_numbered_nics
         if self.stub_numbered_nics:
             self.stubs.Set(objects, '_numbered_nics', dummy_numbered_nics)
 
