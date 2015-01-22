@@ -259,28 +259,24 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 if ifcfg_file not in all_file_names:
                     interface_name = ifcfg_file[len(cleanup_pattern()) - 1:]
                     if interface_name != 'lo':
-                        msg = 'cleaning up interface: %s' % interface_name
-                        self.execute(msg, '/sbin/ifdown', interface_name,
-                                     check_exit_code=False)
+                        logger.info('cleaning up interface: %s'
+                                    % interface_name)
+                        self.ifdown(interface_name)
                         self.remove_config(ifcfg_file)
 
         for interface in restart_interfaces:
-            msg = 'running ifdown on interface: %s' % interface
-            self.execute(msg, '/sbin/ifdown', interface, check_exit_code=False)
+            self.ifdown(interface)
 
         for bridge in restart_bridges:
-            msg = 'running ifdown on bridge: %s' % bridge
-            self.execute(msg, '/sbin/ifdown', bridge, check_exit_code=False)
+            self.ifdown(bridge, iftype='bridge')
 
         for location, data in update_files.iteritems():
             self.write_config(location, data)
 
         for bridge in restart_bridges:
-            msg = 'running ifup on bridge: %s' % bridge
-            self.execute(msg, '/sbin/ifup', bridge)
+            self.ifup(bridge, iftype='bridge')
 
         for interface in restart_interfaces:
-            msg = 'running ifup on interface: %s' % interface
-            self.execute(msg, '/sbin/ifup', interface)
+            self.ifup(interface)
 
         return update_files

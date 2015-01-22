@@ -211,24 +211,18 @@ class ENINetConfig(os_net_config.NetConfig):
 
         if (utils.diff(_network_config_path(), new_config)):
             for interface in self.interfaces.keys():
-                msg = 'running ifdown on interface: %s' % interface
-                self.execute(msg, '/sbin/ifdown', interface,
-                             check_exit_code=False)
+                self.ifdown(interface)
 
             for bridge in self.bridges.keys():
-                msg = 'running ifdown on bridge: %s' % bridge
-                self.execute(msg, '/sbin/ifdown', bridge,
-                             check_exit_code=False)
+                self.ifdown(bridge, iftype='bridge')
 
             self.write_config(_network_config_path(), new_config)
 
             for bridge in self.bridges.keys():
-                msg = 'running ifup on bridge: %s' % bridge
-                self.execute(msg, '/sbin/ifup', bridge)
+                self.ifup(bridge, iftype='bridge')
 
             for interface in self.interfaces.keys():
-                msg = 'running ifup on interface: %s' % interface
-                self.execute(msg, '/sbin/ifup', interface)
+                self.ifup(interface)
         else:
             logger.info('No interface changes are required.')
 

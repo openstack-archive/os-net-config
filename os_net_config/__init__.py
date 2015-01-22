@@ -117,3 +117,11 @@ class NetConfig(object):
         logger.info('%s%s' % (self.log_prefix, msg))
         if not self.noop:
             os.remove(filename)
+
+    def ifdown(self, interface, iftype='interface'):
+        msg = 'running ifdown on %s: %s' % (iftype, interface)
+        self.execute(msg, '/sbin/ifdown', interface, check_exit_code=False)
+
+    def ifup(self, interface, iftype='interface'):
+        msg = 'running ifup on %s: %s' % (iftype, interface)
+        self.execute(msg, '/sbin/ifup', interface)
