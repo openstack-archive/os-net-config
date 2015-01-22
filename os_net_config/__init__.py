@@ -24,6 +24,9 @@ class NotImplemented(Exception):
 class NetConfig(object):
     """Configure network interfaces using the ifcfg format."""
 
+    def __init__(self, noop=False):
+        self.noop = noop
+
     def add_object(self, obj):
         """Convenience method to add any type of object to the network config.
            See objects.py.
@@ -71,10 +74,9 @@ class NetConfig(object):
         """
         raise NotImplemented("add_bond is not implemented.")
 
-    def apply(self, noop=False, cleanup=False):
+    def apply(self, cleanup=False):
         """Apply the network configuration.
 
-        :param noop: A boolean which indicates whether this is a no-op.
         :param cleanup: A boolean which indicates whether any undefined
             (existing but not present in the object model) interfaces
             should be disabled and deleted.

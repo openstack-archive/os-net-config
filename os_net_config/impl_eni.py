@@ -39,7 +39,8 @@ class ENINetConfig(os_net_config.NetConfig):
        /etc/network/interfaces format.
     """
 
-    def __init__(self):
+    def __init__(self, noop=False):
+        super(ENINetConfig, self).__init__(noop)
         self.interfaces = {}
         self.routes = {}
         self.bridges = {}
@@ -188,13 +189,13 @@ class ENINetConfig(os_net_config.NetConfig):
         self.routes[interface_name] = data
         logger.debug('route data: %s' % self.routes[interface_name])
 
-    def apply(self, noop=False, cleanup=False):
+    def apply(self, cleanup=False):
         """Apply the network configuration.
 
-        :param noop: A boolean which indicates whether this is a no-op.
         :returns: a dict of the format: filename/data which contains info
             for each file that was changed (or would be changed if in --noop
             mode).
+        Note the noop mode is set via the constructor noop boolean
         """
         new_config = ""
 
@@ -211,7 +212,7 @@ class ENINetConfig(os_net_config.NetConfig):
             new_config += iface_data
 
         if (utils.diff(_network_config_path(), new_config)):
-            if noop:
+            if self.noop:
                 return {"/etc/network/interfaces": new_config}
             for interface in self.interfaces.keys():
                 logger.info('running ifdown on interface: %s' % interface)

@@ -49,7 +49,8 @@ def cleanup_pattern():
 class IfcfgNetConfig(os_net_config.NetConfig):
     """Configure network interfaces using the ifcfg format."""
 
-    def __init__(self):
+    def __init__(self, noop=False):
+        super(IfcfgNetConfig, self).__init__(noop)
         self.interface_data = {}
         self.route_data = {}
         self.bridge_data = {}
@@ -211,16 +212,16 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         if bond.routes:
             self._add_routes(bond.name, bond.routes)
 
-    def apply(self, noop=False, cleanup=False):
+    def apply(self, cleanup=False):
         """Apply the network configuration.
 
-        :param noop: A boolean which indicates whether this is a no-op.
         :param cleanup: A boolean which indicates whether any undefined
             (existing but not present in the object model) interface
             should be disabled and deleted.
         :returns: a dict of the format: filename/data which contains info
             for each file that was changed (or would be changed if in --noop
             mode).
+        Note the noop mode is set via the constructor noop boolean
         """
         logger.info('applying network configs...')
         restart_interfaces = []
@@ -257,7 +258,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 update_files[bridge_route_path] = route_data
                 logger.info('No changes required for bridge: %s' % bridge_name)
 
-        if noop:
+        if self.noop:
             return update_files
 
         if cleanup:

@@ -112,19 +112,19 @@ def main(argv=sys.argv):
     provider = None
     if opts.provider:
         if opts.provider == 'ifcfg':
-            provider = impl_ifcfg.IfcfgNetConfig()
+            provider = impl_ifcfg.IfcfgNetConfig(noop=opts.noop)
         elif opts.provider == 'eni':
-            provider = impl_eni.ENINetConfig()
+            provider = impl_eni.ENINetConfig(noop=opts.noop)
         elif opts.provider == 'iproute':
-            provider = impl_iproute.IPRouteNetConfig()
+            provider = impl_iproute.IPRouteNetConfig(noop=opts.noop)
         else:
             logger.error('Invalid provider specified.')
             return 1
     else:
         if os.path.exists('/etc/sysconfig/network-scripts/'):
-            provider = impl_ifcfg.IfcfgNetConfig()
+            provider = impl_ifcfg.IfcfgNetConfig(noop=opts.noop)
         elif os.path.exists('/etc/network/'):
-            provider = impl_eni.ENINetConfig()
+            provider = impl_eni.ENINetConfig(noop=opts.noop)
         else:
             logger.error('Unable to set provider for this operating system.')
             return 1
@@ -161,7 +161,7 @@ def main(argv=sys.argv):
         iface_json.update({'persist_mapping': persist_mapping})
         obj = objects.object_from_json(iface_json)
         provider.add_object(obj)
-    files_changed = provider.apply(noop=opts.noop, cleanup=opts.cleanup)
+    files_changed = provider.apply(cleanup=opts.cleanup)
     if opts.noop:
         for location, data in files_changed.iteritems():
             print "File: %s\n" % location
