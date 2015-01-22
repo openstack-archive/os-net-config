@@ -16,14 +16,10 @@
 
 import glob
 import logging
-import os
 
 import os_net_config
 from os_net_config import objects
 from os_net_config import utils
-
-
-from oslo_concurrency import processutils
 
 
 logger = logging.getLogger(__name__)
@@ -258,40 +254,33 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 update_files[bridge_route_path] = route_data
                 logger.info('No changes required for bridge: %s' % bridge_name)
 
-        if self.noop:
-            return update_files
-
         if cleanup:
             for ifcfg_file in glob.iglob(cleanup_pattern()):
                 if ifcfg_file not in all_file_names:
                     interface_name = ifcfg_file[len(cleanup_pattern()) - 1:]
                     if interface_name != 'lo':
-                        logger.info('cleaning up interface: %s' %
-                                    interface_name)
-                        processutils.execute('/sbin/ifdown', interface_name,
-                                             check_exit_code=False)
-                        os.remove(ifcfg_file)
+                        msg = 'cleaning up interface: %s' % interface_name
+                        self.execute(msg, '/sbin/ifdown', interface_name,
+                                     check_exit_code=False)
+                        self.remove_config(ifcfg_file)
 
         for interface in restart_interfaces:
-            logger.info('running ifdown on interface: %s' % interface)
-            processutils.execute('/sbin/ifdown', interface,
-                                 check_exit_code=False)
+            msg = 'running ifdown on interface: %s' % interface
+            self.execute(msg, '/sbin/ifdown', interface, check_exit_code=False)
 
         for bridge in restart_bridges:
-            logger.info('running ifdown on bridge: %s' % bridge)
-            processutils.execute('/sbin/ifdown', bridge,
-                                 check_exit_code=False)
+            msg = 'running ifdown on bridge: %s' % bridge
+            self.execute(msg, '/sbin/ifdown', bridge, check_exit_code=False)
 
         for location, data in update_files.iteritems():
-            logger.info('writing config file: %s' % location)
-            utils.write_config(location, data)
+            self.write_config(location, data)
 
         for bridge in restart_bridges:
-            logger.info('running ifup on bridge: %s' % bridge)
-            processutils.execute('/sbin/ifup', bridge)
+            msg = 'running ifup on bridge: %s' % bridge
+            self.execute(msg, '/sbin/ifup', bridge)
 
         for interface in restart_interfaces:
-            logger.info('running ifup on interface: %s' % interface)
-            processutils.execute('/sbin/ifup', interface)
+            msg = 'running ifup on interface: %s' % interface
+            self.execute(msg, '/sbin/ifup', interface)
 
         return update_files

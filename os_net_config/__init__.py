@@ -14,7 +14,16 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import logging
+import os
+
+from oslo_concurrency import processutils
+
 from os_net_config import objects
+from os_net_config import utils
+
+
+logger = logging.getLogger(__name__)
 
 
 class NotImplemented(Exception):
@@ -26,6 +35,7 @@ class NetConfig(object):
 
     def __init__(self, noop=False):
         self.noop = noop
+        self.log_prefix = "NOOP: " if noop else ""
 
     def add_object(self, obj):
         """Convenience method to add any type of object to the network config.
@@ -85,3 +95,25 @@ class NetConfig(object):
             mode).
         """
         raise NotImplemented("apply is not implemented.")
+
+    def execute(self, msg, cmd, *args, **kwargs):
+        """Print a message and run a command.
+
+        Print a message and run a command with processutils
+        in noop mode, this just prints a message.
+        """
+        logger.info('%s%s' % (self.log_prefix, msg))
+        if not self.noop:
+            processutils.execute(cmd, *args, **kwargs)
+
+    def write_config(self, filename, data, msg=None):
+        msg = msg or "Writing config %s" % filename
+        logger.info('%s%s' % (self.log_prefix, msg))
+        if not self.noop:
+            utils.write_config(filename, data)
+
+    def remove_config(self, filename, msg=None):
+        msg = msg or "Removing config %s" % filename
+        logger.info('%s%s' % (self.log_prefix, msg))
+        if not self.noop:
+            os.remove(filename)

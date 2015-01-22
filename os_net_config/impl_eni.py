@@ -21,8 +21,6 @@ import os_net_config
 from os_net_config import objects
 from os_net_config import utils
 
-from oslo_concurrency import processutils
-
 
 logger = logging.getLogger(__name__)
 
@@ -212,27 +210,26 @@ class ENINetConfig(os_net_config.NetConfig):
             new_config += iface_data
 
         if (utils.diff(_network_config_path(), new_config)):
-            if self.noop:
-                return {"/etc/network/interfaces": new_config}
             for interface in self.interfaces.keys():
-                logger.info('running ifdown on interface: %s' % interface)
-                processutils.execute('/sbin/ifdown', interface,
-                                     check_exit_code=False)
+                msg = 'running ifdown on interface: %s' % interface
+                self.execute(msg, '/sbin/ifdown', interface,
+                             check_exit_code=False)
 
             for bridge in self.bridges.keys():
-                logger.info('running ifdown on bridge: %s' % bridge)
-                processutils.execute('/sbin/ifdown', bridge,
-                                     check_exit_code=False)
+                msg = 'running ifdown on bridge: %s' % bridge
+                self.execute(msg, '/sbin/ifdown', bridge,
+                             check_exit_code=False)
 
-            logger.info('writing config file')
-            utils.write_config(_network_config_path(), new_config)
+            self.write_config(_network_config_path(), new_config)
 
             for bridge in self.bridges.keys():
-                logger.info('running ifup on bridge: %s' % bridge)
-                processutils.execute('/sbin/ifup', bridge)
+                msg = 'running ifup on bridge: %s' % bridge
+                self.execute(msg, '/sbin/ifup', bridge)
 
             for interface in self.interfaces.keys():
-                logger.info('running ifup on interface: %s' % interface)
-                processutils.execute('/sbin/ifup', interface)
+                msg = 'running ifup on interface: %s' % interface
+                self.execute(msg, '/sbin/ifup', interface)
         else:
             logger.info('No interface changes are required.')
+
+        return {"/etc/network/interfaces": new_config}
