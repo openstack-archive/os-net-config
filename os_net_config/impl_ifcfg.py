@@ -51,6 +51,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         self.route_data = {}
         self.bridge_data = {}
         self.member_names = {}
+        self.renamed_interfaces = {}
         logger.info('Ifcfg net config provider created.')
 
     def child_members(self, name):
@@ -172,6 +173,11 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         if interface.routes:
             self._add_routes(interface.name, interface.routes)
 
+        if interface.renamed:
+            logger.info("Interface %s being renamed to %s"
+                        % (interface.hwname, interface.name))
+            self.renamed_interfaces[interface.hwname] = interface.name
+
     def add_vlan(self, vlan):
         """Add a Vlan object to the net config object.
 
@@ -274,6 +280,9 @@ class IfcfgNetConfig(os_net_config.NetConfig):
 
             for bridge in restart_bridges:
                 self.ifdown(bridge, iftype='bridge')
+
+            for oldname, newname in self.renamed_interfaces.iteritems():
+                self.ifrename(oldname, newname)
 
         for location, data in update_files.iteritems():
             self.write_config(location, data)

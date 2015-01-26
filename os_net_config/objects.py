@@ -133,11 +133,14 @@ class _BaseOpts(object):
                  persist_mapping=False):
         numbered_nic_names = _numbered_nics(nic_mapping)
         self.hwaddr = None
+        self.hwname = None
+        self.renamed = False
         if name in numbered_nic_names:
             if persist_mapping:
                 self.name = name
-                hwname = numbered_nic_names[name]
-                self.hwaddr = utils.interface_mac(hwname)
+                self.hwname = numbered_nic_names[name]
+                self.hwaddr = utils.interface_mac(self.hwname)
+                self.renamed = True
             else:
                 self.name = numbered_nic_names[name]
         else:

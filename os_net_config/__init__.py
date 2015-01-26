@@ -125,3 +125,17 @@ class NetConfig(object):
     def ifup(self, interface, iftype='interface'):
         msg = 'running ifup on %s: %s' % (iftype, interface)
         self.execute(msg, '/sbin/ifup', interface)
+
+    def ifrename(self, oldname, newname):
+        msg = 'renaming %s to %s: ' % (oldname, newname)
+        # ifdown isn't enough when renaming, we need the link down
+        for name in (oldname, newname):
+            if utils._is_active_nic(name):
+                self.execute(msg, '/sbin/ip',
+                             'link', 'set', 'dev', name, 'down')
+                self.execute(msg, '/sbin/ip',
+                             'link', 'set', 'dev', name, 'link', 'down')
+        self.execute(msg, '/sbin/ip',
+                     'link', 'set', 'dev', oldname, 'name', newname)
+        self.execute(msg, '/sbin/ip',
+                     'link', 'set', 'dev', newname, 'up')
