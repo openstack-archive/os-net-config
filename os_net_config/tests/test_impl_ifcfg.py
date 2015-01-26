@@ -328,6 +328,15 @@ class TestIfcfgNetConfigApply(base.TestCase):
         route_data = utils.get_file_data(self.temp_route_file.name)
         self.assertEqual("", route_data)
 
+    def test_apply_noactivate(self):
+        interface = objects.Interface('em1')
+        bridge = objects.OvsBridge('br-ctlplane', use_dhcp=True,
+                                   members=[interface])
+        self.provider.add_interface(interface)
+        self.provider.add_bridge(bridge)
+        self.provider.apply(activate=False)
+        self.assertEqual([], self.ifup_interface_names)
+
     def test_restart_children_on_change(self):
         # setup and apply a bridge
         interface = objects.Interface('em1')
@@ -336,6 +345,8 @@ class TestIfcfgNetConfigApply(base.TestCase):
         self.provider.add_interface(interface)
         self.provider.add_bridge(bridge)
         self.provider.apply()
+        self.assertIn('em1', self.ifup_interface_names)
+        self.assertIn('br-ctlplane', self.ifup_interface_names)
 
         # changing the bridge should restart the interface too
         self.ifup_interface_names = []
@@ -344,8 +355,6 @@ class TestIfcfgNetConfigApply(base.TestCase):
         self.provider.add_interface(interface)
         self.provider.add_bridge(bridge)
         self.provider.apply()
-        self.assertIn('em1', self.ifup_interface_names)
-        self.assertIn('br-ctlplane', self.ifup_interface_names)
 
         # setup and apply a bond on a bridge
         self.ifup_interface_names = []

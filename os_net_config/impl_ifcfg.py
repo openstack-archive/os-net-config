@@ -208,12 +208,16 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         if bond.routes:
             self._add_routes(bond.name, bond.routes)
 
-    def apply(self, cleanup=False):
+    def apply(self, cleanup=False, activate=True):
         """Apply the network configuration.
 
         :param cleanup: A boolean which indicates whether any undefined
             (existing but not present in the object model) interface
             should be disabled and deleted.
+        :param activate: A boolean which indicates if the config should
+            be activated by stopping/starting interfaces
+            NOTE: if cleanup is specified we will deactivate interfaces even
+            if activate is false
         :returns: a dict of the format: filename/data which contains info
             for each file that was changed (or would be changed if in --noop
             mode).
@@ -264,19 +268,21 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                         self.ifdown(interface_name)
                         self.remove_config(ifcfg_file)
 
-        for interface in restart_interfaces:
-            self.ifdown(interface)
+        if activate:
+            for interface in restart_interfaces:
+                self.ifdown(interface)
 
-        for bridge in restart_bridges:
-            self.ifdown(bridge, iftype='bridge')
+            for bridge in restart_bridges:
+                self.ifdown(bridge, iftype='bridge')
 
         for location, data in update_files.iteritems():
             self.write_config(location, data)
 
-        for bridge in restart_bridges:
-            self.ifup(bridge, iftype='bridge')
+        if activate:
+            for bridge in restart_bridges:
+                self.ifup(bridge, iftype='bridge')
 
-        for interface in restart_interfaces:
-            self.ifup(interface)
+            for interface in restart_interfaces:
+                self.ifup(interface)
 
         return update_files

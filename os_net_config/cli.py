@@ -68,6 +68,13 @@ def parse_opts(argv):
         required=False)
 
     parser.add_argument(
+        '--no-activate',
+        dest="no_activate",
+        action='store_true',
+        help="Install the configuration but don't start/stop interfaces.",
+        required=False)
+
+    parser.add_argument(
         '--cleanup',
         dest="cleanup",
         action='store_true',
@@ -161,7 +168,8 @@ def main(argv=sys.argv):
         iface_json.update({'persist_mapping': persist_mapping})
         obj = objects.object_from_json(iface_json)
         provider.add_object(obj)
-    files_changed = provider.apply(cleanup=opts.cleanup)
+    files_changed = provider.apply(cleanup=opts.cleanup,
+                                   activate=not opts.no_activate)
     if opts.noop:
         for location, data in files_changed.iteritems():
             print "File: %s\n" % location

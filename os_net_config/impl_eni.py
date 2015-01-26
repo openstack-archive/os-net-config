@@ -187,9 +187,14 @@ class ENINetConfig(os_net_config.NetConfig):
         self.routes[interface_name] = data
         logger.debug('route data: %s' % self.routes[interface_name])
 
-    def apply(self, cleanup=False):
+    def apply(self, cleanup=False, activate=True):
         """Apply the network configuration.
 
+        :param cleanup: A boolean which indicates whether any undefined
+            (existing but not present in the object model) interface
+            should be disabled and deleted.
+        :param activate: A boolean which indicates if the config should
+            be activated by stopping/starting interfaces
         :returns: a dict of the format: filename/data which contains info
             for each file that was changed (or would be changed if in --noop
             mode).
@@ -210,19 +215,21 @@ class ENINetConfig(os_net_config.NetConfig):
             new_config += iface_data
 
         if (utils.diff(_network_config_path(), new_config)):
-            for interface in self.interfaces.keys():
-                self.ifdown(interface)
+            if activate:
+                for interface in self.interfaces.keys():
+                    self.ifdown(interface)
 
-            for bridge in self.bridges.keys():
-                self.ifdown(bridge, iftype='bridge')
+                for bridge in self.bridges.keys():
+                    self.ifdown(bridge, iftype='bridge')
 
             self.write_config(_network_config_path(), new_config)
 
-            for bridge in self.bridges.keys():
-                self.ifup(bridge, iftype='bridge')
+            if activate:
+                for bridge in self.bridges.keys():
+                    self.ifup(bridge, iftype='bridge')
 
-            for interface in self.interfaces.keys():
-                self.ifup(interface)
+                for interface in self.interfaces.keys():
+                    self.ifup(interface)
         else:
             logger.info('No interface changes are required.')
 

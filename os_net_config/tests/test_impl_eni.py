@@ -207,13 +207,17 @@ class TestENINetConfigApply(base.TestCase):
     def setUp(self):
         super(TestENINetConfigApply, self).setUp()
         self.temp_config_file = tempfile.NamedTemporaryFile()
+        self.ifup_interface_names = []
 
         def test_config_path():
             return self.temp_config_file.name
         self.stubs.Set(impl_eni, '_network_config_path', test_config_path)
 
         def test_execute(*args, **kwargs):
+            if args[0] == '/sbin/ifup':
+                self.ifup_interface_names.append(args[1])
             pass
+
         self.stubs.Set(processutils, 'execute', test_execute)
 
         self.provider = impl_eni.ENINetConfig()
@@ -232,6 +236,19 @@ class TestENINetConfigApply(base.TestCase):
         self.provider.apply()
         iface_data = utils.get_file_data(self.temp_config_file.name)
         self.assertEqual((_V4_IFACE_STATIC_IP + _RTS), iface_data)
+        self.assertIn('eth0', self.ifup_interface_names)
+
+    def test_apply_noactivate(self):
+        route = objects.Route('192.168.1.1', '172.19.0.0/24')
+        v4_addr = objects.Address('192.168.1.2/24')
+        interface = objects.Interface('eth0', addresses=[v4_addr],
+                                      routes=[route])
+        self.provider.add_interface(interface)
+
+        self.provider.apply(activate=False)
+        iface_data = utils.get_file_data(self.temp_config_file.name)
+        self.assertEqual((_V4_IFACE_STATIC_IP + _RTS), iface_data)
+        self.assertEqual([], self.ifup_interface_names)
 
     def test_dhcp_ovs_bridge_network_apply(self):
         interface = objects.Interface('eth0')
@@ -242,3 +259,5 @@ class TestENINetConfigApply(base.TestCase):
         self.provider.apply()
         iface_data = utils.get_file_data(self.temp_config_file.name)
         self.assertEqual((_OVS_BRIDGE_DHCP + _OVS_PORT_IFACE), iface_data)
+        self.assertIn('eth0', self.ifup_interface_names)
+        self.assertIn('br0', self.ifup_interface_names)
