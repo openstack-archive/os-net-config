@@ -17,9 +17,10 @@
 import os.path
 import tempfile
 
+from oslo_concurrency import processutils
+
 from os_net_config import impl_ifcfg
 from os_net_config import objects
-from os_net_config.openstack.common import processutils
 from os_net_config.tests import base
 from os_net_config import utils
 

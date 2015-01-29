@@ -16,7 +16,7 @@
 
 import logging
 import netaddr
-from openstack.common import strutils
+from oslo_utils import strutils
 
 from os_net_config import utils
 

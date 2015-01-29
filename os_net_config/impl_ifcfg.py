@@ -23,7 +23,7 @@ from os_net_config import objects
 from os_net_config import utils
 
 
-from os_net_config.openstack.common import processutils
+from oslo_concurrency import processutils
 
 
 logger = logging.getLogger(__name__)
