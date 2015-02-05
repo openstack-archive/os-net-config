@@ -112,3 +112,12 @@ class TestCli(base.TestCase):
         for dev in sanity_devices:
             self.assertIn(dev, stdout_yaml)
         self.assertEqual(stdout_yaml, stdout_json)
+
+    def test_bridge_noop_rootfs(self):
+        for provider in ('ifcfg', 'eni'):
+            bond_yaml = os.path.join(SAMPLE_BASE, 'bridge_dhcp.yaml')
+            stdout_yaml, stderr = self.run_cli('ARG0 --provider=%s --noop '
+                                               '--root-dir=/rootfs '
+                                               '-c %s' % (provider, bond_yaml))
+            self.assertEqual('', stderr)
+            self.assertIn('File: /rootfs/', stdout_yaml)

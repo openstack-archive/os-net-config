@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright 2014 Red Hat, Inc.
+# Copyright 2014-2015 Red Hat, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -45,8 +45,8 @@ def cleanup_pattern():
 class IfcfgNetConfig(os_net_config.NetConfig):
     """Configure network interfaces using the ifcfg format."""
 
-    def __init__(self, noop=False):
-        super(IfcfgNetConfig, self).__init__(noop)
+    def __init__(self, noop=False, root_dir=''):
+        super(IfcfgNetConfig, self).__init__(noop, root_dir)
         self.interface_data = {}
         self.route_data = {}
         self.bridge_data = {}
@@ -250,8 +250,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
 
         for interface_name, iface_data in self.interface_data.iteritems():
             route_data = self.route_data.get(interface_name, '')
-            interface_path = ifcfg_config_path(interface_name)
-            route_path = route_config_path(interface_name)
+            interface_path = self.root_dir + ifcfg_config_path(interface_name)
+            route_path = self.root_dir + route_config_path(interface_name)
             all_file_names.append(interface_path)
             all_file_names.append(route_path)
             if (utils.diff(interface_path, iface_data) or
@@ -265,8 +265,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
 
         for bridge_name, bridge_data in self.bridge_data.iteritems():
             route_data = self.route_data.get(bridge_name, '')
-            bridge_path = bridge_config_path(bridge_name)
-            bridge_route_path = route_config_path(bridge_name)
+            bridge_path = self.root_dir + bridge_config_path(bridge_name)
+            bridge_route_path = self.root_dir + route_config_path(bridge_name)
             all_file_names.append(bridge_path)
             all_file_names.append(bridge_route_path)
             if (utils.diff(bridge_path, bridge_data) or
