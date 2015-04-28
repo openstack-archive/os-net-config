@@ -145,6 +145,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             data += "HWADDR=%s\n" % base_opt.hwaddr
         if ovs_extra:
             data += "OVS_EXTRA=\"%s\"\n" % " -- ".join(ovs_extra)
+        if not base_opt.defroute:
+            data += "DEFROUTE=no\n"
         return data
 
     def _add_routes(self, interface_name, routes=[]):
