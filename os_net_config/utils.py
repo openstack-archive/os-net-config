@@ -81,7 +81,8 @@ def ordered_active_nics():
     for name in glob.iglob(_SYS_CLASS_NET + '/*'):
         nic = name[(len(_SYS_CLASS_NET) + 1):]
         if _is_active_nic(nic):
-            if nic.startswith('em') or nic.startswith('eth'):
+            if nic.startswith('em') or nic.startswith('eth') or \
+                    nic.startswith('eno'):
                 embedded_nics.append(nic)
             else:
                 nics.append(nic)
