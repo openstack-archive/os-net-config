@@ -72,6 +72,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         data += "DEVICE=%s\n" % base_opt.name
         data += "ONBOOT=yes\n"
         data += "HOTPLUG=no\n"
+        data += "NM_CONTROLLED=no\n"
         if isinstance(base_opt, objects.Vlan):
             data += "VLAN=yes\n"
             if base_opt.device:
