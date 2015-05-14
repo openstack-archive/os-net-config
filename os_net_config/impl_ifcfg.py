@@ -74,9 +74,11 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         data += "HOTPLUG=no\n"
         data += "NM_CONTROLLED=no\n"
         if isinstance(base_opt, objects.Vlan):
-            data += "VLAN=yes\n"
-            if base_opt.device:
-                data += "PHYSDEV=%s\n" % base_opt.device
+            if not base_opt.ovs_port:
+                # vlans on OVS bridges are internal ports (no device, etc)
+                data += "VLAN=yes\n"
+                if base_opt.device:
+                    data += "PHYSDEV=%s\n" % base_opt.device
         if base_opt.ovs_port:
             data += "DEVICETYPE=ovs\n"
             if base_opt.bridge_name:
