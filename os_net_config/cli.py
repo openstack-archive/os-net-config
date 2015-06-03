@@ -99,10 +99,10 @@ def configure_logger(verbose=False, debug=False):
     DATE_FORMAT = '%Y/%m/%d %I:%M:%S %p'
     log_level = logging.WARN
 
-    if verbose:
-        log_level = logging.INFO
-    elif debug:
+    if debug:
         log_level = logging.DEBUG
+    elif verbose:
+        log_level = logging.INFO
 
     logging.basicConfig(format=LOG_FORMAT, datefmt=DATE_FORMAT,
                         level=log_level)
