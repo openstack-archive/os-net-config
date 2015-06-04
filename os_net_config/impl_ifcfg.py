@@ -97,7 +97,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             if base_opt.members:
                 members = [member.name for member in base_opt.members]
                 self.member_names[base_opt.name] = members
-                data += ("OVSDHCPINTERFACES=\"%s\"\n" % " ".join(members))
+                if base_opt.use_dhcp:
+                    data += ("OVSDHCPINTERFACES=\"%s\"\n" % " ".join(members))
             if base_opt.primary_interface_name:
                 mac = utils.interface_mac(base_opt.primary_interface_name)
                 ovs_extra.append("set bridge %s other-config:hwaddr=%s" %
