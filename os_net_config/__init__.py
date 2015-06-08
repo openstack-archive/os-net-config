@@ -139,3 +139,7 @@ class NetConfig(object):
                      'link', 'set', 'dev', oldname, 'name', newname)
         self.execute(msg, '/sbin/ip',
                      'link', 'set', 'dev', newname, 'up')
+
+    def ovs_appctl(self, action, *parameters):
+        msg = 'Running ovs-appctl %s %s' % (action, parameters)
+        self.execute(msg, '/bin/ovs-appctl', action, *parameters)

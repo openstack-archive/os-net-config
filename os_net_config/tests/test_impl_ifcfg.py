@@ -328,6 +328,7 @@ class TestIfcfgNetConfigApply(base.TestCase):
         self.temp_bridge_file = tempfile.NamedTemporaryFile()
         self.temp_cleanup_file = tempfile.NamedTemporaryFile(delete=False)
         self.ifup_interface_names = []
+        self.ovs_appctl_cmds = []
 
         def test_ifcfg_path(name):
             return self.temp_ifcfg_file.name
@@ -348,6 +349,8 @@ class TestIfcfgNetConfigApply(base.TestCase):
         def test_execute(*args, **kwargs):
             if args[0] == '/sbin/ifup':
                 self.ifup_interface_names.append(args[1])
+            elif args[0] == '/bin/ovs-appctl':
+                self.ovs_appctl_cmds.append(' '.join(args))
             pass
         self.stubs.Set(processutils, 'execute', test_execute)
 
@@ -399,6 +402,19 @@ class TestIfcfgNetConfigApply(base.TestCase):
         self.provider.add_bridge(bridge)
         self.provider.apply(activate=False)
         self.assertEqual([], self.ifup_interface_names)
+
+    def test_bond_active_slave(self):
+        #setup and apply a bond
+        interface1 = objects.Interface('em1', primary=True)
+        interface2 = objects.Interface('em2')
+        bond = objects.OvsBond('bond1', use_dhcp=True,
+                               members=[interface1, interface2])
+        self.provider.add_interface(interface1)
+        self.provider.add_interface(interface2)
+        self.provider.add_bond(bond)
+        self.provider.apply()
+        ovs_appctl_cmds = '/bin/ovs-appctl bond/set-active-slave bond1 em1'
+        self.assertIn(ovs_appctl_cmds, self.ovs_appctl_cmds)
 
     def test_restart_children_on_change(self):
         # setup and apply a bridge

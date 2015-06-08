@@ -52,6 +52,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         self.bridge_data = {}
         self.member_names = {}
         self.renamed_interfaces = {}
+        self.bond_primary_ifaces = {}
         logger.info('Ifcfg net config provider created.')
 
     def child_members(self, name):
@@ -107,6 +108,9 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 data += "OVS_OPTIONS=\"%s\"\n" % base_opt.ovs_options
             ovs_extra.extend(base_opt.ovs_extra)
         elif isinstance(base_opt, objects.OvsBond):
+            if base_opt.primary_interface_name:
+                primary_name = base_opt.primary_interface_name
+                self.bond_primary_ifaces[base_opt.name] = primary_name
             data += "DEVICETYPE=ovs\n"
             data += "TYPE=OVSBond\n"
             if base_opt.use_dhcp:
@@ -212,7 +216,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
     def add_bond(self, bond):
         """Add an OvsBond object to the net config object.
 
-        :param bridge: The OvsBond object to add.
+        :param bond: The OvsBond object to add.
         """
         logger.info('adding bond: %s' % bond.name)
         data = self._add_common(bond)
@@ -300,5 +304,9 @@ class IfcfgNetConfig(os_net_config.NetConfig):
 
             for interface in restart_interfaces:
                 self.ifup(interface)
+
+            for bond in self.bond_primary_ifaces:
+                self.ovs_appctl('bond/set-active-slave', bond,
+                                self.bond_primary_ifaces[bond])
 
         return update_files
