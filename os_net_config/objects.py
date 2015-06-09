@@ -338,6 +338,10 @@ class OvsBond(_BaseOpts):
                     self.primary_interface_name = member.primary_interface_name
                 else:
                     self.primary_interface_name = member.name
+        if not self.primary_interface_name:
+            bond_members = list(self.members)
+            bond_members.sort(key=lambda x: x.name)
+            self.primary_interface_name = bond_members[0].name
 
     @staticmethod
     def from_json(json):

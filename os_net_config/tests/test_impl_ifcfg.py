@@ -405,7 +405,20 @@ class TestIfcfgNetConfigApply(base.TestCase):
 
     def test_bond_active_slave(self):
         #setup and apply a bond
-        interface1 = objects.Interface('em1', primary=True)
+        interface1 = objects.Interface('em1')
+        interface2 = objects.Interface('em2', primary=True)
+        bond = objects.OvsBond('bond1', use_dhcp=True,
+                               members=[interface1, interface2])
+        self.provider.add_interface(interface1)
+        self.provider.add_interface(interface2)
+        self.provider.add_bond(bond)
+        self.provider.apply()
+        ovs_appctl_cmds = '/bin/ovs-appctl bond/set-active-slave bond1 em2'
+        self.assertIn(ovs_appctl_cmds, self.ovs_appctl_cmds)
+
+    def test_bond_active_ordering(self):
+        #setup and apply a bond
+        interface1 = objects.Interface('em1')
         interface2 = objects.Interface('em2')
         bond = objects.OvsBond('bond1', use_dhcp=True,
                                members=[interface1, interface2])
