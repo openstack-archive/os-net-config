@@ -155,6 +155,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             data += "OVS_EXTRA=\"%s\"\n" % " -- ".join(ovs_extra)
         if not base_opt.defroute:
             data += "DEFROUTE=no\n"
+        if base_opt.dhclient_args:
+            data += "DHCLIENTARGS=%s\n" % base_opt.dhclient_args
         return data
 
     def _add_routes(self, interface_name, routes=[]):
