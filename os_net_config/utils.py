@@ -17,6 +17,7 @@
 import glob
 import logging
 import os
+import re
 
 
 logger = logging.getLogger(__name__)
@@ -75,6 +76,12 @@ def _is_active_nic(interface_name):
         return False
 
 
+def _natural_sort_key(s):
+    nsre = re.compile('([0-9]+)')
+    return [int(text) if text.isdigit() else text
+            for text in re.split(nsre, s)]
+
+
 def ordered_active_nics():
     embedded_nics = []
     nics = []
@@ -86,7 +93,11 @@ def ordered_active_nics():
                 embedded_nics.append(nic)
             else:
                 nics.append(nic)
-    return sorted(embedded_nics) + sorted(nics)
+    # NOTE: we could just natural sort all active devices,
+    # but this ensures em, eno, and eth are ordered first
+    # (more backwards compatible)
+    return (sorted(embedded_nics, key=_natural_sort_key) +
+            sorted(nics, key=_natural_sort_key))
 
 
 def diff(filename, data):

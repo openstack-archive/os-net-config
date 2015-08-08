@@ -33,7 +33,8 @@ class TestUtils(base.TestCase):
             return True
         self.stubs.Set(utils, '_is_active_nic', test_is_active_nic)
 
-        for nic in ['a1', 'em1', 'em2', 'eth2', 'z1']:
+        for nic in ['a1', 'em1', 'em2', 'eth2', 'z1',
+                    'enp8s0', 'enp10s0', 'enp1s0f0']:
             with open(os.path.join(tmpdir, nic), 'w') as f:
                 f.write(nic)
 
@@ -42,6 +43,9 @@ class TestUtils(base.TestCase):
         self.assertEqual('em2', nics[1])
         self.assertEqual('eth2', nics[2])
         self.assertEqual('a1', nics[3])
-        self.assertEqual('z1', nics[4])
+        self.assertEqual('enp1s0f0', nics[4])
+        self.assertEqual('enp8s0', nics[5])
+        self.assertEqual('enp10s0', nics[6])
+        self.assertEqual('z1', nics[7])
 
         shutil.rmtree(tmpdir)
