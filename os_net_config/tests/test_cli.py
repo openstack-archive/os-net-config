@@ -17,7 +17,9 @@
 import os.path
 import sys
 
+import os_net_config
 from os_net_config import cli
+from os_net_config import impl_ifcfg
 from os_net_config.tests import base
 import six
 
@@ -121,3 +123,26 @@ class TestCli(base.TestCase):
                                                '-c %s' % (provider, bond_yaml))
             self.assertEqual('', stderr)
             self.assertIn('File: /rootfs/', stdout_yaml)
+
+    def test_interface_noop_detailed_exit_codes(self):
+        interface_yaml = os.path.join(SAMPLE_BASE, 'interface.yaml')
+        stdout_yaml, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
+                                           '-c %s --detailed-exit-codes'
+                                           % interface_yaml, exitcodes=(2,))
+
+    def test_interface_noop_detailed_exit_codes_no_changes(self):
+        interface_yaml = os.path.join(SAMPLE_BASE, 'interface.yaml')
+
+        class TestImpl(os_net_config.NetConfig):
+
+            def add_interface(self, interface):
+                pass
+
+            def apply(self, cleanup=False, activate=True):
+                # this fake implementation returns no changes
+                return {}
+
+        self.stubs.Set(impl_ifcfg, 'IfcfgNetConfig', TestImpl)
+        stdout_yaml, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
+                                           '-c %s --detailed-exit-codes'
+                                           % interface_yaml, exitcodes=(0,))

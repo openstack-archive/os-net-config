@@ -48,6 +48,13 @@ def parse_opts(argv):
     parser.add_argument('-r', '--root-dir', metavar='ROOT_DIR',
                         help="""The root directory of the filesystem.""",
                         default='')
+    parser.add_argument('--detailed-exit-codes',
+                        action='store_true',
+                        help="""Enable detailed exit codes. """
+                        """If enabled an exit code of '2' means """
+                        """that files were modified."""
+                        """Disabled by default.""",
+                        default=False)
     parser.add_argument(
         '-d', '--debug',
         dest="debug",
@@ -183,6 +190,10 @@ def main(argv=sys.argv):
             print("File: %s\n" % location)
             print(data)
             print("----")
+
+    if opts.detailed_exit_codes and len(files_changed) > 0:
+        return 2
+
     return 0
 
 
