@@ -31,7 +31,7 @@ class NotImplemented(Exception):
 
 
 class NetConfig(object):
-    """Configure network interfaces using the ifcfg format."""
+    """Common network config methods class."""
 
     def __init__(self, noop=False, root_dir=''):
         self.noop = noop
