@@ -117,6 +117,7 @@ class Address(object):
         ip_nw = netaddr.IPNetwork(self.ip_netmask)
         self.ip = str(ip_nw.ip)
         self.netmask = str(ip_nw.netmask)
+        self.prefixlen = ip_nw.prefixlen
         self.version = ip_nw.version
 
     @staticmethod

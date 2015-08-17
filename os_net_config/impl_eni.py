@@ -44,22 +44,27 @@ class ENINetConfig(os_net_config.NetConfig):
         self.bridges = {}
         logger.info('ENI net config provider created.')
 
-    def _add_common(self, interface, static_addr=None):
+    def _add_common(self, interface, static_addr=None, ip_version=4):
 
         ovs_extra = []
         data = ""
         address_data = ""
         if static_addr:
             address_data += "    address %s\n" % static_addr.ip
-            address_data += "    netmask %s\n" % static_addr.netmask
+            if ip_version == 6:
+                address_data += "    netmask %s\n" % static_addr.prefixlen
+            else:
+                address_data += "    netmask %s\n" % static_addr.netmask
         else:
             v4_addresses = interface.v4_addresses()
             if v4_addresses:
-                data += self._add_common(interface, v4_addresses[0])
+                for v4_address in v4_addresses:
+                    data += self._add_common(interface, v4_address)
 
             v6_addresses = interface.v6_addresses()
             if v6_addresses:
-                data += self._add_common(interface, v6_addresses[0])
+                for v6_address in v6_addresses:
+                    data += self._add_common(interface, v6_address, 6)
 
             if data:
                 return data
