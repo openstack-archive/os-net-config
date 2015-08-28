@@ -56,6 +56,10 @@ class NetConfig(object):
             self.add_bond(obj)
             for member in obj.members:
                 self.add_object(member)
+        elif isinstance(obj, objects.LinuxBond):
+            self.add_linux_bond(obj)
+            for member in obj.members:
+                self.add_object(member)
 
     def add_interface(self, interface):
         """Add an Interface object to the net config object.
@@ -84,6 +88,13 @@ class NetConfig(object):
         :param bridge: The OvsBond object to add.
         """
         raise NotImplemented("add_bond is not implemented.")
+
+    def add_linux_bond(self, bond):
+        """Add a LinuxBond object to the net config object.
+
+        :param bridge: The LinuxBond object to add.
+        """
+        raise NotImplemented("add_linuxbond is not implemented.")
 
     def apply(self, cleanup=False):
         """Apply the network configuration.
