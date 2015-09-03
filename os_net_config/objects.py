@@ -42,6 +42,8 @@ def object_from_json(json):
         return OvsBond.from_json(json)
     elif obj_type == "linux_bond":
         return LinuxBond.from_json(json)
+    elif obj_type == "linux_bridge":
+        return LinuxBridge.from_json(json)
 
 
 def _get_required_field(json, name, object_name):
@@ -159,6 +161,7 @@ class _BaseOpts(object):
         self.dhclient_args = dhclient_args
         self.dns_servers = dns_servers
         self.bridge_name = None  # internal
+        self.linux_bridge_name = None  # internal
         self.ovs_port = False  # internal
         self.primary_interface_name = None  # internal
 
@@ -332,6 +335,61 @@ class OvsBridge(_BaseOpts):
                          dhclient_args=dhclient_args, dns_servers=dns_servers)
 
 
+class LinuxBridge(_BaseOpts):
+    """Base class for Linux bridges."""
+
+    def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
+                 routes=None, mtu=1500, members=None, nic_mapping=None,
+                 persist_mapping=False, defroute=True, dhclient_args=None,
+                 dns_servers=None):
+        addresses = addresses or []
+        routes = routes or []
+        members = members or []
+        dns_servers = dns_servers or []
+        super(LinuxBridge, self).__init__(name, use_dhcp, use_dhcpv6,
+                                          addresses, routes, mtu, False,
+                                          nic_mapping, persist_mapping,
+                                          defroute, dhclient_args, dns_servers)
+        self.members = members
+        for member in self.members:
+            member.linux_bridge_name = name
+            member.ovs_port = False
+            if member.primary:
+                if self.primary_interface_name:
+                    msg = 'Only one primary interface allowed per bridge.'
+                    raise InvalidConfigException(msg)
+                if member.primary_interface_name:
+                    self.primary_interface_name = member.primary_interface_name
+                else:
+                    self.primary_interface_name = member.name
+
+    @staticmethod
+    def from_json(json):
+        name = _get_required_field(json, 'name', 'LinuxBridge')
+        (use_dhcp, use_dhcpv6, addresses, routes, mtu, nic_mapping,
+         persist_mapping, defroute, dhclient_args,
+         dns_servers) = _BaseOpts.base_opts_from_json(
+             json, include_primary=False)
+        members = []
+
+        # members
+        members_json = json.get('members')
+        if members_json:
+            if isinstance(members_json, list):
+                for member in members_json:
+                    members.append(object_from_json(member))
+            else:
+                msg = 'Members must be a list.'
+                raise InvalidConfigException(msg)
+
+        return LinuxBridge(name, use_dhcp=use_dhcp, use_dhcpv6=use_dhcpv6,
+                           addresses=addresses, routes=routes, mtu=mtu,
+                           members=members, nic_mapping=nic_mapping,
+                           persist_mapping=persist_mapping, defroute=defroute,
+                           dhclient_args=dhclient_args,
+                           dns_servers=dns_servers)
+
+
 class LinuxBond(_BaseOpts):
     """Base class for Linux bonds."""
 
@@ -420,8 +478,8 @@ class OvsBond(_BaseOpts):
     def from_json(json):
         name = _get_required_field(json, 'name', 'OvsBond')
         (use_dhcp, use_dhcpv6, addresses, routes, mtu, nic_mapping,
-         persist_mapping, defroute,
-         dhclient_args, dns_servers) = _BaseOpts.base_opts_from_json(
+         persist_mapping, defroute, dhclient_args,
+         dns_servers) = _BaseOpts.base_opts_from_json(
              json, include_primary=False)
         ovs_options = json.get('ovs_options')
         ovs_extra = json.get('ovs_extra', [])

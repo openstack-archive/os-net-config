@@ -50,6 +50,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         self.interface_data = {}
         self.route_data = {}
         self.bridge_data = {}
+        self.linuxbridge_data = {}
         self.linuxbond_data = {}
         self.member_names = {}
         self.bond_slaves = {}
@@ -92,6 +93,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 else:
                     data += "TYPE=OVSPort\n"
                     data += "OVS_BRIDGE=%s\n" % base_opt.bridge_name
+        if base_opt.linux_bridge_name:
+            data += "BRIDGE=%s\n" % base_opt.linux_bridge_name
         if isinstance(base_opt, objects.OvsBridge):
             data += "DEVICETYPE=ovs\n"
             data += "TYPE=OVSBridge\n"
@@ -124,6 +127,18 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             if base_opt.ovs_options:
                 data += "OVS_OPTIONS=\"%s\"\n" % base_opt.ovs_options
             ovs_extra.extend(base_opt.ovs_extra)
+        elif isinstance(base_opt, objects.LinuxBridge):
+            data += "TYPE=Bridge\n"
+            data += "DELAY=0\n"
+            if base_opt.use_dhcp:
+                data += "BOOTPROTO=dhcp\n"
+            if base_opt.members:
+                members = [member.name for member in base_opt.members]
+                self.member_names[base_opt.name] = members
+            if base_opt.primary_interface_name:
+                primary_name = base_opt.primary_interface_name
+                primary_mac = utils.interface_mac(primary_name)
+                data += "MACADDR=\"%s\"\n" % primary_mac
         elif isinstance(base_opt, objects.LinuxBond):
             if base_opt.primary_interface_name:
                 primary_name = base_opt.primary_interface_name
@@ -240,6 +255,18 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         if bridge.routes:
             self._add_routes(bridge.name, bridge.routes)
 
+    def add_linux_bridge(self, bridge):
+        """Add a LinuxBridge object to the net config object.
+
+        :param bridge: The LinuxBridge object to add.
+        """
+        logger.info('adding linux bridge: %s' % bridge.name)
+        data = self._add_common(bridge)
+        logger.debug('bridge data: %s' % data)
+        self.linuxbridge_data[bridge.name] = data
+        if bridge.routes:
+            self._add_routes(bridge.name, bridge.routes)
+
     def add_bond(self, bond):
         """Add an OvsBond object to the net config object.
 
@@ -302,6 +329,20 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                             interface_name)
 
         for bridge_name, bridge_data in self.bridge_data.iteritems():
+            route_data = self.route_data.get(bridge_name, '')
+            bridge_path = self.root_dir + bridge_config_path(bridge_name)
+            bridge_route_path = self.root_dir + route_config_path(bridge_name)
+            all_file_names.append(bridge_path)
+            all_file_names.append(bridge_route_path)
+            if (utils.diff(bridge_path, bridge_data) or
+                utils.diff(bridge_route_path, route_data)):
+                restart_bridges.append(bridge_name)
+                restart_interfaces.extend(self.child_members(bridge_name))
+                update_files[bridge_path] = bridge_data
+                update_files[bridge_route_path] = route_data
+                logger.info('No changes required for bridge: %s' % bridge_name)
+
+        for bridge_name, bridge_data in self.linuxbridge_data.iteritems():
             route_data = self.route_data.get(bridge_name, '')
             bridge_path = self.root_dir + bridge_config_path(bridge_name)
             bridge_route_path = self.root_dir + route_config_path(bridge_name)
