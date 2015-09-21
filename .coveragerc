@@ -4,4 +4,4 @@ source = os_net_config
 omit = os_net_config/tests/*,os_net_config/openstack/*
 
 [report]
-ignore-errors = True
+ignore_errors = True
