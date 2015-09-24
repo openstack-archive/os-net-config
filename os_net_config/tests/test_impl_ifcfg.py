@@ -489,6 +489,15 @@ class TestIfcfgNetConfigApply(base.TestCase):
         self.assertIn('em1', self.ifup_interface_names)
         self.assertIn('em2', self.ifup_interface_names)
 
+    def test_restart_interface_counts(self):
+        interface = objects.Interface('em1')
+        self.provider.add_interface(interface)
+        interface2 = objects.Interface('em2')
+        self.provider.add_interface(interface2)
+        self.provider.apply()
+        self.assertEqual(1, self.ifup_interface_names.count("em1"))
+        self.assertEqual(1, self.ifup_interface_names.count("em2"))
+
     def test_vlan_apply(self):
         vlan = objects.Vlan('em1', 5)
         self.provider.add_vlan(vlan)

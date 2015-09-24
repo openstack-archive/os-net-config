@@ -62,7 +62,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 children.add(member)
                 children.update(self.child_members(member))
         except KeyError:
-            children.add(name)
+            pass
         return children
 
     def _add_common(self, base_opt):
