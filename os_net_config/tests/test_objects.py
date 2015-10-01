@@ -119,6 +119,17 @@ class TestInterface(base.TestCase):
         interface1 = objects.object_from_json(json.loads(data))
         self.assertEqual("--foobar", interface1.dhclient_args)
 
+    def test_from_json_dns_servers(self):
+        data = """{
+"type": "interface",
+"name": "em1",
+"use_dhcp": true,
+"dns_servers": ["1.2.3.4"]
+}
+"""
+        interface1 = objects.object_from_json(json.loads(data))
+        self.assertEqual(["1.2.3.4"], interface1.dns_servers)
+
     def test_from_json_dhcp_nic1(self):
         def dummy_numbered_nics(nic_mapping=None):
             return {"nic1": "em3"}
