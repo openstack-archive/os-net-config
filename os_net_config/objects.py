@@ -132,10 +132,13 @@ class Address(object):
 class _BaseOpts(object):
     """Base abstraction for logical port options."""
 
-    def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=[],
-                 routes=[], mtu=1500, primary=False, nic_mapping=None,
+    def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
+                 routes=None, mtu=1500, primary=False, nic_mapping=None,
                  persist_mapping=False, defroute=True, dhclient_args=None,
-                 dns_servers=[]):
+                 dns_servers=None):
+        addresses = addresses or []
+        routes = routes or []
+        dns_servers = dns_servers or []
         numbered_nic_names = _numbered_nics(nic_mapping)
         self.hwaddr = None
         self.hwname = None
@@ -231,10 +234,13 @@ class _BaseOpts(object):
 class Interface(_BaseOpts):
     """Base class for network interfaces."""
 
-    def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=[],
-                 routes=[], mtu=1500, primary=False, nic_mapping=None,
+    def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
+                 routes=None, mtu=1500, primary=False, nic_mapping=None,
                  persist_mapping=False, defroute=True, dhclient_args=None,
-                 dns_servers=[]):
+                 dns_servers=None):
+        addresses = addresses or []
+        routes = routes or []
+        dns_servers = dns_servers or []
         super(Interface, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
                                         routes, mtu, primary, nic_mapping,
                                         persist_mapping, defroute,
@@ -255,9 +261,12 @@ class Vlan(_BaseOpts):
     """
 
     def __init__(self, device, vlan_id, use_dhcp=False, use_dhcpv6=False,
-                 addresses=[], routes=[], mtu=1500, primary=False,
+                 addresses=None, routes=None, mtu=1500, primary=False,
                  nic_mapping=None, persist_mapping=False, defroute=True,
-                 dhclient_args=None, dns_servers=[]):
+                 dhclient_args=None, dns_servers=None):
+        addresses = addresses or []
+        routes = routes or []
+        dns_servers = dns_servers or []
         name = 'vlan%i' % vlan_id
         super(Vlan, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
                                    routes, mtu, primary, nic_mapping,
@@ -283,10 +292,15 @@ class Vlan(_BaseOpts):
 class OvsBridge(_BaseOpts):
     """Base class for OVS bridges."""
 
-    def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=[],
-                 routes=[], mtu=1500, members=[], ovs_options=None,
-                 ovs_extra=[], nic_mapping=None, persist_mapping=False,
-                 defroute=True, dhclient_args=None, dns_servers=[]):
+    def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
+                 routes=None, mtu=1500, members=None, ovs_options=None,
+                 ovs_extra=None, nic_mapping=None, persist_mapping=False,
+                 defroute=True, dhclient_args=None, dns_servers=None):
+        addresses = addresses or []
+        routes = routes or []
+        members = members or []
+        ovs_extra = ovs_extra or []
+        dns_servers = dns_servers or []
         super(OvsBridge, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
                                         routes, mtu, False, nic_mapping,
                                         persist_mapping, defroute,
@@ -448,11 +462,16 @@ class LinuxBond(_BaseOpts):
 class OvsBond(_BaseOpts):
     """Base class for OVS bonds."""
 
-    def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=[],
-                 routes=[], mtu=1500, primary=False, members=[],
-                 ovs_options=None, ovs_extra=[], nic_mapping=None,
+    def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
+                 routes=None, mtu=1500, primary=False, members=None,
+                 ovs_options=None, ovs_extra=None, nic_mapping=None,
                  persist_mapping=False, defroute=True, dhclient_args=None,
-                 dns_servers=[]):
+                 dns_servers=None):
+        addresses = addresses or []
+        routes = routes or []
+        members = members or []
+        ovs_extra = ovs_extra or []
+        dns_servers = dns_servers or []
         super(OvsBond, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
                                       routes, mtu, primary, nic_mapping,
                                       persist_mapping, defroute, dhclient_args,
