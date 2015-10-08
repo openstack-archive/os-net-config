@@ -136,19 +136,24 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         if base_opt.use_dhcpv6:
             data += "DHCPV6C=yes\n"
         elif base_opt.addresses:
-            #TODO(dprince): Do we want to support multiple addresses?
             v4_addresses = base_opt.v4_addresses()
             if v4_addresses:
-                first_v4 = v4_addresses[0]
                 data += "BOOTPROTO=static\n"
-                data += "IPADDR=%s\n" % first_v4.ip
-                data += "NETMASK=%s\n" % first_v4.netmask
+                for i, address in enumerate(v4_addresses):
+                    num = '%s' % i if i else ''
+                    data += "IPADDR%s=%s\n" % (num, address.ip)
+                    data += "NETMASK%s=%s\n" % (num, address.netmask)
 
             v6_addresses = base_opt.v6_addresses()
             if v6_addresses:
                 first_v6 = v6_addresses[0]
                 data += "IPV6_AUTOCONF=no\n"
-                data += "IPV6ADDR=%s\n" % first_v6.ip
+                data += "IPV6ADDR=%s\n" % first_v6.ip_netmask
+                if len(v6_addresses) > 1:
+                    secondaries_v6 = " ".join(map(lambda a: a.ip_netmask,
+                                                  v6_addresses[1:]))
+                    data += "IPV6ADDR_SECONDARIES=\"%s\"\n" % secondaries_v6
+
         if base_opt.hwaddr:
             data += "HWADDR=%s\n" % base_opt.hwaddr
         if ovs_extra:

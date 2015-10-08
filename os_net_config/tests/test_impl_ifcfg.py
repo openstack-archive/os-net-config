@@ -41,10 +41,19 @@ NETMASK=255.255.255.0
 
 _V4_IFCFG_MAPPED = _V4_IFCFG.replace('em1', 'nic1') + "HWADDR=a1:b2:c3:d4:e5\n"
 
+_V4_IFCFG_MULTIPLE = _V4_IFCFG + """IPADDR1=192.168.1.3
+NETMASK1=255.255.255.255
+IPADDR2=10.0.0.2
+NETMASK2=255.0.0.0
+"""
+
 _V6_IFCFG = _BASE_IFCFG + """IPV6INIT=yes
 IPV6_AUTOCONF=no
-IPV6ADDR=2001:abc:a::
+IPV6ADDR=2001:abc:a::/64
 """
+
+_V6_IFCFG_MULTIPLE = (_V6_IFCFG + "IPV6ADDR_SECONDARIES=\"2001:abc:b::1/64 " +
+                      "2001:abc:c::2/96\"\n")
 
 _OVS_IFCFG = _BASE_IFCFG + "DEVICETYPE=ovs\nBOOTPROTO=none\n"
 
@@ -171,6 +180,15 @@ class TestIfcfgNetConfig(base.TestCase):
         self.assertEqual(_V4_IFCFG, self.get_interface_config())
         self.assertEqual('', self.get_route_config())
 
+    def test_add_interface_with_v4_multiple(self):
+        addresses = [objects.Address('192.168.1.2/24'),
+                     objects.Address('192.168.1.3/32'),
+                     objects.Address('10.0.0.2/8')]
+        interface = objects.Interface('em1', addresses=addresses)
+        self.provider.add_interface(interface)
+        self.assertEqual(_V4_IFCFG_MULTIPLE, self.get_interface_config())
+        self.assertEqual('', self.get_route_config())
+
     def test_add_interface_map_persisted(self):
         def test_interface_mac(name):
             macs = {'em1': 'a1:b2:c3:d4:e5'}
@@ -193,6 +211,14 @@ class TestIfcfgNetConfig(base.TestCase):
         interface = objects.Interface('em1', addresses=[v6_addr])
         self.provider.add_interface(interface)
         self.assertEqual(_V6_IFCFG, self.get_interface_config())
+
+    def test_add_interface_with_v6_multiple(self):
+        addresses = [objects.Address('2001:abc:a::/64'),
+                     objects.Address('2001:abc:b::1/64'),
+                     objects.Address('2001:abc:c::2/96')]
+        interface = objects.Interface('em1', addresses=addresses)
+        self.provider.add_interface(interface)
+        self.assertEqual(_V6_IFCFG_MULTIPLE, self.get_interface_config())
 
     def test_network_with_routes(self):
         route1 = objects.Route('192.168.1.1', default=True)
