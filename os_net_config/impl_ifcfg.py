@@ -50,7 +50,9 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         self.interface_data = {}
         self.route_data = {}
         self.bridge_data = {}
+        self.linuxbond_data = {}
         self.member_names = {}
+        self.bond_slaves = {}
         self.renamed_interfaces = {}
         self.bond_primary_ifaces = {}
         logger.info('Ifcfg net config provider created.')
@@ -122,7 +124,24 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             if base_opt.ovs_options:
                 data += "OVS_OPTIONS=\"%s\"\n" % base_opt.ovs_options
             ovs_extra.extend(base_opt.ovs_extra)
+        elif isinstance(base_opt, objects.LinuxBond):
+            if base_opt.primary_interface_name:
+                primary_name = base_opt.primary_interface_name
+                primary_mac = utils.interface_mac(primary_name)
+                data += "MACADDR=\"%s\"\n" % primary_mac
+            if base_opt.use_dhcp:
+                data += "BOOTPROTO=dhcp\n"
+            if base_opt.members:
+                members = [member.name for member in base_opt.members]
+                self.member_names[base_opt.name] = members
+                for member in members:
+                    self.bond_slaves[member] = base_opt.name
+            if base_opt.bonding_options:
+                data += "BONDING_OPTS=\"%s\"\n" % base_opt.bonding_options
         else:
+            if base_opt.name in self.bond_slaves:
+                data += "MASTER=%s\n" % self.bond_slaves[base_opt.name]
+                data += "SLAVE=yes\n"
             if base_opt.use_dhcp:
                 data += "BOOTPROTO=dhcp\n"
             elif not base_opt.addresses:
@@ -238,6 +257,19 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         if bond.routes:
             self._add_routes(bond.name, bond.routes)
 
+    def add_linux_bond(self, bond):
+        """Add a LinuxBond object to the net config object.
+
+        :param bond: The LinuxBond object to add.
+        """
+        logger.info('adding linux bond: %s' % bond.name)
+        data = self._add_common(bond)
+        logger.debug('bond data: %s' % data)
+        self.interface_data[bond.name] = data
+        self.linuxbond_data[bond.name] = data
+        if bond.routes:
+            self._add_routes(bond.name, bond.routes)
+
     def apply(self, cleanup=False, activate=True):
         """Apply the network configuration.
 
@@ -287,6 +319,21 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 update_files[bridge_path] = bridge_data
                 update_files[bridge_route_path] = route_data
                 logger.info('No changes required for bridge: %s' % bridge_name)
+
+        for bond_name, bond_data in self.linuxbond_data.iteritems():
+            route_data = self.route_data.get(bond_name, '')
+            bond_path = self.root_dir + bridge_config_path(bond_name)
+            bond_route_path = self.root_dir + route_config_path(bond_name)
+            all_file_names.append(bond_path)
+            all_file_names.append(bond_route_path)
+            if (utils.diff(bond_path, bond_data) or
+                utils.diff(bond_route_path, route_data)):
+                restart_interfaces.append(bond_name)
+                restart_interfaces.extend(self.child_members(bond_name))
+                update_files[bond_path] = bond_data
+                update_files[bond_route_path] = route_data
+                logger.info('No changes required for linux bond: %s' %
+                            bond_name)
 
         if cleanup:
             for ifcfg_file in glob.iglob(cleanup_pattern()):

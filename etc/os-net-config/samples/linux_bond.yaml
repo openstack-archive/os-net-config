@@ -1,0 +1,13 @@
+network_config:
+  -
+    type: linux_bond
+    name: bond1
+    use_dhcp: true
+    bonding_options: "mode=active-backup"
+    members:
+      -
+        type: interface
+        name: em1
+      -
+        type: interface
+        name: em2
