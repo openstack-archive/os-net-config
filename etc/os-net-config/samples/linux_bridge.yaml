@@ -1,0 +1,9 @@
+network_config:
+  -
+    type: linux_bridge
+    name: br-ctlplane
+    use_dhcp: true
+    members:
+      -
+        type: interface
+        name: em1
