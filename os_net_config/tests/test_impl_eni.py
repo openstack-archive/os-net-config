@@ -32,10 +32,22 @@ _V4_IFACE_STATIC_IP = _AUTO + """iface eth0 inet static
     netmask 255.255.255.0
 """
 
+_V4_IFACE_STATIC_IP_MULTIPLE = (_V4_IFACE_STATIC_IP + _AUTO +
+                                """iface eth0 inet static
+    address 10.0.0.2
+    netmask 255.0.0.0
+""")
+
 _V6_IFACE_STATIC_IP = _AUTO + """iface eth0 inet6 static
     address fe80::2677:3ff:fe7d:4c
-    netmask ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+    netmask 128
 """
+
+_V6_IFACE_STATIC_IP_MULTIPLE = (_V6_IFACE_STATIC_IP + _AUTO +
+                                """iface eth0 inet6 static
+    address 2001:abcd::2
+    netmask 64
+""")
 
 _IFACE_DHCP = _AUTO + "iface eth0 inet dhcp\n"
 
@@ -112,11 +124,27 @@ class TestENINetConfig(base.TestCase):
         self.provider.add_interface(interface)
         self.assertEqual(_V4_IFACE_STATIC_IP, self.get_interface_config())
 
+    def test_add_interface_with_v4_multiple(self):
+        v4_addresses = [objects.Address('192.168.1.2/24'),
+                        objects.Address('10.0.0.2/8')]
+        interface = self._default_interface(v4_addresses)
+        self.provider.add_interface(interface)
+        self.assertEqual(_V4_IFACE_STATIC_IP_MULTIPLE,
+                         self.get_interface_config())
+
     def test_add_interface_with_v6(self):
         v6_addr = objects.Address('fe80::2677:3ff:fe7d:4c')
         interface = self._default_interface([v6_addr])
         self.provider.add_interface(interface)
         self.assertEqual(_V6_IFACE_STATIC_IP, self.get_interface_config())
+
+    def test_add_interface_with_v6_multiple(self):
+        v6_addresses = [objects.Address('fe80::2677:3ff:fe7d:4c'),
+                        objects.Address('2001:abcd::2/64')]
+        interface = self._default_interface(v6_addresses)
+        self.provider.add_interface(interface)
+        self.assertEqual(_V6_IFACE_STATIC_IP_MULTIPLE,
+                         self.get_interface_config())
 
     def test_add_interface_dhcp(self):
         interface = self._default_interface()
