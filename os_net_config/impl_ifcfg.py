@@ -16,6 +16,7 @@
 
 import glob
 import logging
+import re
 
 import os_net_config
 from os_net_config import objects
@@ -83,6 +84,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 data += "VLAN=yes\n"
                 if base_opt.device:
                     data += "PHYSDEV=%s\n" % base_opt.device
+        elif re.match('\w+\.\d+$', base_opt.name):
+            data += "VLAN=yes\n"
         if base_opt.ovs_port:
             data += "DEVICETYPE=ovs\n"
             if base_opt.bridge_name:
