@@ -29,7 +29,7 @@ class TestRoute(base.TestCase):
         route = objects.Route.from_json(json.loads(data))
         self.assertEqual("172.19.0.1", route.next_hop)
         self.assertEqual("172.19.0.0/24", route.ip_netmask)
-        self.assertEqual(False, route.default)
+        self.assertFalse(route.default)
 
     def test_from_json_default_route(self):
         data = '{"next_hop": "172.19.0.1", "ip_netmask": "172.19.0.0/24", ' \
@@ -37,14 +37,14 @@ class TestRoute(base.TestCase):
         route = objects.Route.from_json(json.loads(data))
         self.assertEqual("172.19.0.1", route.next_hop)
         self.assertEqual("172.19.0.0/24", route.ip_netmask)
-        self.assertEqual(True, route.default)
+        self.assertTrue(route.default)
 
         data = '{"next_hop": "172.19.0.1", "ip_netmask": "172.19.0.0/24", ' \
                '"default": "true"}'
         route = objects.Route.from_json(json.loads(data))
         self.assertEqual("172.19.0.1", route.next_hop)
         self.assertEqual("172.19.0.0/24", route.ip_netmask)
-        self.assertEqual(True, route.default)
+        self.assertTrue(route.default)
 
 
 class TestAddress(base.TestCase):
@@ -92,7 +92,7 @@ class TestInterface(base.TestCase):
         data = '{"type": "interface", "name": "em1", "use_dhcp": true}'
         interface = objects.object_from_json(json.loads(data))
         self.assertEqual("em1", interface.name)
-        self.assertEqual(True, interface.use_dhcp)
+        self.assertTrue(interface.use_dhcp)
 
     def test_from_json_defroute(self):
         data = '{"type": "interface", "name": "em1", "use_dhcp": true}'
@@ -105,8 +105,8 @@ class TestInterface(base.TestCase):
 }
 """
         interface2 = objects.object_from_json(json.loads(data))
-        self.assertEqual(True, interface1.defroute)
-        self.assertEqual(False, interface2.defroute)
+        self.assertTrue(interface1.defroute)
+        self.assertFalse(interface2.defroute)
 
     def test_from_json_dhclient_args(self):
         data = """{
@@ -138,7 +138,7 @@ class TestInterface(base.TestCase):
         data = '{"type": "interface", "name": "nic1", "use_dhcp": true}'
         interface = objects.object_from_json(json.loads(data))
         self.assertEqual("em3", interface.name)
-        self.assertEqual(True, interface.use_dhcp)
+        self.assertTrue(interface.use_dhcp)
 
     def test_from_json_with_addresses(self):
         data = """{
@@ -157,8 +157,8 @@ class TestInterface(base.TestCase):
 """
         interface = objects.object_from_json(json.loads(data))
         self.assertEqual("em1", interface.name)
-        self.assertEqual(False, interface.use_dhcp)
-        self.assertEqual(False, interface.use_dhcpv6)
+        self.assertFalse(interface.use_dhcp)
+        self.assertFalse(interface.use_dhcpv6)
         self.assertEqual(1501, interface.mtu)
         address1 = interface.v4_addresses()[0]
         self.assertEqual("192.0.2.1", address1.ip)
@@ -176,7 +176,7 @@ class TestVlan(base.TestCase):
         vlan = objects.object_from_json(json.loads(data))
         self.assertEqual("em1", vlan.device)
         self.assertEqual(16, vlan.vlan_id)
-        self.assertEqual(True, vlan.use_dhcp)
+        self.assertTrue(vlan.use_dhcp)
 
     def test_from_json_dhcp_nic1(self):
         def dummy_numbered_nics(nic_mapping=None):
@@ -188,7 +188,7 @@ class TestVlan(base.TestCase):
         vlan = objects.object_from_json(json.loads(data))
         self.assertEqual("em4", vlan.device)
         self.assertEqual(16, vlan.vlan_id)
-        self.assertEqual(True, vlan.use_dhcp)
+        self.assertTrue(vlan.use_dhcp)
 
 
 class TestBridge(base.TestCase):
@@ -206,10 +206,10 @@ class TestBridge(base.TestCase):
 """
         bridge = objects.object_from_json(json.loads(data))
         self.assertEqual("br-foo", bridge.name)
-        self.assertEqual(True, bridge.use_dhcp)
+        self.assertTrue(bridge.use_dhcp)
         interface1 = bridge.members[0]
         self.assertEqual("em1", interface1.name)
-        self.assertEqual(True, interface1.ovs_port)
+        self.assertTrue(interface1.ovs_port)
         self.assertEqual("br-foo", interface1.bridge_name)
 
     def test_from_json_dhcp_with_nic1(self):
@@ -229,10 +229,10 @@ class TestBridge(base.TestCase):
 """
         bridge = objects.object_from_json(json.loads(data))
         self.assertEqual("br-foo", bridge.name)
-        self.assertEqual(True, bridge.use_dhcp)
+        self.assertTrue(bridge.use_dhcp)
         interface1 = bridge.members[0]
         self.assertEqual("em5", interface1.name)
-        self.assertEqual(True, interface1.ovs_port)
+        self.assertTrue(interface1.ovs_port)
         self.assertEqual("br-foo", interface1.bridge_name)
 
     def test_from_json_primary_interface(self):
@@ -254,16 +254,16 @@ class TestBridge(base.TestCase):
 """
         bridge = objects.object_from_json(json.loads(data))
         self.assertEqual("br-foo", bridge.name)
-        self.assertEqual(True, bridge.use_dhcp)
+        self.assertTrue(bridge.use_dhcp)
         self.assertEqual("em1", bridge.primary_interface_name)
         interface1 = bridge.members[0]
         self.assertEqual("em1", interface1.name)
-        self.assertEqual(True, interface1.ovs_port)
-        self.assertEqual(True, interface1.primary)
+        self.assertTrue(interface1.ovs_port)
+        self.assertTrue(interface1.primary)
         self.assertEqual("br-foo", interface1.bridge_name)
         interface2 = bridge.members[1]
         self.assertEqual("em2", interface2.name)
-        self.assertEqual(True, interface2.ovs_port)
+        self.assertTrue(interface2.ovs_port)
         self.assertEqual("br-foo", interface2.bridge_name)
 
 
@@ -282,10 +282,10 @@ class TestLinuxBridge(base.TestCase):
 """
         bridge = objects.object_from_json(json.loads(data))
         self.assertEqual("br-foo", bridge.name)
-        self.assertEqual(True, bridge.use_dhcp)
+        self.assertTrue(bridge.use_dhcp)
         interface1 = bridge.members[0]
         self.assertEqual("em1", interface1.name)
-        self.assertEqual(False, interface1.ovs_port)
+        self.assertFalse(interface1.ovs_port)
         self.assertEqual("br-foo", interface1.linux_bridge_name)
 
     def test_from_json_dhcp_with_nic1(self):
@@ -305,10 +305,10 @@ class TestLinuxBridge(base.TestCase):
 """
         bridge = objects.object_from_json(json.loads(data))
         self.assertEqual("br-foo", bridge.name)
-        self.assertEqual(True, bridge.use_dhcp)
+        self.assertTrue(bridge.use_dhcp)
         interface1 = bridge.members[0]
         self.assertEqual("em5", interface1.name)
-        self.assertEqual(False, interface1.ovs_port)
+        self.assertFalse(interface1.ovs_port)
         self.assertEqual("br-foo", interface1.linux_bridge_name)
 
     def test_from_json_primary_interface(self):
@@ -330,16 +330,16 @@ class TestLinuxBridge(base.TestCase):
 """
         bridge = objects.object_from_json(json.loads(data))
         self.assertEqual("br-foo", bridge.name)
-        self.assertEqual(True, bridge.use_dhcp)
+        self.assertTrue(bridge.use_dhcp)
         self.assertEqual("em1", bridge.primary_interface_name)
         interface1 = bridge.members[0]
         self.assertEqual("em1", interface1.name)
-        self.assertEqual(False, interface1.ovs_port)
-        self.assertEqual(True, interface1.primary)
+        self.assertFalse(interface1.ovs_port)
+        self.assertTrue(interface1.primary)
         self.assertEqual("br-foo", interface1.linux_bridge_name)
         interface2 = bridge.members[1]
         self.assertEqual("em2", interface2.name)
-        self.assertEqual(False, interface2.ovs_port)
+        self.assertFalse(interface2.ovs_port)
         self.assertEqual("br-foo", interface2.linux_bridge_name)
 
 
@@ -364,7 +364,7 @@ class TestBond(base.TestCase):
 """
         bridge = objects.object_from_json(json.loads(data))
         self.assertEqual("bond1", bridge.name)
-        self.assertEqual(True, bridge.use_dhcp)
+        self.assertTrue(bridge.use_dhcp)
         interface1 = bridge.members[0]
         self.assertEqual("em1", interface1.name)
         interface2 = bridge.members[1]
@@ -394,7 +394,7 @@ class TestBond(base.TestCase):
 """
         bridge = objects.object_from_json(json.loads(data))
         self.assertEqual("bond1", bridge.name)
-        self.assertEqual(True, bridge.use_dhcp)
+        self.assertTrue(bridge.use_dhcp)
         interface1 = bridge.members[0]
         self.assertEqual("em1", interface1.name)
         interface2 = bridge.members[1]
@@ -422,7 +422,7 @@ class TestLinuxBond(base.TestCase):
 """
         bridge = objects.object_from_json(json.loads(data))
         self.assertEqual("bond1", bridge.name)
-        self.assertEqual(True, bridge.use_dhcp)
+        self.assertTrue(bridge.use_dhcp)
         interface1 = bridge.members[0]
         self.assertEqual("em1", interface1.name)
         interface2 = bridge.members[1]
@@ -452,7 +452,7 @@ class TestLinuxBond(base.TestCase):
 """
         bridge = objects.object_from_json(json.loads(data))
         self.assertEqual("bond1", bridge.name)
-        self.assertEqual(True, bridge.use_dhcp)
+        self.assertTrue(bridge.use_dhcp)
         interface1 = bridge.members[0]
         self.assertEqual("em1", interface1.name)
         interface2 = bridge.members[1]
