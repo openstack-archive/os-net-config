@@ -43,6 +43,10 @@ def route_config_path(name):
     return "/etc/sysconfig/network-scripts/route-%s" % name
 
 
+def route6_config_path(name):
+    return "/etc/sysconfig/network-scripts/route6-%s" % name
+
+
 def cleanup_pattern():
     return "/etc/sysconfig/network-scripts/ifcfg-*"
 
@@ -55,6 +59,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         self.interface_data = {}
         self.ivsinterface_data = {}
         self.route_data = {}
+        self.route6_data = {}
         self.bridge_data = {}
         self.linuxbridge_data = {}
         self.linuxbond_data = {}
@@ -221,16 +226,31 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         logger.info('adding custom route for interface: %s' % interface_name)
         data = ""
         first_line = ""
+        data6 = ""
+        first_line6 = ""
         for route in routes:
-            if route.default:
-                first_line = "default via %s dev %s\n" % (route.next_hop,
-                                                          interface_name)
+            if ":" not in route.next_hop:
+                # Route is an IPv4 route
+                if route.default:
+                    first_line = "default via %s dev %s\n" % (route.next_hop,
+                                                              interface_name)
+                else:
+                    data += "%s via %s dev %s\n" % (route.ip_netmask,
+                                                    route.next_hop,
+                                                    interface_name)
             else:
-                data += "%s via %s dev %s\n" % (route.ip_netmask,
-                                                route.next_hop,
-                                                interface_name)
+                # Route is an IPv6 route
+                if route.default:
+                    first_line6 = "default via %s dev %s\n" % (route.next_hop,
+                                                               interface_name)
+                else:
+                    data6 += "%s via %s dev %s\n" % (route.ip_netmask,
+                                                     route.next_hop,
+                                                     interface_name)
         self.route_data[interface_name] = first_line + data
+        self.route6_data[interface_name] = first_line6 + data6
         logger.debug('route data: %s' % self.route_data[interface_name])
+        logger.debug('ipv6 route data: %s' % self.route6_data[interface_name])
 
     def add_interface(self, interface):
         """Add an Interface object to the net config object.
@@ -379,18 +399,24 @@ class IfcfgNetConfig(os_net_config.NetConfig):
 
         for interface_name, iface_data in self.interface_data.iteritems():
             route_data = self.route_data.get(interface_name, '')
+            route6_data = self.route6_data.get(interface_name, '')
             interface_path = self.root_dir + ifcfg_config_path(interface_name)
             route_path = self.root_dir + route_config_path(interface_name)
+            route6_path = self.root_dir + route6_config_path(interface_name)
             all_file_names.append(interface_path)
             all_file_names.append(route_path)
             if "IVS_BRIDGE" in iface_data:
                 ivs_uplinks.append(interface_name)
+            all_file_names.append(route6_path)
             if (utils.diff(interface_path, iface_data) or
-                utils.diff(route_path, route_data)):
+                utils.diff(route_path, route_data) or
+                utils.diff(route6_path, route6_data)):
                 restart_interfaces.append(interface_name)
                 restart_interfaces.extend(self.child_members(interface_name))
                 update_files[interface_path] = iface_data
                 update_files[route_path] = route_data
+                update_files[route6_path] = route6_data
+            else:
                 logger.info('No changes required for interface: %s' %
                             interface_name)
 
@@ -412,44 +438,62 @@ class IfcfgNetConfig(os_net_config.NetConfig):
 
         for bridge_name, bridge_data in self.bridge_data.iteritems():
             route_data = self.route_data.get(bridge_name, '')
+            route6_data = self.route6_data.get(bridge_name, '')
             bridge_path = self.root_dir + bridge_config_path(bridge_name)
-            bridge_route_path = self.root_dir + route_config_path(bridge_name)
+            br_route_path = self.root_dir + route_config_path(bridge_name)
+            br_route6_path = self.root_dir + route6_config_path(bridge_name)
             all_file_names.append(bridge_path)
-            all_file_names.append(bridge_route_path)
+            all_file_names.append(br_route_path)
+            all_file_names.append(br_route6_path)
             if (utils.diff(bridge_path, bridge_data) or
-                utils.diff(bridge_route_path, route_data)):
+                utils.diff(br_route_path, route_data) or
+                utils.diff(br_route6_path, route6_data)):
                 restart_bridges.append(bridge_name)
                 restart_interfaces.extend(self.child_members(bridge_name))
                 update_files[bridge_path] = bridge_data
-                update_files[bridge_route_path] = route_data
+                update_files[br_route_path] = route_data
+                update_files[br_route6_path] = route6_data
+            else:
                 logger.info('No changes required for bridge: %s' % bridge_name)
 
         for bridge_name, bridge_data in self.linuxbridge_data.iteritems():
             route_data = self.route_data.get(bridge_name, '')
+            route6_data = self.route6_data.get(bridge_name, '')
             bridge_path = self.root_dir + bridge_config_path(bridge_name)
-            bridge_route_path = self.root_dir + route_config_path(bridge_name)
+            br_route_path = self.root_dir + route_config_path(bridge_name)
+            br_route6_path = self.root_dir + route6_config_path(bridge_name)
             all_file_names.append(bridge_path)
-            all_file_names.append(bridge_route_path)
+            all_file_names.append(br_route_path)
+            all_file_names.append(br_route6_path)
             if (utils.diff(bridge_path, bridge_data) or
-                utils.diff(bridge_route_path, route_data)):
+                utils.diff(br_route_path, route_data) or
+                utils.diff(br_route6_path, route6_data)):
                 restart_bridges.append(bridge_name)
                 restart_interfaces.extend(self.child_members(bridge_name))
                 update_files[bridge_path] = bridge_data
-                update_files[bridge_route_path] = route_data
+                update_files[br_route_path] = route_data
+                update_files[br_route6_path] = route6_data
+            else:
                 logger.info('No changes required for bridge: %s' % bridge_name)
 
         for bond_name, bond_data in self.linuxbond_data.iteritems():
             route_data = self.route_data.get(bond_name, '')
+            route6_data = self.route6_data.get(bond_name, '')
             bond_path = self.root_dir + bridge_config_path(bond_name)
             bond_route_path = self.root_dir + route_config_path(bond_name)
+            bond_route6_path = self.root_dir + route6_config_path(bond_name)
             all_file_names.append(bond_path)
             all_file_names.append(bond_route_path)
+            all_file_names.append(bond_route6_path)
             if (utils.diff(bond_path, bond_data) or
-                utils.diff(bond_route_path, route_data)):
+                utils.diff(bond_route_path, route_data) or
+                utils.diff(bond_route6_path, route6_data)):
                 restart_interfaces.append(bond_name)
                 restart_interfaces.extend(self.child_members(bond_name))
                 update_files[bond_path] = bond_data
                 update_files[bond_route_path] = route_data
+                update_files[bond_route6_path] = route6_data
+            else:
                 logger.info('No changes required for linux bond: %s' %
                             bond_name)
 
