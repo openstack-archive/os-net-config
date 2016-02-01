@@ -343,6 +343,61 @@ class TestLinuxBridge(base.TestCase):
         self.assertEqual("br-foo", interface2.linux_bridge_name)
 
 
+class TestIvsBridge(base.TestCase):
+
+    def test_interface_from_json(self):
+        data = """{
+"type": "ivs_bridge",
+"members": [{
+    "type": "interface",
+    "name": "nic2"
+}]
+}
+"""
+        bridge = objects.object_from_json(json.loads(data))
+        self.assertEqual("ivs", bridge.name)
+        interface1 = bridge.members[0]
+        self.assertEqual("nic2", interface1.name)
+        self.assertEqual(False, interface1.ovs_port)
+        self.assertEqual("ivs", interface1.ivs_bridge_name)
+
+    def test_ivs_interface_from_json(self):
+        data = """{
+"type": "ivs_bridge",
+"members": [{
+    "type": "ivs_interface",
+    "name": "storage",
+    "vlan_id": 202
+}]
+}
+"""
+        bridge = objects.object_from_json(json.loads(data))
+        self.assertEqual("ivs", bridge.name)
+        interface1 = bridge.members[0]
+        self.assertEqual("storage202", interface1.name)
+        self.assertEqual(False, interface1.ovs_port)
+        self.assertEqual("ivs", interface1.ivs_bridge_name)
+
+    def test_bond_interface_from_json(self):
+        data = """{
+"type": "ivs_bridge",
+"members": [{
+    "type": "linux_bond",
+    "name": "bond1",
+    "members": [
+        {"type": "interface", "name": "nic2"},
+        {"type": "interface", "name": "nic3"}
+    ]
+}]
+}
+"""
+        err = self.assertRaises(objects.InvalidConfigException,
+                                objects.IvsBridge.from_json,
+                                json.loads(data))
+        expected = 'IVS does not support bond interfaces.'
+        self.assertIn(expected, err)
+
+
 class TestBond(base.TestCase):
 
     def test_from_json_dhcp(self):

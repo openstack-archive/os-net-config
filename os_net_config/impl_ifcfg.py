@@ -35,6 +35,10 @@ def bridge_config_path(name):
     return ifcfg_config_path(name)
 
 
+def ivs_config_path():
+    return "/etc/sysconfig/ivs"
+
+
 def route_config_path(name):
     return "/etc/sysconfig/network-scripts/route-%s" % name
 
@@ -49,6 +53,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
     def __init__(self, noop=False, root_dir=''):
         super(IfcfgNetConfig, self).__init__(noop, root_dir)
         self.interface_data = {}
+        self.ivsinterface_data = {}
         self.route_data = {}
         self.bridge_data = {}
         self.linuxbridge_data = {}
@@ -84,8 +89,13 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 data += "VLAN=yes\n"
                 if base_opt.device:
                     data += "PHYSDEV=%s\n" % base_opt.device
+        elif isinstance(base_opt, objects.IvsInterface):
+            data += "TYPE=IVSIntPort\n"
         elif re.match('\w+\.\d+$', base_opt.name):
             data += "VLAN=yes\n"
+        if base_opt.ivs_bridge_name:
+            data += "DEVICETYPE=ivs\n"
+            data += "IVS_BRIDGE=%s\n" % base_opt.ivs_bridge_name
         if base_opt.ovs_port:
             data += "DEVICETYPE=ovs\n"
             if base_opt.bridge_name:
@@ -251,6 +261,18 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         if vlan.routes:
             self._add_routes(vlan.name, vlan.routes)
 
+    def add_ivs_interface(self, ivs_interface):
+        """Add a ivs_interface object to the net config object.
+
+        :param ivs_interface: The ivs_interface object to add.
+        """
+        logger.info('adding ivs_interface: %s' % ivs_interface.name)
+        data = self._add_common(ivs_interface)
+        logger.debug('ivs_interface data: %s' % data)
+        self.ivsinterface_data[ivs_interface.name] = data
+        if ivs_interface.routes:
+            self._add_routes(ivs_interface.name, ivs_interface.routes)
+
     def add_bridge(self, bridge):
         """Add an OvsBridge object to the net config object.
 
@@ -274,6 +296,18 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         self.linuxbridge_data[bridge.name] = data
         if bridge.routes:
             self._add_routes(bridge.name, bridge.routes)
+
+    def add_ivs_bridge(self, bridge):
+        """Add a IvsBridge object to the net config object.
+
+        IVS can only support one virtual switch per node,
+        using "ivs" as its name. As long as the ivs service
+        is running, the ivs virtual switch will be there.
+        It is impossible to add multiple ivs virtual switches
+        per node.
+        :param bridge: The IvsBridge object to add.
+        """
+        pass
 
     def add_bond(self, bond):
         """Add an OvsBond object to the net config object.
@@ -300,6 +334,26 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         if bond.routes:
             self._add_routes(bond.name, bond.routes)
 
+    def generate_ivs_config(self, ivs_uplinks, ivs_interfaces):
+        """Generate configuration content for ivs."""
+
+        intfs = []
+        for intf in ivs_uplinks:
+            intfs.append(' -u ')
+            intfs.append(intf)
+        uplink_str = ''.join(intfs)
+
+        intfs = []
+        for intf in ivs_interfaces:
+            intfs.append(' --internal-port=')
+            intfs.append(intf)
+        intf_str = ''.join(intfs)
+
+        data = ("DAEMON_ARGS=\"--hitless --certificate /etc/ivs "
+                "--inband-vlan 4092%s%s\""
+                % (uplink_str, intf_str))
+        return data
+
     def apply(self, cleanup=False, activate=True):
         """Apply the network configuration.
 
@@ -320,6 +374,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         restart_bridges = []
         update_files = {}
         all_file_names = []
+        ivs_uplinks = []  # ivs physical uplinks
+        ivs_interfaces = []  # ivs internal ports
 
         for interface_name, iface_data in self.interface_data.iteritems():
             route_data = self.route_data.get(interface_name, '')
@@ -327,6 +383,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             route_path = self.root_dir + route_config_path(interface_name)
             all_file_names.append(interface_path)
             all_file_names.append(route_path)
+            if "IVS_BRIDGE" in iface_data:
+                ivs_uplinks.append(interface_name)
             if (utils.diff(interface_path, iface_data) or
                 utils.diff(route_path, route_data)):
                 restart_interfaces.append(interface_name)
@@ -334,6 +392,22 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 update_files[interface_path] = iface_data
                 update_files[route_path] = route_data
                 logger.info('No changes required for interface: %s' %
+                            interface_name)
+
+        for interface_name, iface_data in self.ivsinterface_data.iteritems():
+            route_data = self.route_data.get(interface_name, '')
+            interface_path = self.root_dir + ifcfg_config_path(interface_name)
+            route_path = self.root_dir + route_config_path(interface_name)
+            all_file_names.append(interface_path)
+            all_file_names.append(route_path)
+            ivs_interfaces.append(interface_name)
+            if (utils.diff(interface_path, iface_data) or
+                utils.diff(route_path, route_data)):
+                restart_interfaces.append(interface_name)
+                restart_interfaces.extend(self.child_members(interface_name))
+                update_files[interface_path] = iface_data
+                update_files[route_path] = route_data
+                logger.info('No changes required for ivs interface: %s' %
                             interface_name)
 
         for bridge_name, bridge_data in self.bridge_data.iteritems():
@@ -402,6 +476,11 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         for location, data in update_files.iteritems():
             self.write_config(location, data)
 
+        if ivs_uplinks or ivs_interfaces:
+            location = ivs_config_path()
+            data = self.generate_ivs_config(ivs_uplinks, ivs_interfaces)
+            self.write_config(location, data)
+
         if activate:
             for bridge in restart_bridges:
                 self.ifup(bridge, iftype='bridge')
@@ -412,5 +491,18 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             for bond in self.bond_primary_ifaces:
                 self.ovs_appctl('bond/set-active-slave', bond,
                                 self.bond_primary_ifaces[bond])
+
+            if ivs_uplinks or ivs_interfaces:
+                logger.info("Attach to ivs with "
+                            "uplinks: %s, "
+                            "interfaces: %s" %
+                            (ivs_uplinks, ivs_interfaces))
+                for ivs_uplink in ivs_uplinks:
+                    self.ifup(ivs_uplink)
+                for ivs_interface in ivs_interfaces:
+                    self.ifup(ivs_interface)
+                msg = "Restart ivs"
+                self.execute(msg, '/usr/bin/systemctl',
+                             'restart', 'ivs')
 
         return update_files

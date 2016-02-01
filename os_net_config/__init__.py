@@ -48,12 +48,18 @@ class NetConfig(object):
             self.add_interface(obj)
         elif isinstance(obj, objects.Vlan):
             self.add_vlan(obj)
+        elif isinstance(obj, objects.IvsInterface):
+            self.add_ivs_interface(obj)
         elif isinstance(obj, objects.OvsBridge):
             self.add_bridge(obj)
             for member in obj.members:
                 self.add_object(member)
         elif isinstance(obj, objects.LinuxBridge):
             self.add_linux_bridge(obj)
+            for member in obj.members:
+                self.add_object(member)
+        elif isinstance(obj, objects.IvsBridge):
+            self.add_ivs_bridge(obj)
             for member in obj.members:
                 self.add_object(member)
         elif isinstance(obj, objects.OvsBond):
@@ -92,6 +98,13 @@ class NetConfig(object):
         :param bridge: The LinuxBridge object to add.
         """
         raise NotImplemented("add_linux_bridge is not implemented.")
+
+    def add_ivs_bridge(self, bridge):
+        """Add a IvsBridge object to the net config object.
+
+        :param bridge: The IvsBridge object to add.
+        """
+        raise NotImplemented("add_ivs_bridge is not implemented.")
 
     def add_bond(self, bond):
         """Add an OvsBond object to the net config object.

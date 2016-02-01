@@ -44,6 +44,10 @@ def object_from_json(json):
         return LinuxBond.from_json(json)
     elif obj_type == "linux_bridge":
         return LinuxBridge.from_json(json)
+    elif obj_type == "ivs_bridge":
+        return IvsBridge.from_json(json)
+    elif obj_type == "ivs_interface":
+        return IvsInterface.from_json(json)
 
 
 def _get_required_field(json, name, object_name):
@@ -166,6 +170,7 @@ class _BaseOpts(object):
         self.dns_servers = dns_servers
         self.bridge_name = None  # internal
         self.linux_bridge_name = None  # internal
+        self.ivs_bridge_name = None  # internal
         self.ovs_port = False  # internal
         self.primary_interface_name = None  # internal
 
@@ -290,6 +295,32 @@ class Vlan(_BaseOpts):
         return Vlan(device, vlan_id, *opts)
 
 
+class IvsInterface(_BaseOpts):
+    """Base class for ivs interfaces."""
+
+    def __init__(self, vlan_id, name='ivs', use_dhcp=False, use_dhcpv6=False,
+                 addresses=None, routes=None, mtu=1500, primary=False,
+                 nic_mapping=None, persist_mapping=False, defroute=True,
+                 dhclient_args=None, dns_servers=None):
+        addresses = addresses or []
+        routes = routes or []
+        dns_servers = dns_servers or []
+        name_vlan = '%s%i' % (name, vlan_id)
+        super(IvsInterface, self).__init__(name_vlan, use_dhcp, use_dhcpv6,
+                                           addresses, routes, mtu, primary,
+                                           nic_mapping, persist_mapping,
+                                           defroute, dhclient_args,
+                                           dns_servers)
+        self.vlan_id = int(vlan_id)
+
+    @staticmethod
+    def from_json(json):
+        name = json.get('name')
+        vlan_id = _get_required_field(json, 'vlan_id', 'IvsInterface')
+        opts = _BaseOpts.base_opts_from_json(json)
+        return IvsInterface(vlan_id, name, *opts)
+
+
 class OvsBridge(_BaseOpts):
     """Base class for OVS bridges."""
 
@@ -403,6 +434,67 @@ class LinuxBridge(_BaseOpts):
                            persist_mapping=persist_mapping, defroute=defroute,
                            dhclient_args=dhclient_args,
                            dns_servers=dns_servers)
+
+
+class IvsBridge(_BaseOpts):
+    """Base class for IVS bridges.
+
+    Indigo Virtual Switch (IVS) is a virtual switch for Linux.
+    It is compatible with the KVM hypervisor and leveraging the
+    Open vSwitch kernel module for packet forwarding. There are
+    three major differences between IVS and OVS:
+    1. Each node can have at most one ivs, no name required.
+    2. Bond is not allowed to attach to an ivs. It is the SDN
+    controller's job to dynamically form bonds on ivs.
+    3. IP address can only be statically assigned.
+    """
+
+    def __init__(self, name='ivs', use_dhcp=False, use_dhcpv6=False,
+                 addresses=None, routes=None, mtu=1500, members=None,
+                 nic_mapping=None, persist_mapping=False, defroute=True,
+                 dhclient_args=None, dns_servers=None):
+        addresses = addresses or []
+        routes = routes or []
+        members = members or []
+        dns_servers = dns_servers or []
+        super(IvsBridge, self).__init__(name, use_dhcp, use_dhcpv6,
+                                        addresses, routes, mtu, False,
+                                        nic_mapping, persist_mapping,
+                                        defroute, dhclient_args, dns_servers)
+        self.members = members
+        for member in self.members:
+            if isinstance(member, OvsBond) or isinstance(member, LinuxBond):
+                msg = 'IVS does not support bond interfaces.'
+                raise InvalidConfigException(msg)
+            member.ivs_bridge_name = name
+            member.ovs_port = False
+            self.primary_interface_name = None  # ivs doesn't use primary intf
+
+    @staticmethod
+    def from_json(json):
+        name = 'ivs'
+        (use_dhcp, use_dhcpv6, addresses, routes, mtu, nic_mapping,
+         persist_mapping, defroute, dhclient_args,
+         dns_servers) = _BaseOpts.base_opts_from_json(
+             json, include_primary=False)
+        members = []
+
+        # members
+        members_json = json.get('members')
+        if members_json:
+            if isinstance(members_json, list):
+                for member in members_json:
+                    members.append(object_from_json(member))
+            else:
+                msg = 'Members must be a list.'
+                raise InvalidConfigException(msg)
+
+        return IvsBridge(name, use_dhcp=use_dhcp, use_dhcpv6=use_dhcpv6,
+                         addresses=addresses, routes=routes, mtu=mtu,
+                         members=members, nic_mapping=nic_mapping,
+                         persist_mapping=persist_mapping, defroute=defroute,
+                         dhclient_args=dhclient_args,
+                         dns_servers=dns_servers)
 
 
 class LinuxBond(_BaseOpts):
