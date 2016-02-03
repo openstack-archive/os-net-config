@@ -221,6 +221,12 @@ class TestENINetConfig(base.TestCase):
         self.provider.add_vlan(vlan)
         self.assertEqual(_VLAN_NO_IP, self.get_interface_config('vlan5'))
 
+    def test_vlan_mtu_1500(self):
+        vlan = objects.Vlan('eth0', 5, mtu=1500)
+        self.provider.add_vlan(vlan)
+        expected = _VLAN_NO_IP + '    mtu 1500\n'
+        self.assertEqual(expected, self.get_interface_config('vlan5'))
+
     def test_vlan_ovs_bridge_int_port(self):
         vlan = objects.Vlan('eth0', 5)
         bridge = objects.OvsBridge('br0', use_dhcp=True,

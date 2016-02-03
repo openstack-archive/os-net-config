@@ -164,11 +164,11 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 data += "BOOTPROTO=dhcp\n"
             elif not base_opt.addresses:
                 data += "BOOTPROTO=none\n"
-        if base_opt.mtu != 1500:
+        if base_opt.mtu:
             data += "MTU=%i\n" % base_opt.mtu
         if base_opt.use_dhcpv6 or base_opt.v6_addresses():
             data += "IPV6INIT=yes\n"
-            if base_opt.mtu != 1500:
+            if base_opt.mtu:
                 data += "IPV6_MTU=%i\n" % base_opt.mtu
         if base_opt.use_dhcpv6:
             data += "DHCPV6C=yes\n"

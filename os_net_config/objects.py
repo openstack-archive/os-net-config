@@ -134,7 +134,7 @@ class _BaseOpts(object):
     """Base abstraction for logical port options."""
 
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
-                 routes=None, mtu=1500, primary=False, nic_mapping=None,
+                 routes=None, mtu=None, primary=False, nic_mapping=None,
                  persist_mapping=False, defroute=True, dhclient_args=None,
                  dns_servers=None):
         addresses = addresses or []
@@ -192,7 +192,7 @@ class _BaseOpts(object):
                                                False)))
         defroute = strutils.bool_from_string(str(json.get('defroute',
                                              True)))
-        mtu = json.get('mtu', 1500)
+        mtu = json.get('mtu', None)
         dhclient_args = json.get('dhclient_args')
         dns_servers = json.get('dns_servers')
         primary = strutils.bool_from_string(str(json.get('primary', False)))
@@ -236,7 +236,7 @@ class Interface(_BaseOpts):
     """Base class for network interfaces."""
 
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
-                 routes=None, mtu=1500, primary=False, nic_mapping=None,
+                 routes=None, mtu=None, primary=False, nic_mapping=None,
                  persist_mapping=False, defroute=True, dhclient_args=None,
                  dns_servers=None):
         addresses = addresses or []
@@ -262,7 +262,7 @@ class Vlan(_BaseOpts):
     """
 
     def __init__(self, device, vlan_id, use_dhcp=False, use_dhcpv6=False,
-                 addresses=None, routes=None, mtu=1500, primary=False,
+                 addresses=None, routes=None, mtu=None, primary=False,
                  nic_mapping=None, persist_mapping=False, defroute=True,
                  dhclient_args=None, dns_servers=None):
         addresses = addresses or []
@@ -294,7 +294,7 @@ class OvsBridge(_BaseOpts):
     """Base class for OVS bridges."""
 
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
-                 routes=None, mtu=1500, members=None, ovs_options=None,
+                 routes=None, mtu=None, members=None, ovs_options=None,
                  ovs_extra=None, nic_mapping=None, persist_mapping=False,
                  defroute=True, dhclient_args=None, dns_servers=None):
         addresses = addresses or []
@@ -354,7 +354,7 @@ class LinuxBridge(_BaseOpts):
     """Base class for Linux bridges."""
 
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
-                 routes=None, mtu=1500, members=None, nic_mapping=None,
+                 routes=None, mtu=None, members=None, nic_mapping=None,
                  persist_mapping=False, defroute=True, dhclient_args=None,
                  dns_servers=None):
         addresses = addresses or []
@@ -409,7 +409,7 @@ class LinuxBond(_BaseOpts):
     """Base class for Linux bonds."""
 
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
-                 routes=None, mtu=1500, primary=False, members=None,
+                 routes=None, mtu=None, primary=False, members=None,
                  bonding_options=None, nic_mapping=None, persist_mapping=False,
                  defroute=True, dhclient_args=None, dns_servers=None):
         addresses = addresses or []
@@ -464,7 +464,7 @@ class OvsBond(_BaseOpts):
     """Base class for OVS bonds."""
 
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
-                 routes=None, mtu=1500, primary=False, members=None,
+                 routes=None, mtu=None, primary=False, members=None,
                  ovs_options=None, ovs_extra=None, nic_mapping=None,
                  persist_mapping=False, defroute=True, dhclient_args=None,
                  dns_servers=None):

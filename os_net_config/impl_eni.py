@@ -130,7 +130,7 @@ class ENINetConfig(os_net_config.NetConfig):
             data += "auto %s\n" % interface.name
             data += _iface
             data += address_data
-        if interface.mtu != 1500:
+        if interface.mtu:
             data += "    mtu %i\n" % interface.mtu
 
         if interface.hwaddr:

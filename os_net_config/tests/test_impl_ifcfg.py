@@ -359,6 +359,12 @@ class TestIfcfgNetConfig(base.TestCase):
         self.provider.add_vlan(vlan)
         self.assertEqual(_VLAN_OVS, self.get_interface_config('vlan5'))
 
+    def test_add_vlan_mtu_1500(self):
+        vlan = objects.Vlan('em1', 5, mtu=1500)
+        self.provider.add_vlan(vlan)
+        expected = _VLAN_NO_IP + 'MTU=1500\n'
+        self.assertEqual(expected, self.get_interface_config('vlan5'))
+
     def test_add_ovs_bridge_with_vlan(self):
         vlan = objects.Vlan('em1', 5)
         bridge = objects.OvsBridge('br-ctlplane', use_dhcp=True,
