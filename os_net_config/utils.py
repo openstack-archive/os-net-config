@@ -55,10 +55,8 @@ def _is_active_nic(interface_name):
         if interface_name == 'lo':
             return False
 
-        addr_assign_type = None
-        with open(_SYS_CLASS_NET + '/%s/addr_assign_type' % interface_name,
-                  'r') as f:
-            addr_assign_type = int(f.read().rstrip())
+        device_dir = _SYS_CLASS_NET + '/%s/device' % interface_name
+        has_device_dir = os.path.isdir(device_dir)
 
         carrier = None
         with open(_SYS_CLASS_NET + '/%s/carrier' % interface_name, 'r') as f:
@@ -68,7 +66,7 @@ def _is_active_nic(interface_name):
         with open(_SYS_CLASS_NET + '/%s/address' % interface_name, 'r') as f:
             address = f.read().rstrip()
 
-        if addr_assign_type == 0 and carrier == 1 and address:
+        if has_device_dir and carrier == 1 and address:
             return True
         else:
             return False
