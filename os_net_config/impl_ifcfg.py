@@ -58,6 +58,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         super(IfcfgNetConfig, self).__init__(noop, root_dir)
         self.interface_data = {}
         self.ivsinterface_data = {}
+        self.vlan_data = {}
         self.route_data = {}
         self.route6_data = {}
         self.bridge_data = {}
@@ -281,7 +282,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         logger.info('adding vlan: %s' % vlan.name)
         data = self._add_common(vlan)
         logger.debug('vlan data: %s' % data)
-        self.interface_data[vlan.name] = data
+        self.vlan_data[vlan.name] = data
         if vlan.routes:
             self._add_routes(vlan.name, vlan.routes)
 
@@ -353,7 +354,6 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         logger.info('adding linux bond: %s' % bond.name)
         data = self._add_common(bond)
         logger.debug('bond data: %s' % data)
-        self.interface_data[bond.name] = data
         self.linuxbond_data[bond.name] = data
         if bond.routes:
             self._add_routes(bond.name, bond.routes)
@@ -395,7 +395,9 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         """
         logger.info('applying network configs...')
         restart_interfaces = []
+        restart_vlans = []
         restart_bridges = []
+        restart_linux_bonds = []
         update_files = {}
         all_file_names = []
         ivs_uplinks = []  # ivs physical uplinks
@@ -409,6 +411,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             route6_path = self.root_dir + route6_config_path(interface_name)
             all_file_names.append(interface_path)
             all_file_names.append(route_path)
+            all_file_names.append(route6_path)
             if "IVS_BRIDGE" in iface_data:
                 ivs_uplinks.append(interface_name)
             all_file_names.append(route6_path)
@@ -426,10 +429,13 @@ class IfcfgNetConfig(os_net_config.NetConfig):
 
         for interface_name, iface_data in self.ivsinterface_data.iteritems():
             route_data = self.route_data.get(interface_name, '')
+            route6_data = self.route6_data.get(interface_name, '')
             interface_path = self.root_dir + ifcfg_config_path(interface_name)
             route_path = self.root_dir + route_config_path(interface_name)
+            route6_path = self.root_dir + route6_config_path(interface_name)
             all_file_names.append(interface_path)
             all_file_names.append(route_path)
+            all_file_names.append(route6_path)
             ivs_interfaces.append(interface_name)
             if (utils.diff(interface_path, iface_data) or
                 utils.diff(route_path, route_data)):
@@ -437,8 +443,30 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 restart_interfaces.extend(self.child_members(interface_name))
                 update_files[interface_path] = iface_data
                 update_files[route_path] = route_data
+                update_files[route6_path] = route6_data
+            else:
                 logger.info('No changes required for ivs interface: %s' %
                             interface_name)
+
+        for vlan_name, vlan_data in self.vlan_data.iteritems():
+            route_data = self.route_data.get(vlan_name, '')
+            route6_data = self.route6_data.get(vlan_name, '')
+            vlan_path = self.root_dir + ifcfg_config_path(vlan_name)
+            vlan_route_path = self.root_dir + route_config_path(vlan_name)
+            vlan_route6_path = self.root_dir + route6_config_path(vlan_name)
+            all_file_names.append(vlan_path)
+            all_file_names.append(vlan_route_path)
+            all_file_names.append(vlan_route6_path)
+            if (utils.diff(vlan_path, vlan_data) or
+                    utils.diff(vlan_route_path, route_data)):
+                restart_vlans.append(vlan_name)
+                restart_vlans.extend(self.child_members(vlan_name))
+                update_files[vlan_path] = vlan_data
+                update_files[vlan_route_path] = route_data
+                update_files[vlan_route6_path] = route6_data
+            else:
+                logger.info('No changes required for vlan interface: %s' %
+                            vlan_name)
 
         for bridge_name, bridge_data in self.bridge_data.iteritems():
             route_data = self.route_data.get(bridge_name, '')
@@ -492,7 +520,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             if (utils.diff(bond_path, bond_data) or
                 utils.diff(bond_route_path, route_data) or
                 utils.diff(bond_route6_path, route6_data)):
-                restart_interfaces.append(bond_name)
+                restart_linux_bonds.append(bond_name)
                 restart_interfaces.extend(self.child_members(bond_name))
                 update_files[bond_path] = bond_data
                 update_files[bond_route_path] = route_data
@@ -512,8 +540,14 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                         self.remove_config(ifcfg_file)
 
         if activate:
+            for vlan in restart_vlans:
+                self.ifdown(vlan)
+
             for interface in restart_interfaces:
                 self.ifdown(interface)
+
+            for linux_bond in restart_linux_bonds:
+                self.ifdown(linux_bond)
 
             for bridge in restart_bridges:
                 self.ifdown(bridge, iftype='bridge')
@@ -530,6 +564,9 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             self.write_config(location, data)
 
         if activate:
+            for linux_bond in restart_linux_bonds:
+                self.ifup(linux_bond)
+
             for bridge in restart_bridges:
                 self.ifup(bridge, iftype='bridge')
 
@@ -552,5 +589,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 msg = "Restart ivs"
                 self.execute(msg, '/usr/bin/systemctl',
                              'restart', 'ivs')
+
+            for vlan in restart_vlans:
+                self.ifup(vlan)
 
         return update_files
