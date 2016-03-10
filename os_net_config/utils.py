@@ -58,15 +58,15 @@ def _is_active_nic(interface_name):
         device_dir = _SYS_CLASS_NET + '/%s/device' % interface_name
         has_device_dir = os.path.isdir(device_dir)
 
-        carrier = None
-        with open(_SYS_CLASS_NET + '/%s/carrier' % interface_name, 'r') as f:
-            carrier = int(f.read().rstrip())
+        operstate = None
+        with open(_SYS_CLASS_NET + '/%s/operstate' % interface_name, 'r') as f:
+            operstate = f.read().rstrip()
 
         address = None
         with open(_SYS_CLASS_NET + '/%s/address' % interface_name, 'r') as f:
             address = f.read().rstrip()
 
-        if has_device_dir and carrier == 1 and address:
+        if has_device_dir and operstate == 'UP' and address:
             return True
         else:
             return False
