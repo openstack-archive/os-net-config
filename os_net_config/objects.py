@@ -171,6 +171,7 @@ class _BaseOpts(object):
         self.bridge_name = None  # internal
         self.linux_bridge_name = None  # internal
         self.ivs_bridge_name = None  # internal
+        self.linux_bond_name = None  # internal
         self.ovs_port = False  # internal
         self.primary_interface_name = None  # internal
 
@@ -515,6 +516,7 @@ class LinuxBond(_BaseOpts):
         self.members = members
         self.bonding_options = bonding_options
         for member in self.members:
+            member.linux_bond_name = name
             if member.primary:
                 if self.primary_interface_name:
                     msg = 'Only one primary interface allowed per bond.'

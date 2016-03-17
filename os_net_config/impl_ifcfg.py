@@ -94,6 +94,9 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 data += "VLAN=yes\n"
                 if base_opt.device:
                     data += "PHYSDEV=%s\n" % base_opt.device
+                else:
+                    if base_opt.linux_bond_name:
+                        data += "PHYSDEV=%s\n" % base_opt.linux_bond_name
         elif isinstance(base_opt, objects.IvsInterface):
             data += "TYPE=IVSIntPort\n"
         elif re.match('\w+\.\d+$', base_opt.name):
@@ -168,7 +171,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 members = [member.name for member in base_opt.members]
                 self.member_names[base_opt.name] = members
                 for member in members:
-                    self.bond_slaves[member] = base_opt.name
+                    if isinstance(member, objects.Interface):
+                        self.bond_slaves[member] = base_opt.name
             if base_opt.bonding_options:
                 data += "BONDING_OPTS=\"%s\"\n" % base_opt.bonding_options
         else:
