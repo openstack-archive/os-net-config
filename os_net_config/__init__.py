@@ -40,6 +40,7 @@ class NetConfig(object):
 
     def add_object(self, obj):
         """Convenience method to add any type of object to the network config.
+
            See objects.py.
 
         :param obj: The object to add.

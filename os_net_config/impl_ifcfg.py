@@ -30,7 +30,7 @@ def ifcfg_config_path(name):
     return "/etc/sysconfig/network-scripts/ifcfg-%s" % name
 
 
-#NOTE(dprince): added here for testability
+# NOTE(dprince): added here for testability
 def bridge_config_path(name):
     return ifcfg_config_path(name)
 
@@ -416,8 +416,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 ivs_uplinks.append(interface_name)
             all_file_names.append(route6_path)
             if (utils.diff(interface_path, iface_data) or
-                utils.diff(route_path, route_data) or
-                utils.diff(route6_path, route6_data)):
+                    utils.diff(route_path, route_data) or
+                    utils.diff(route6_path, route6_data)):
                 restart_interfaces.append(interface_name)
                 restart_interfaces.extend(self.child_members(interface_name))
                 update_files[interface_path] = iface_data
@@ -438,7 +438,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             all_file_names.append(route6_path)
             ivs_interfaces.append(interface_name)
             if (utils.diff(interface_path, iface_data) or
-                utils.diff(route_path, route_data)):
+                    utils.diff(route_path, route_data)):
                 restart_interfaces.append(interface_name)
                 restart_interfaces.extend(self.child_members(interface_name))
                 update_files[interface_path] = iface_data
@@ -478,8 +478,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             all_file_names.append(br_route_path)
             all_file_names.append(br_route6_path)
             if (utils.diff(bridge_path, bridge_data) or
-                utils.diff(br_route_path, route_data) or
-                utils.diff(br_route6_path, route6_data)):
+                    utils.diff(br_route_path, route_data) or
+                    utils.diff(br_route6_path, route6_data)):
                 restart_bridges.append(bridge_name)
                 restart_interfaces.extend(self.child_members(bridge_name))
                 update_files[bridge_path] = bridge_data
@@ -498,8 +498,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             all_file_names.append(br_route_path)
             all_file_names.append(br_route6_path)
             if (utils.diff(bridge_path, bridge_data) or
-                utils.diff(br_route_path, route_data) or
-                utils.diff(br_route6_path, route6_data)):
+                    utils.diff(br_route_path, route_data) or
+                    utils.diff(br_route6_path, route6_data)):
                 restart_bridges.append(bridge_name)
                 restart_interfaces.extend(self.child_members(bridge_name))
                 update_files[bridge_path] = bridge_data
@@ -518,8 +518,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             all_file_names.append(bond_route_path)
             all_file_names.append(bond_route6_path)
             if (utils.diff(bond_path, bond_data) or
-                utils.diff(bond_route_path, route_data) or
-                utils.diff(bond_route6_path, route6_data)):
+                    utils.diff(bond_route_path, route_data) or
+                    utils.diff(bond_route6_path, route6_data)):
                 restart_linux_bonds.append(bond_name)
                 restart_interfaces.extend(self.child_members(bond_name))
                 update_files[bond_path] = bond_data

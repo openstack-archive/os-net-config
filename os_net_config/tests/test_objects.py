@@ -85,8 +85,8 @@ class TestInterface(base.TestCase):
         v4_addr = objects.Address('192.168.1.1/24')
         v6_addr = objects.Address('2001:abc:a::/64')
         interface = objects.Interface('foo', addresses=[v4_addr, v6_addr])
-        self.assertEquals("192.168.1.1", interface.v4_addresses()[0].ip)
-        self.assertEquals("2001:abc:a::", interface.v6_addresses()[0].ip)
+        self.assertEqual("192.168.1.1", interface.v4_addresses()[0].ip)
+        self.assertEqual("2001:abc:a::", interface.v6_addresses()[0].ip)
 
     def test_from_json_dhcp(self):
         data = '{"type": "interface", "name": "em1", "use_dhcp": true}'
