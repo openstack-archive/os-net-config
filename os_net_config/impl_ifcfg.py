@@ -65,7 +65,6 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         self.linuxbridge_data = {}
         self.linuxbond_data = {}
         self.member_names = {}
-        self.bond_slaves = {}
         self.renamed_interfaces = {}
         self.bond_primary_ifaces = {}
         logger.info('Ifcfg net config provider created.')
@@ -102,6 +101,9 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             data += "TYPE=IVSIntPort\n"
         elif re.match('\w+\.\d+$', base_opt.name):
             data += "VLAN=yes\n"
+        if base_opt.linux_bond_name:
+            data += "MASTER=%s\n" % base_opt.linux_bond_name
+            data += "SLAVE=yes\n"
         if base_opt.ivs_bridge_name:
             data += "DEVICETYPE=ivs\n"
             data += "IVS_BRIDGE=%s\n" % base_opt.ivs_bridge_name
@@ -171,15 +173,9 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             if base_opt.members:
                 members = [member.name for member in base_opt.members]
                 self.member_names[base_opt.name] = members
-                for member in members:
-                    if isinstance(member, objects.Interface):
-                        self.bond_slaves[member] = base_opt.name
             if base_opt.bonding_options:
                 data += "BONDING_OPTS=\"%s\"\n" % base_opt.bonding_options
         else:
-            if base_opt.name in self.bond_slaves:
-                data += "MASTER=%s\n" % self.bond_slaves[base_opt.name]
-                data += "SLAVE=yes\n"
             if base_opt.use_dhcp:
                 data += "BOOTPROTO=dhcp\n"
             elif not base_opt.addresses:
