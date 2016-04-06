@@ -88,6 +88,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         data += "ONBOOT=yes\n"
         data += "HOTPLUG=no\n"
         data += "NM_CONTROLLED=no\n"
+        if not base_opt.dns_servers and not base_opt.use_dhcp:
+            data += "PEERDNS=no\n"
         if isinstance(base_opt, objects.Vlan):
             if not base_opt.ovs_port:
                 # vlans on OVS bridges are internal ports (no device, etc)
