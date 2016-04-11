@@ -673,7 +673,7 @@ class TestIfcfgNetConfigApply(base.TestCase):
         self.assertEqual([], self.ifup_interface_names)
 
     def test_bond_active_slave(self):
-        #setup and apply a bond
+        # setup and apply a bond
         interface1 = objects.Interface('em1')
         interface2 = objects.Interface('em2', primary=True)
         bond = objects.OvsBond('bond1', use_dhcp=True,
@@ -686,7 +686,7 @@ class TestIfcfgNetConfigApply(base.TestCase):
         self.assertIn(ovs_appctl_cmds, self.ovs_appctl_cmds)
 
     def test_bond_active_ordering(self):
-        #setup and apply a bond
+        # setup and apply a bond
         interface1 = objects.Interface('em1')
         interface2 = objects.Interface('em2')
         bond = objects.OvsBond('bond1', use_dhcp=True,
