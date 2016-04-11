@@ -514,6 +514,40 @@ class TestLinuxBond(base.TestCase):
         self.assertEqual("em2", interface2.name)
 
 
+class TestOvsTunnel(base.TestCase):
+
+    def test_from_json(self):
+        data = """{
+"type": "ovs_bridge",
+"name": "br-foo",
+"members": [{
+    "type": "ovs_tunnel",
+    "name": "tun0",
+    "tunnel_type": "gre",
+    "ovs_options": [
+        "remote_ip=192.168.1.1"
+    ],
+    "ovs_extra": [
+        "ovs extra"
+    ]
+}]
+}
+"""
+        bridge = objects.object_from_json(json.loads(data))
+        self.assertEqual("br-foo", bridge.name)
+        tun0 = bridge.members[0]
+        self.assertEqual("tun0", tun0.name)
+        self.assertFalse(tun0.ovs_port)
+        self.assertEqual("br-foo", tun0.bridge_name)
+        self.assertEqual("gre", tun0.tunnel_type)
+        self.assertEqual(
+            ["options:remote_ip=192.168.1.1"],
+            tun0.ovs_options)
+        self.assertEqual(
+            ["ovs extra"],
+            tun0.ovs_extra)
+
+
 class TestNumberedNicsMapping(base.TestCase):
 
     # We want to test the function, not the dummy..

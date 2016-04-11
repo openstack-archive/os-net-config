@@ -48,6 +48,8 @@ def object_from_json(json):
         return IvsBridge.from_json(json)
     elif obj_type == "ivs_interface":
         return IvsInterface.from_json(json)
+    elif obj_type == "ovs_tunnel":
+        return OvsTunnel.from_json(json)
 
 
 def _get_required_field(json, name, object_name):
@@ -343,7 +345,8 @@ class OvsBridge(_BaseOpts):
         self.ovs_extra = ovs_extra
         for member in self.members:
             member.bridge_name = name
-            member.ovs_port = True
+            if not isinstance(member, OvsTunnel):
+                member.ovs_port = True
             if member.primary:
                 if self.primary_interface_name:
                     msg = 'Only one primary interface allowed per bridge.'
@@ -615,3 +618,35 @@ class OvsBond(_BaseOpts):
                        ovs_extra=ovs_extra, nic_mapping=nic_mapping,
                        persist_mapping=persist_mapping, defroute=defroute,
                        dhclient_args=dhclient_args, dns_servers=dns_servers)
+
+
+class OvsTunnel(_BaseOpts):
+    """Base class for OVS Tunnels."""
+
+    def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
+                 routes=None, mtu=None, primary=False, nic_mapping=None,
+                 persist_mapping=False, defroute=True, dhclient_args=None,
+                 dns_servers=None, tunnel_type=None, ovs_options=None,
+                 ovs_extra=None):
+        addresses = addresses or []
+        routes = routes or []
+        ovs_extra = ovs_extra or []
+        dns_servers = dns_servers or []
+        super(OvsTunnel, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
+                                        routes, mtu, primary, nic_mapping,
+                                        persist_mapping, defroute,
+                                        dhclient_args, dns_servers)
+        self.tunnel_type = tunnel_type
+        self.ovs_options = ovs_options or []
+        self.ovs_extra = ovs_extra or []
+
+    @staticmethod
+    def from_json(json):
+        name = _get_required_field(json, 'name', 'OvsTunnel')
+        tunnel_type = _get_required_field(json, 'tunnel_type', 'OvsTunnel')
+        ovs_options = json.get('ovs_options', [])
+        ovs_options = ['options:%s' % opt for opt in ovs_options]
+        ovs_extra = json.get('ovs_extra', [])
+        opts = _BaseOpts.base_opts_from_json(json)
+        return OvsTunnel(name, *opts, tunnel_type=tunnel_type,
+                         ovs_options=ovs_options, ovs_extra=ovs_extra)

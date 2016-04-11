@@ -177,6 +177,14 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 self.member_names[base_opt.name] = members
             if base_opt.bonding_options:
                 data += "BONDING_OPTS=\"%s\"\n" % base_opt.bonding_options
+        elif isinstance(base_opt, objects.OvsTunnel):
+            ovs_extra.extend(base_opt.ovs_extra)
+            data += "DEVICETYPE=ovs\n"
+            data += "TYPE=OVSTunnel\n"
+            data += "OVS_BRIDGE=%s\n" % base_opt.bridge_name
+            data += "OVS_TUNNEL_TYPE=%s\n" % base_opt.tunnel_type
+            data += "OVS_TUNNEL_OPTIONS=\"%s\"\n" % \
+                    ' '.join(base_opt.ovs_options)
         else:
             if base_opt.use_dhcp:
                 data += "BOOTPROTO=dhcp\n"
@@ -355,6 +363,16 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         self.linuxbond_data[bond.name] = data
         if bond.routes:
             self._add_routes(bond.name, bond.routes)
+
+    def add_ovs_tunnel(self, tunnel):
+        """Add a OvsTunnel object to the net config object.
+
+        :param tunnel: The OvsTunnel object to add.
+        """
+        logger.info('adding ovs tunnel: %s' % tunnel.name)
+        data = self._add_common(tunnel)
+        logger.debug('ovs tunnel data: %s' % data)
+        self.interface_data[tunnel.name] = data
 
     def generate_ivs_config(self, ivs_uplinks, ivs_interfaces):
         """Generate configuration content for ivs."""
