@@ -60,13 +60,13 @@ def _is_active_nic(interface_name):
 
         operstate = None
         with open(_SYS_CLASS_NET + '/%s/operstate' % interface_name, 'r') as f:
-            operstate = f.read().rstrip()
+            operstate = f.read().rstrip().lower()
 
         address = None
         with open(_SYS_CLASS_NET + '/%s/address' % interface_name, 'r') as f:
             address = f.read().rstrip()
 
-        if has_device_dir and operstate == 'UP' and address:
+        if has_device_dir and operstate == 'up' and address:
             return True
         else:
             return False
