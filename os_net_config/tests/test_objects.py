@@ -569,3 +569,9 @@ class TestNumberedNicsMapping(base.TestCase):
         mapping = {'nic1': '12:34:56:de:f0:12', 'nic2': '12:34:56:78:9a:bc'}
         expected = {'nic1': 'em2', 'nic2': 'em1'}
         self.assertEqual(expected, objects._numbered_nics(nic_mapping=mapping))
+
+    def test_numbered_nics_no_active(self):
+        self._stub_active_nics([])
+        expected = {}
+        # This only emits a warning, so it should still work
+        self.assertEqual(expected, objects._numbered_nics())
