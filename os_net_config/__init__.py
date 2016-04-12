@@ -110,16 +110,16 @@ class NetConfig(object):
     def add_bond(self, bond):
         """Add an OvsBond object to the net config object.
 
-        :param bridge: The OvsBond object to add.
+        :param bond: The OvsBond object to add.
         """
         raise NotImplemented("add_bond is not implemented.")
 
     def add_linux_bond(self, bond):
         """Add a LinuxBond object to the net config object.
 
-        :param bridge: The LinuxBond object to add.
+        :param bond: The LinuxBond object to add.
         """
-        raise NotImplemented("add_linuxbond is not implemented.")
+        raise NotImplemented("add_linux_bond is not implemented.")
 
     def apply(self, cleanup=False):
         """Apply the network configuration.
