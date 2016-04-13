@@ -1,0 +1,18 @@
+network_config:
+  -
+    type: ib_interface
+    name: ib0
+    use_dhcp: false
+    addresses:
+    -
+      ip_netmask: 192.0.2.1/24
+    routes:
+      -
+        ip_netmask: 0.0.0.0/0
+        next_hop: 192.0.2.254
+        default: true
+  -
+    type: interface
+    name: ib1
+    use_dhcp: true
+    defroute: no

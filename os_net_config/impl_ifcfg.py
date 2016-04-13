@@ -64,6 +64,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         self.bridge_data = {}
         self.linuxbridge_data = {}
         self.linuxbond_data = {}
+        self.ib_interface_data = {}
         self.member_names = {}
         self.renamed_interfaces = {}
         self.bond_primary_ifaces = {}
@@ -101,6 +102,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                         data += "PHYSDEV=%s\n" % base_opt.linux_bond_name
         elif isinstance(base_opt, objects.IvsInterface):
             data += "TYPE=IVSIntPort\n"
+        elif isinstance(base_opt, objects.IbInterface):
+            data += "TYPE=Infiniband\n"
         elif re.match('\w+\.\d+$', base_opt.name):
             data += "VLAN=yes\n"
         if base_opt.linux_bond_name:
@@ -391,6 +394,23 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         logger.debug('ovs patch port data: %s' % data)
         self.interface_data[ovs_patch_port.name] = data
 
+    def add_ib_interface(self, ib_interface):
+        """Add an InfiniBand interface object to the net config object.
+
+        :param ib_interface: The InfiniBand interface object to add.
+        """
+        logger.info('adding ib_interface: %s' % ib_interface.name)
+        data = self._add_common(ib_interface)
+        logger.debug('ib_interface data: %s' % data)
+        self.ib_interface_data[ib_interface.name] = data
+        if ib_interface.routes:
+            self._add_routes(ib_interface.name, ib_interface.routes)
+
+        if ib_interface.renamed:
+            logger.info("InfiniBand interface %s being renamed to %s"
+                        % (ib_interface.hwname, ib_interface.name))
+            self.renamed_interfaces[ib_interface.hwname] = ib_interface.name
+
     def generate_ivs_config(self, ivs_uplinks, ivs_interfaces):
         """Generate configuration content for ivs."""
 
@@ -561,6 +581,32 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             else:
                 logger.info('No changes required for linux bond: %s' %
                             bond_name)
+
+        # Infiniband interfaces are handled similarly to Ethernet interfaces
+        for interface_name, iface_data in self.ib_interface_data.iteritems():
+            route_data = self.route_data.get(interface_name, '')
+            route6_data = self.route6_data.get(interface_name, '')
+            interface_path = self.root_dir + ifcfg_config_path(interface_name)
+            route_path = self.root_dir + route_config_path(interface_name)
+            route6_path = self.root_dir + route6_config_path(interface_name)
+            all_file_names.append(interface_path)
+            all_file_names.append(route_path)
+            all_file_names.append(route6_path)
+            # TODO(dsneddon) determine if InfiniBand can be used with IVS
+            if "IVS_BRIDGE" in iface_data:
+                ivs_uplinks.append(interface_name)
+            all_file_names.append(route6_path)
+            if (utils.diff(interface_path, iface_data) or
+                    utils.diff(route_path, route_data) or
+                    utils.diff(route6_path, route6_data)):
+                restart_interfaces.append(interface_name)
+                restart_interfaces.extend(self.child_members(interface_name))
+                update_files[interface_path] = iface_data
+                update_files[route_path] = route_data
+                update_files[route6_path] = route6_data
+            else:
+                logger.info('No changes required for InfiniBand iface: %s' %
+                            interface_name)
 
         if cleanup:
             for ifcfg_file in glob.iglob(cleanup_pattern()):

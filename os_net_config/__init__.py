@@ -75,6 +75,8 @@ class NetConfig(object):
             self.add_ovs_tunnel(obj)
         elif isinstance(obj, objects.OvsPatchPort):
             self.add_ovs_patch_port(obj)
+        elif isinstance(obj, objects.IbInterface):
+            self.add_ib_interface(obj)
 
     def add_interface(self, interface):
         """Add an Interface object to the net config object.
@@ -138,6 +140,13 @@ class NetConfig(object):
         :param ovs_patch_port: The OvsPatchPort object to add.
         """
         raise NotImplemented("add_ovs_patch_port is not implemented.")
+
+    def add_ib_interface(self, ib_interface):
+        """Add an InfiniBand Interface object to the net config object.
+
+        :param interface: The InfiniBand Interface object to add.
+        """
+        raise NotImplemented("add_ib_interface is not implemented.")
 
     def apply(self, cleanup=False):
         """Apply the network configuration.
