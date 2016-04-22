@@ -98,6 +98,8 @@ def _numbered_nics(nic_mapping=None):
 
         _NUMBERED_NICS[nic_alias] = nic_mapped
         logger.info("%s mapped to: %s" % (nic_alias, nic_mapped))
+    if not _NUMBERED_NICS:
+        logger.warning('No active nics found.')
     return _NUMBERED_NICS
 
 
