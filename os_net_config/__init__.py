@@ -71,6 +71,8 @@ class NetConfig(object):
             self.add_linux_bond(obj)
             for member in obj.members:
                 self.add_object(member)
+        elif isinstance(obj, objects.OvsTunnel):
+            self.add_ovs_tunnel(obj)
 
     def add_interface(self, interface):
         """Add an Interface object to the net config object.
@@ -120,6 +122,13 @@ class NetConfig(object):
         :param bond: The LinuxBond object to add.
         """
         raise NotImplemented("add_linux_bond is not implemented.")
+
+    def add_ovs_tunnel(self, tunnel):
+        """Add a OvsTunnel object to the net config object.
+
+        :param tunnel: The OvsTunnel object to add.
+        """
+        raise NotImplemented("add_ovs_tunnel is not implemented.")
 
     def apply(self, cleanup=False):
         """Apply the network configuration.
