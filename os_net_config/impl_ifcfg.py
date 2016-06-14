@@ -185,11 +185,18 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             data += "OVS_TUNNEL_TYPE=%s\n" % base_opt.tunnel_type
             data += "OVS_TUNNEL_OPTIONS=\"%s\"\n" % \
                     ' '.join(base_opt.ovs_options)
+        elif isinstance(base_opt, objects.OvsPatchPort):
+            ovs_extra.extend(base_opt.ovs_extra)
+            data += "DEVICETYPE=ovs\n"
+            data += "TYPE=OVSPatchPort\n"
+            data += "OVS_BRIDGE=%s\n" % base_opt.bridge_name
+            data += "OVS_PATCH_PEER=%s\n" % base_opt.peer
         else:
             if base_opt.use_dhcp:
                 data += "BOOTPROTO=dhcp\n"
             elif not base_opt.addresses:
                 data += "BOOTPROTO=none\n"
+
         if base_opt.mtu:
             data += "MTU=%i\n" % base_opt.mtu
         if base_opt.use_dhcpv6 or base_opt.v6_addresses():
@@ -373,6 +380,16 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         data = self._add_common(tunnel)
         logger.debug('ovs tunnel data: %s' % data)
         self.interface_data[tunnel.name] = data
+
+    def add_ovs_patch_port(self, ovs_patch_port):
+        """Add a OvsPatchPort object to the net config object.
+
+        :param ovs_patch_port: The OvsPatchPort object to add.
+        """
+        logger.info('adding ovs patch port: %s' % ovs_patch_port.name)
+        data = self._add_common(ovs_patch_port)
+        logger.debug('ovs patch port data: %s' % data)
+        self.interface_data[ovs_patch_port.name] = data
 
     def generate_ivs_config(self, ivs_uplinks, ivs_interfaces):
         """Generate configuration content for ivs."""

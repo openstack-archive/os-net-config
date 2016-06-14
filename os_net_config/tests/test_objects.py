@@ -548,6 +548,22 @@ class TestOvsTunnel(base.TestCase):
             tun0.ovs_extra)
 
 
+class TestOvsPatchPort(base.TestCase):
+
+    def test_from_json(self):
+        data = """{
+"type": "ovs_patch_port",
+"name": "br-pub-patch",
+"bridge_name": "br-ex",
+"peer": "br-ex-patch"
+}
+"""
+        patch_port = objects.object_from_json(json.loads(data))
+        self.assertEqual("br-pub-patch", patch_port.name)
+        self.assertEqual("br-ex", patch_port.bridge_name)
+        self.assertEqual("br-ex-patch", patch_port.peer)
+
+
 class TestNumberedNicsMapping(base.TestCase):
 
     # We want to test the function, not the dummy..
