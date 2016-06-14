@@ -83,19 +83,26 @@ def _natural_sort_key(s):
 def ordered_active_nics():
     embedded_nics = []
     nics = []
+    logger.debug("Finding active nics")
     for name in glob.iglob(_SYS_CLASS_NET + '/*'):
         nic = name[(len(_SYS_CLASS_NET) + 1):]
         if _is_active_nic(nic):
             if nic.startswith('em') or nic.startswith('eth') or \
                     nic.startswith('eno'):
+                logger.debug("%s is an embedded active nic" % nic)
                 embedded_nics.append(nic)
             else:
+                logger.debug("%s is an active nic" % nic)
                 nics.append(nic)
+        else:
+            logger.debug("%s is not an active nic" % nic)
     # NOTE: we could just natural sort all active devices,
     # but this ensures em, eno, and eth are ordered first
     # (more backwards compatible)
-    return (sorted(embedded_nics, key=_natural_sort_key) +
-            sorted(nics, key=_natural_sort_key))
+    active_nics = (sorted(embedded_nics, key=_natural_sort_key) +
+                   sorted(nics, key=_natural_sort_key))
+    logger.debug("Active nics are %s" % active_nics)
+    return active_nics
 
 
 def diff(filename, data):
