@@ -42,6 +42,13 @@ def get_file_data(filename):
 
 
 def interface_mac(name):
+    try:  # If the iface is part of a Linux bond, the real MAC is only here.
+        with open('/sys/class/net/%s/bonding_slave/perm_hwaddr' % name,
+                  'r') as f:
+            return f.read().rstrip()
+    except IOError:
+        pass  # Iface is not part of a bond, continue
+
     try:
         with open('/sys/class/net/%s/address' % name, 'r') as f:
             return f.read().rstrip()
