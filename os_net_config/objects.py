@@ -38,6 +38,8 @@ def object_from_json(json):
         return Vlan.from_json(json)
     elif obj_type == "ovs_bridge":
         return OvsBridge.from_json(json)
+    elif obj_type == "ovs_user_bridge":
+        return OvsUserBridge.from_json(json)
     elif obj_type == "ovs_bond":
         return OvsBond.from_json(json)
     elif obj_type == "linux_bond":
@@ -60,6 +62,8 @@ def object_from_json(json):
         return OvsPatchPort.from_json(json)
     elif obj_type == "ib_interface":
         return IbInterface.from_json(json)
+    elif obj_type == "ovs_dpdk_port":
+        return OvsDpdkPort.from_json(json)
 
 
 def _get_required_field(json, name, object_name):
@@ -433,6 +437,65 @@ class OvsBridge(_BaseOpts):
                          ovs_extra=ovs_extra, nic_mapping=nic_mapping,
                          persist_mapping=persist_mapping, defroute=defroute,
                          dhclient_args=dhclient_args, dns_servers=dns_servers)
+
+
+class OvsUserBridge(_BaseOpts):
+    """Base class for OVS User bridges."""
+
+    def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
+                 routes=None, mtu=None, members=None, ovs_options=None,
+                 ovs_extra=None, nic_mapping=None, persist_mapping=False,
+                 defroute=True, dhclient_args=None, dns_servers=None):
+        super(OvsUserBridge, self).__init__(name, use_dhcp, use_dhcpv6,
+                                            addresses, routes, mtu, False,
+                                            nic_mapping, persist_mapping,
+                                            defroute, dhclient_args,
+                                            dns_servers)
+        self.members = members or []
+        self.ovs_options = ovs_options
+        self.ovs_extra = ovs_extra or []
+        for member in self.members:
+            member.bridge_name = name
+            if not isinstance(member, OvsTunnel) and \
+               not isinstance(member, OvsDpdkPort):
+                member.ovs_port = True
+            if member.primary:
+                if self.primary_interface_name:
+                    msg = 'Only one primary interface allowed per bridge.'
+                    raise InvalidConfigException(msg)
+                if member.primary_interface_name:
+                    self.primary_interface_name = member.primary_interface_name
+                else:
+                    self.primary_interface_name = member.name
+
+    @staticmethod
+    def from_json(json):
+        name = _get_required_field(json, 'name', 'OvsUserBridge')
+        (use_dhcp, use_dhcpv6, addresses, routes, mtu, nic_mapping,
+         persist_mapping, defroute,
+         dhclient_args, dns_servers) = _BaseOpts.base_opts_from_json(
+             json, include_primary=False)
+        ovs_options = json.get('ovs_options')
+        ovs_extra = json.get('ovs_extra', [])
+        members = []
+
+        # members
+        members_json = json.get('members')
+        if members_json:
+            if isinstance(members_json, list):
+                for member in members_json:
+                    members.append(object_from_json(member))
+            else:
+                msg = 'Members must be a list.'
+                raise InvalidConfigException(msg)
+
+        return OvsUserBridge(name, use_dhcp=use_dhcp, use_dhcpv6=use_dhcpv6,
+                             addresses=addresses, routes=routes, mtu=mtu,
+                             members=members, ovs_options=ovs_options,
+                             ovs_extra=ovs_extra, nic_mapping=nic_mapping,
+                             persist_mapping=persist_mapping,
+                             defroute=defroute, dhclient_args=dhclient_args,
+                             dns_servers=dns_servers)
 
 
 class LinuxBridge(_BaseOpts):
@@ -883,3 +946,62 @@ class IbInterface(_BaseOpts):
         name = _get_required_field(json, 'name', 'IbInterface')
         opts = _BaseOpts.base_opts_from_json(json)
         return IbInterface(name, *opts)
+
+
+class OvsDpdkPort(_BaseOpts):
+    """Base class for OVS Dpdk Ports."""
+
+    def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
+                 routes=None, mtu=None, primary=False, nic_mapping=None,
+                 persist_mapping=False, defroute=True, dhclient_args=None,
+                 dns_servers=None, members=None, driver='vfio-pci',
+                 ovs_options=None, ovs_extra=None):
+
+        super(OvsDpdkPort, self).__init__(name, use_dhcp, use_dhcpv6,
+                                          addresses, routes, mtu, primary,
+                                          nic_mapping, persist_mapping,
+                                          defroute, dhclient_args,
+                                          dns_servers)
+        self.members = members or []
+        self.ovs_options = ovs_options or []
+        self.ovs_extra = ovs_extra or []
+        self.driver = driver
+
+    @staticmethod
+    def from_json(json):
+        name = _get_required_field(json, 'name', 'OvsDpdkPort')
+        # driver name by default will be 'vfio-pci' if not specified
+        driver = json.get('driver')
+        if not driver:
+            driver = 'vfio-pci'
+
+        # members
+        members = []
+        members_json = json.get('members')
+        if members_json:
+            if isinstance(members_json, list):
+                if len(members_json) == 1:
+                    iface = object_from_json(members_json[0])
+                    if isinstance(iface, Interface):
+                        # TODO(skramaja): Add checks for IP and route not to
+                        # be set in the interface part of DPDK Port
+                        members.append(iface)
+                    else:
+                        msg = 'OVS DPDK Port should have only interface member'
+                        raise InvalidConfigException(msg)
+                else:
+                    msg = 'OVS DPDK Port should have only one member'
+                    raise InvalidConfigException(msg)
+            else:
+                msg = 'Members must be a list.'
+                raise InvalidConfigException(msg)
+        else:
+            msg = 'DPDK Port should have one member as Interface'
+            raise InvalidConfigException(msg)
+
+        ovs_options = json.get('ovs_options', [])
+        ovs_options = ['options:%s' % opt for opt in ovs_options]
+        ovs_extra = json.get('ovs_extra', [])
+        opts = _BaseOpts.base_opts_from_json(json)
+        return OvsDpdkPort(name, *opts, members=members, driver=driver,
+                           ovs_options=ovs_options, ovs_extra=ovs_extra)

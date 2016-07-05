@@ -164,3 +164,20 @@ class TestCli(base.TestCase):
         for dev in sanity_devices:
             self.assertIn(dev, stdout_yaml)
         self.assertEqual(stdout_yaml, stdout_json)
+
+    def test_ovs_dpdk_noop_output(self):
+        ivs_yaml = os.path.join(SAMPLE_BASE, 'ovs_dpdk.yaml')
+        ivs_json = os.path.join(SAMPLE_BASE, 'ovs_dpdk.json')
+        stdout_yaml, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
+                                           '-c %s' % ivs_yaml)
+        self.assertEqual('', stderr)
+        stdout_json, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
+                                           '-c %s' % ivs_json)
+        self.assertEqual('', stderr)
+        sanity_devices = ['DEVICE=br-link',
+                          'TYPE=OVSUserBridge',
+                          'DEVICE=dpdk0',
+                          'TYPE=OVSDPDKPort']
+        for dev in sanity_devices:
+            self.assertIn(dev, stdout_yaml)
+        self.assertEqual(stdout_yaml, stdout_json)

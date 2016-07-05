@@ -57,6 +57,10 @@ class NetConfig(object):
             self.add_bridge(obj)
             for member in obj.members:
                 self.add_object(member)
+        elif isinstance(obj, objects.OvsUserBridge):
+            self.add_ovs_user_bridge(obj)
+            for member in obj.members:
+                self.add_object(member)
         elif isinstance(obj, objects.LinuxBridge):
             self.add_linux_bridge(obj)
             for member in obj.members:
@@ -87,6 +91,8 @@ class NetConfig(object):
             self.add_ovs_patch_port(obj)
         elif isinstance(obj, objects.IbInterface):
             self.add_ib_interface(obj)
+        elif isinstance(obj, objects.OvsDpdkPort):
+            self.add_ovs_dpdk_port(obj)
 
     def add_interface(self, interface):
         """Add an Interface object to the net config object.
@@ -108,6 +114,13 @@ class NetConfig(object):
         :param bridge: The OvsBridge object to add.
         """
         raise NotImplemented("add_bridge is not implemented.")
+
+    def add_ovs_user_bridge(self, bridge):
+        """Add an OvsUserBridge object to the net config object.
+
+        :param bridge: The OvsUserBridge object to add.
+        """
+        raise NotImplemented("add_ovs_user_bridge is not implemented.")
 
     def add_linux_bridge(self, bridge):
         """Add a LinuxBridge object to the net config object.
@@ -171,6 +184,13 @@ class NetConfig(object):
         :param interface: The InfiniBand Interface object to add.
         """
         raise NotImplemented("add_ib_interface is not implemented.")
+
+    def add_ovs_dpdk_port(self, ovs_dpdk_port):
+        """Add a OvsDpdkPort object to the net config object.
+
+        :param ovs_dpdk_port: The OvsDpdkPort object to add.
+        """
+        raise NotImplemented("add_ovs_dpdk_port is not implemented.")
 
     def apply(self, cleanup=False):
         """Apply the network configuration.

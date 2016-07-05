@@ -19,9 +19,15 @@ import logging
 import os
 import re
 
+from oslo_concurrency import processutils
+
 
 logger = logging.getLogger(__name__)
 _SYS_CLASS_NET = '/sys/class/net'
+
+
+class OvsDpdkBindException(ValueError):
+    pass
 
 
 def write_config(filename, data):
@@ -118,3 +124,39 @@ def diff(filename, data):
     logger.debug("Diff data:\n%s" % data)
     # convert to string as JSON may have unicode in it
     return not file_data == data
+
+
+def bind_dpdk_interfaces(ifname, driver, noop):
+    pci_addres = _get_pci_address(ifname, noop)
+    if not noop:
+        if pci_addres:
+            # modbprobe of the driver has to be done before binding.
+            # for reboots, puppet will add the modprobe to /etc/rc.modules
+            processutils.execute('modprobe', 'vfio-pci')
+
+            out, err = processutils.execute('driverctl', 'set-override',
+                                            pci_addres, driver)
+            if err:
+                msg = "Failed to bind interface %s with dpdk" % ifname
+                raise OvsDpdkBindException(msg)
+            else:
+                processutils.execute('driverctl', 'load-override', pci_addres)
+    else:
+        logger.info('Interface %(name)s bound to DPDK driver %(driver)s '
+                    'using driverctl command' %
+                    {'name': ifname, 'driver': driver})
+
+
+def _get_pci_address(ifname, noop):
+    # TODO(skramaja): Validate if the given interface supports dpdk
+    if not noop:
+        # If ifname is already bound, then ethtool will not be able to list the
+        # device, in which case, binding is already done, proceed with scripts
+        out, err = processutils.execute('ethtool', '-i', ifname)
+        if not err:
+            for item in out.split('\n'):
+                if 'bus-info' in item:
+                    return item.split(' ')[1]
+    else:
+        logger.info('Fetch the PCI address of the interface %s using '
+                    'ethtool' % ifname)
