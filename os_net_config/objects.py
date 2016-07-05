@@ -50,6 +50,8 @@ def object_from_json(json):
         return IvsInterface.from_json(json)
     elif obj_type == "ovs_tunnel":
         return OvsTunnel.from_json(json)
+    elif obj_type == "ovs_patch_port":
+        return OvsPatchPort.from_json(json)
 
 
 def _get_required_field(json, name, object_name):
@@ -652,3 +654,38 @@ class OvsTunnel(_BaseOpts):
         opts = _BaseOpts.base_opts_from_json(json)
         return OvsTunnel(name, *opts, tunnel_type=tunnel_type,
                          ovs_options=ovs_options, ovs_extra=ovs_extra)
+
+
+class OvsPatchPort(_BaseOpts):
+    """Base class for OVS Patch Ports."""
+
+    def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
+                 routes=None, mtu=None, primary=False, nic_mapping=None,
+                 persist_mapping=False, defroute=True, dhclient_args=None,
+                 dns_servers=None, bridge_name=None, peer=None,
+                 ovs_options=None, ovs_extra=None):
+        addresses = addresses or []
+        routes = routes or []
+        ovs_extra = ovs_extra or []
+        dns_servers = dns_servers or []
+        super(OvsPatchPort, self).__init__(name, use_dhcp, use_dhcpv6,
+                                           addresses, routes, mtu, primary,
+                                           nic_mapping, persist_mapping,
+                                           defroute, dhclient_args,
+                                           dns_servers)
+        self.bridge_name = bridge_name
+        self.peer = peer
+        self.ovs_options = ovs_options or []
+        self.ovs_extra = ovs_extra or []
+
+    @staticmethod
+    def from_json(json):
+        name = _get_required_field(json, 'name', 'OvsPatchPort')
+        bridge_name = _get_required_field(json, 'bridge_name', 'OvsPatchPort')
+        peer = _get_required_field(json, 'peer', 'OvsPatchPort')
+        ovs_options = json.get('ovs_options', [])
+        ovs_options = ['options:%s' % opt for opt in ovs_options]
+        ovs_extra = json.get('ovs_extra', [])
+        opts = _BaseOpts.base_opts_from_json(json)
+        return OvsPatchPort(name, *opts, bridge_name=bridge_name, peer=peer,
+                            ovs_options=ovs_options, ovs_extra=ovs_extra)

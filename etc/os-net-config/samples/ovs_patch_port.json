@@ -1,0 +1,37 @@
+{
+  "network_config": [
+    {
+      "name": "br-ctlplane",
+      "type": "ovs_bridge",
+      "members": [
+        {
+          "mtu": 1500,
+          "primary": "true",
+          "name": "eth1",
+          "type": "interface"
+        }
+      ],
+      "ovs_extra": [
+        "br-set-external-id br-ctlplane bridge-id br-ctlplane"
+      ],
+      "mtu": 1500,
+      "addresses": [
+        {
+          "ip_netmask": "192.0.2.1/24"
+        }
+      ]
+    },
+    {
+      "name": "br_pub-patch",
+      "type": "ovs_patch_port",
+      "bridge_name": "br-ctlplane",
+      "peer": "br-ctlplane-patch"
+    },
+    {
+      "name": "br-ctlplane-patch",
+      "type": "ovs_patch_port",
+      "bridge_name": "br_pub",
+      "peer": "br_pub-patch"
+    }
+  ]
+}
