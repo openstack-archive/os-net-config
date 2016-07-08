@@ -456,6 +456,28 @@ class TestBond(base.TestCase):
         self.assertEqual("em2", interface2.name)
 
 
+class TestLinuxTeam(base.TestCase):
+
+    def test_from_json_dhcp(self):
+        data = """{
+"type": "team",
+"name": "team1",
+"use_dhcp": true,
+"members": [
+    { "type": "interface", "name": "em1", "primary": true },
+    { "type": "interface", "name": "em2" }
+]
+}
+"""
+        team = objects.object_from_json(json.loads(data))
+        self.assertEqual("team1", team.name)
+        self.assertTrue(team.use_dhcp)
+        interface1 = team.members[0]
+        self.assertEqual("em1", interface1.name)
+        interface2 = team.members[1]
+        self.assertEqual("em2", interface2.name)
+
+
 class TestLinuxBond(base.TestCase):
 
     def test_from_json_dhcp(self):

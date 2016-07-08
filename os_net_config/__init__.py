@@ -71,6 +71,10 @@ class NetConfig(object):
             self.add_linux_bond(obj)
             for member in obj.members:
                 self.add_object(member)
+        elif isinstance(obj, objects.LinuxTeam):
+            self.add_linux_team(obj)
+            for member in obj.members:
+                self.add_object(member)
         elif isinstance(obj, objects.OvsTunnel):
             self.add_ovs_tunnel(obj)
         elif isinstance(obj, objects.OvsPatchPort):
@@ -126,6 +130,13 @@ class NetConfig(object):
         :param bond: The LinuxBond object to add.
         """
         raise NotImplemented("add_linux_bond is not implemented.")
+
+    def add_linux_team(self, team):
+        """Add a LinuxTeam object to the net config object.
+
+        :param team: The LinuxTeam object to add.
+        """
+        raise NotImplemented("add_linux_team is not implemented.")
 
     def add_ovs_tunnel(self, tunnel):
         """Add a OvsTunnel object to the net config object.

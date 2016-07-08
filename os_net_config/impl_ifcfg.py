@@ -65,6 +65,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         self.linuxbridge_data = {}
         self.linuxbond_data = {}
         self.ib_interface_data = {}
+        self.linuxteam_data = {}
         self.member_names = {}
         self.renamed_interfaces = {}
         self.bond_primary_ifaces = {}
@@ -109,11 +110,16 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         if base_opt.linux_bond_name:
             data += "MASTER=%s\n" % base_opt.linux_bond_name
             data += "SLAVE=yes\n"
+        if base_opt.linux_team_name:
+            data += "TEAM_MASTER=%s\n" % base_opt.linux_team_name
+            if base_opt.primary:
+                data += "TEAM_PORT_CONFIG='{\"prio\": 100}'\n"
         if base_opt.ivs_bridge_name:
             data += "DEVICETYPE=ivs\n"
             data += "IVS_BRIDGE=%s\n" % base_opt.ivs_bridge_name
         if base_opt.ovs_port:
-            data += "DEVICETYPE=ovs\n"
+            if not isinstance(base_opt, objects.LinuxTeam):
+                data += "DEVICETYPE=ovs\n"
             if base_opt.bridge_name:
                 if isinstance(base_opt, objects.Vlan):
                     data += "TYPE=OVSIntPort\n"
@@ -180,6 +186,19 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 self.member_names[base_opt.name] = members
             if base_opt.bonding_options:
                 data += "BONDING_OPTS=\"%s\"\n" % base_opt.bonding_options
+        elif isinstance(base_opt, objects.LinuxTeam):
+            if base_opt.primary_interface_name:
+                primary_name = base_opt.primary_interface_name
+                primary_mac = utils.interface_mac(primary_name)
+                data += "MACADDR=\"%s\"\n" % primary_mac
+            if base_opt.use_dhcp:
+                data += "BOOTPROTO=dhcp\n"
+            if base_opt.members:
+                members = [member.name for member in base_opt.members]
+                self.member_names[base_opt.name] = members
+            data += "DEVICETYPE=Team\n"
+            if base_opt.bonding_options:
+                data += "TEAM_CONFIG='%s'\n" % base_opt.bonding_options
         elif isinstance(base_opt, objects.OvsTunnel):
             ovs_extra.extend(base_opt.ovs_extra)
             data += "DEVICETYPE=ovs\n"
@@ -374,6 +393,18 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         if bond.routes:
             self._add_routes(bond.name, bond.routes)
 
+    def add_linux_team(self, team):
+        """Add a LinuxTeam object to the net config object.
+
+        :param team: The LinuxTeam object to add.
+        """
+        logger.info('adding linux team: %s' % team.name)
+        data = self._add_common(team)
+        logger.debug('team data: %s' % data)
+        self.linuxteam_data[team.name] = data
+        if team.routes:
+            self._add_routes(team.name, team.routes)
+
     def add_ovs_tunnel(self, tunnel):
         """Add a OvsTunnel object to the net config object.
 
@@ -451,6 +482,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         restart_vlans = []
         restart_bridges = []
         restart_linux_bonds = []
+        restart_linux_teams = []
         update_files = {}
         all_file_names = []
         ivs_uplinks = []  # ivs physical uplinks
@@ -561,6 +593,27 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             else:
                 logger.info('No changes required for bridge: %s' % bridge_name)
 
+        for team_name, team_data in self.linuxteam_data.iteritems():
+            route_data = self.route_data.get(team_name, '')
+            route6_data = self.route6_data.get(team_name, '')
+            team_path = self.root_dir + bridge_config_path(team_name)
+            team_route_path = self.root_dir + route_config_path(team_name)
+            team_route6_path = self.root_dir + route6_config_path(team_name)
+            all_file_names.append(team_path)
+            all_file_names.append(team_route_path)
+            all_file_names.append(team_route6_path)
+            if (utils.diff(team_path, team_data) or
+                    utils.diff(team_route_path, route_data) or
+                    utils.diff(team_route6_path, route6_data)):
+                restart_linux_teams.append(team_name)
+                restart_interfaces.extend(self.child_members(team_name))
+                update_files[team_path] = team_data
+                update_files[team_route_path] = route_data
+                update_files[team_route6_path] = route6_data
+            else:
+                logger.info('No changes required for linux team: %s' %
+                            team_name)
+
         for bond_name, bond_data in self.linuxbond_data.iteritems():
             route_data = self.route_data.get(bond_name, '')
             route6_data = self.route6_data.get(bond_name, '')
@@ -628,6 +681,9 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             for linux_bond in restart_linux_bonds:
                 self.ifdown(linux_bond)
 
+            for linux_team in restart_linux_teams:
+                self.ifdown(linux_team)
+
             for bridge in restart_bridges:
                 self.ifdown(bridge, iftype='bridge')
 
@@ -645,6 +701,9 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         if activate:
             for linux_bond in restart_linux_bonds:
                 self.ifup(linux_bond)
+
+            for linux_team in restart_linux_teams:
+                self.ifup(linux_team)
 
             for bridge in restart_bridges:
                 self.ifup(bridge, iftype='bridge')

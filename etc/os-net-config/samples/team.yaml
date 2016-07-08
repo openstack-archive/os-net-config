@@ -1,0 +1,18 @@
+# Config for bonding with teamd. Bonding options are provided as a JSON
+# string. The following runners are available in teamd: broadcast,
+# roundrobin, activebackup, loadbalance, and lacp.
+# Please see the teamd.conf(5) man page for more information.
+network_config:
+  -
+    type: team
+    name: team1
+    use_dhcp: true
+    bonding_options: '{"runner": {"name": "activebackup"}}'
+    members:
+      -
+        type: interface
+        name: em1
+        primary: true
+      -
+        type: interface
+        name: em2

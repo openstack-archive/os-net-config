@@ -1,0 +1,13 @@
+{ "network_config": [
+        {
+          "type": "team",
+          "name": "team1",
+          "use_dhcp": true,
+          "bonding_options": "{\"runner\": {\"name\": \"activebackup\"}}",
+          "members": [
+              { "type": "interface", "name": "em1", "primary": true },
+              { "type": "interface", "name": "em2" }
+          ]
+        }
+    ]
+}
