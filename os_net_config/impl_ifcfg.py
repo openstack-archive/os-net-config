@@ -39,6 +39,10 @@ def ivs_config_path():
     return "/etc/sysconfig/ivs"
 
 
+def nfvswitch_config_path():
+    return "/etc/sysconfig/nfvswitch"
+
+
 def route_config_path(name):
     return "/etc/sysconfig/network-scripts/route-%s" % name
 
@@ -58,6 +62,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         super(IfcfgNetConfig, self).__init__(noop, root_dir)
         self.interface_data = {}
         self.ivsinterface_data = {}
+        self.nfvswitch_intiface_data = {}
+        self.nfvswitch_cpus = None
         self.vlan_data = {}
         self.route_data = {}
         self.route6_data = {}
@@ -103,6 +109,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                         data += "PHYSDEV=%s\n" % base_opt.linux_bond_name
         elif isinstance(base_opt, objects.IvsInterface):
             data += "TYPE=IVSIntPort\n"
+        elif isinstance(base_opt, objects.NfvswitchInternal):
+            data += "TYPE=NFVSWITCHIntPort\n"
         elif isinstance(base_opt, objects.IbInterface):
             data += "TYPE=Infiniband\n"
         elif re.match('\w+\.\d+$', base_opt.name):
@@ -117,6 +125,9 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         if base_opt.ivs_bridge_name:
             data += "DEVICETYPE=ivs\n"
             data += "IVS_BRIDGE=%s\n" % base_opt.ivs_bridge_name
+        if base_opt.nfvswitch_bridge_name:
+            data += "DEVICETYPE=nfvswitch\n"
+            data += "NFVSWITCH_BRIDGE=%s\n" % base_opt.nfvswitch_bridge_name
         if base_opt.ovs_port:
             if not isinstance(base_opt, objects.LinuxTeam):
                 data += "DEVICETYPE=ovs\n"
@@ -333,6 +344,19 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         if ivs_interface.routes:
             self._add_routes(ivs_interface.name, ivs_interface.routes)
 
+    def add_nfvswitch_internal(self, nfvswitch_internal):
+        """Add a nfvswitch_internal interface object to the net config object.
+
+        :param nfvswitch_internal: The nfvswitch_internal object to add.
+        """
+        iface_name = nfvswitch_internal.name
+        logger.info('adding nfvswitch_internal interface: %s' % iface_name)
+        data = self._add_common(nfvswitch_internal)
+        logger.debug('nfvswitch_internal interface data: %s' % data)
+        self.nfvswitch_intiface_data[iface_name] = data
+        if nfvswitch_internal.routes:
+            self._add_routes(iface_name, nfvswitch_internal.routes)
+
     def add_bridge(self, bridge):
         """Add an OvsBridge object to the net config object.
 
@@ -368,6 +392,16 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         :param bridge: The IvsBridge object to add.
         """
         pass
+
+    def add_nfvswitch_bridge(self, bridge):
+        """Add a NFVSwitchBridge object to the net config object.
+
+        NFVSwitch can only support one virtual switch per node,
+        using "nfvswitch" as its name. As long as the nfvswitch service
+        is running, the nfvswitch virtual switch will be available.
+        :param bridge: The NfvswitchBridge object to add.
+        """
+        self.nfvswitch_cpus = bridge.cpus
 
     def add_bond(self, bond):
         """Add an OvsBond object to the net config object.
@@ -462,6 +496,29 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 % (uplink_str, intf_str))
         return data
 
+    def generate_nfvswitch_config(self, nfvswitch_ifaces,
+                                  nfvswitch_internal_ifaces):
+        """Generate configuration content for nfvswitch."""
+
+        cpu_str = ""
+        if self.nfvswitch_cpus:
+            cpu_str = " -c " + self.nfvswitch_cpus
+
+        ifaces = []
+        for iface in nfvswitch_ifaces:
+            ifaces.append(' -u ')
+            ifaces.append(iface)
+        iface_str = ''.join(ifaces)
+
+        ifaces = []
+        for iface in nfvswitch_internal_ifaces:
+            ifaces.append(' -m ')
+            ifaces.append(iface)
+        internal_str = ''.join(ifaces)
+
+        data = ("SETUP_ARGS=\"%s%s%s\"" % (cpu_str, iface_str, internal_str))
+        return data
+
     def apply(self, cleanup=False, activate=True):
         """Apply the network configuration.
 
@@ -487,6 +544,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         all_file_names = []
         ivs_uplinks = []  # ivs physical uplinks
         ivs_interfaces = []  # ivs internal ports
+        nfvswitch_interfaces = []       # nfvswitch physical interfaces
+        nfvswitch_internal_ifaces = []  # nfvswitch internal/management ports
 
         for interface_name, iface_data in self.interface_data.iteritems():
             route_data = self.route_data.get(interface_name, '')
@@ -499,6 +558,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             all_file_names.append(route6_path)
             if "IVS_BRIDGE" in iface_data:
                 ivs_uplinks.append(interface_name)
+            if "NFVSWITCH_BRIDGE" in iface_data:
+                nfvswitch_interfaces.append(interface_name)
             all_file_names.append(route6_path)
             if (utils.diff(interface_path, iface_data) or
                     utils.diff(route_path, route_data) or
@@ -532,6 +593,27 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             else:
                 logger.info('No changes required for ivs interface: %s' %
                             interface_name)
+
+        for iface_name, iface_data in self.nfvswitch_intiface_data.iteritems():
+            route_data = self.route_data.get(iface_name, '')
+            route6_data = self.route6_data.get(iface_name, '')
+            iface_path = self.root_dir + ifcfg_config_path(iface_name)
+            route_path = self.root_dir + route_config_path(iface_name)
+            route6_path = self.root_dir + route6_config_path(iface_name)
+            all_file_names.append(iface_path)
+            all_file_names.append(route_path)
+            all_file_names.append(route6_path)
+            nfvswitch_internal_ifaces.append(iface_name)
+            if (utils.diff(iface_path, iface_data) or
+                    utils.diff(route_path, route_data)):
+                restart_interfaces.append(iface_name)
+                restart_interfaces.extend(self.child_members(iface_name))
+                update_files[iface_path] = iface_data
+                update_files[route_path] = route_data
+                update_files[route6_path] = route6_data
+            else:
+                logger.info('No changes required for nfvswitch interface: %s' %
+                            iface_name)
 
         for vlan_name, vlan_data in self.vlan_data.iteritems():
             route_data = self.route_data.get(vlan_name, '')
@@ -698,6 +780,12 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             data = self.generate_ivs_config(ivs_uplinks, ivs_interfaces)
             self.write_config(location, data)
 
+        if nfvswitch_interfaces or nfvswitch_internal_ifaces:
+            location = nfvswitch_config_path()
+            data = self.generate_nfvswitch_config(nfvswitch_interfaces,
+                                                  nfvswitch_internal_ifaces)
+            self.write_config(location, data)
+
         if activate:
             for linux_bond in restart_linux_bonds:
                 self.ifup(linux_bond)
@@ -727,6 +815,19 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 msg = "Restart ivs"
                 self.execute(msg, '/usr/bin/systemctl',
                              'restart', 'ivs')
+
+            if nfvswitch_interfaces or nfvswitch_internal_ifaces:
+                logger.info("Attach to nfvswitch with "
+                            "interfaces: %s, "
+                            "internal interfaces: %s" %
+                            (nfvswitch_interfaces, nfvswitch_internal_ifaces))
+                for nfvswitch_interface in nfvswitch_interfaces:
+                    self.ifup(nfvswitch_interface)
+                for nfvswitch_internal in nfvswitch_internal_ifaces:
+                    self.ifup(nfvswitch_internal)
+                msg = "Restart nfvswitch"
+                self.execute(msg, '/usr/bin/systemctl',
+                             'restart', 'nfvswitch')
 
             for vlan in restart_vlans:
                 self.ifup(vlan)
