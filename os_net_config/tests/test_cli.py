@@ -66,6 +66,24 @@ class TestCli(base.TestCase):
             self.assertIn(dev, stdout_yaml)
         self.assertEqual(stdout_yaml, stdout_json)
 
+    def test_ivs_noop_output(self):
+        ivs_yaml = os.path.join(SAMPLE_BASE, 'ivs.yaml')
+        ivs_json = os.path.join(SAMPLE_BASE, 'ivs.json')
+        stdout_yaml, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
+                                           '-c %s' % ivs_yaml)
+        self.assertEqual('', stderr)
+        stdout_json, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
+                                           '-c %s' % ivs_json)
+        self.assertEqual('', stderr)
+        sanity_devices = ['DEVICE=nic2',
+                          'DEVICE=nic3',
+                          'DEVICE=api201',
+                          'DEVICE=storage202',
+                          'DEVICETYPE=ivs']
+        for dev in sanity_devices:
+            self.assertIn(dev, stdout_yaml)
+        self.assertEqual(stdout_yaml, stdout_json)
+
     def test_bridge_noop_output(self):
         bridge_yaml = os.path.join(SAMPLE_BASE, 'bridge_dhcp.yaml')
         bridge_json = os.path.join(SAMPLE_BASE, 'bridge_dhcp.json')

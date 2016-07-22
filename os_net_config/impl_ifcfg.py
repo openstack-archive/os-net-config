@@ -599,7 +599,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             ifaces.append(iface)
         internal_str = ''.join(ifaces)
 
-        data = ("SETUP_ARGS=\"%s%s%s\"" % (cpu_str, iface_str, internal_str))
+        data = "SETUP_ARGS=\"%s%s%s\"" % (cpu_str, iface_str, internal_str)
         return data
 
     def apply(self, cleanup=False, activate=True):

@@ -345,13 +345,13 @@ class TestLinuxBridge(base.TestCase):
 
 class TestIvsBridge(base.TestCase):
 
-    def test_interface_from_json(self):
+    def test_from_json(self):
         data = """{
 "type": "ivs_bridge",
-"members": [{
-    "type": "interface",
-    "name": "nic2"
-}]
+"members": [
+        {"type": "interface", "name": "nic2"},
+        {"type": "interface", "name": "nic3"}
+    ]
 }
 """
         bridge = objects.object_from_json(json.loads(data))
@@ -359,16 +359,20 @@ class TestIvsBridge(base.TestCase):
         interface1 = bridge.members[0]
         self.assertEqual("nic2", interface1.name)
         self.assertEqual(False, interface1.ovs_port)
+        interface2 = bridge.members[1]
+        self.assertEqual("nic3", interface2.name)
+        self.assertEqual(False, interface2.ovs_port)
         self.assertEqual("ivs", interface1.ivs_bridge_name)
+
+
+class TestIvsInterface(base.TestCase):
 
     def test_ivs_interface_from_json(self):
         data = """{
 "type": "ivs_bridge",
-"members": [{
-    "type": "ivs_interface",
-    "name": "storage",
-    "vlan_id": 202
-}]
+"members": [
+        {"type": "ivs_interface", "name": "storage", "vlan_id": 202}
+    ]
 }
 """
         bridge = objects.object_from_json(json.loads(data))
@@ -405,26 +409,6 @@ class TestNfvswitchBridge(base.TestCase):
 "type": "nfvswitch_bridge",
 "cpus": "2,3,4,5",
 "members": [
-        {"type": "interface", "name": "nic2"}
-    ]
-}
-"""
-        bridge = objects.object_from_json(json.loads(data))
-        self.assertEqual("nfvswitch", bridge.name)
-        self.assertEqual("2,3,4,5", bridge.cpus)
-        interface1 = bridge.members[0]
-        self.assertEqual("nic2", interface1.name)
-        self.assertEqual(False, interface1.ovs_port)
-        self.assertEqual("nfvswitch", interface1.nfvswitch_bridge_name)
-
-
-class TestNfvswitchInterface(base.TestCase):
-
-    def test_interface_from_json(self):
-        data = """{
-"type": "nfvswitch_bridge",
-"cpus": "2,3,4,5",
-"members": [
         {"type": "interface","name": "nic1"},
         {"type": "interface","name": "nic2"}
     ]
@@ -435,10 +419,14 @@ class TestNfvswitchInterface(base.TestCase):
         self.assertEqual("2,3,4,5", bridge.cpus)
         interface1 = bridge.members[0]
         self.assertEqual("nic1", interface1.name)
+        self.assertEqual(False, interface1.ovs_port)
         interface2 = bridge.members[1]
         self.assertEqual("nic2", interface2.name)
         self.assertEqual(False, interface2.ovs_port)
         self.assertEqual("nfvswitch", interface1.nfvswitch_bridge_name)
+
+
+class TestNfvswitchInterface(base.TestCase):
 
     def test_nfvswitch_internal_from_json(self):
         data = """{
