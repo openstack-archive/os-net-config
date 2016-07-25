@@ -52,6 +52,8 @@ def object_from_json(json):
         return OvsTunnel.from_json(json)
     elif obj_type == "ovs_patch_port":
         return OvsPatchPort.from_json(json)
+    elif obj_type == "ib_interface":
+        return IbInterface.from_json(json)
 
 
 def _get_required_field(json, name, object_name):
@@ -689,3 +691,25 @@ class OvsPatchPort(_BaseOpts):
         opts = _BaseOpts.base_opts_from_json(json)
         return OvsPatchPort(name, *opts, bridge_name=bridge_name, peer=peer,
                             ovs_options=ovs_options, ovs_extra=ovs_extra)
+
+
+class IbInterface(_BaseOpts):
+    """Base class for InfiniBand network interfaces."""
+
+    def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
+                 routes=None, mtu=None, primary=False, nic_mapping=None,
+                 persist_mapping=False, defroute=True, dhclient_args=None,
+                 dns_servers=None):
+        addresses = addresses or []
+        routes = routes or []
+        dns_servers = dns_servers or []
+        super(IbInterface, self).__init__(name, use_dhcp, use_dhcpv6,
+                                          addresses, routes, mtu, primary,
+                                          nic_mapping, persist_mapping,
+                                          defroute, dhclient_args, dns_servers)
+
+    @staticmethod
+    def from_json(json):
+        name = _get_required_field(json, 'name', 'IbInterface')
+        opts = _BaseOpts.base_opts_from_json(json)
+        return IbInterface(name, *opts)

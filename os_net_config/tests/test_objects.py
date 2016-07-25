@@ -564,6 +564,95 @@ class TestOvsPatchPort(base.TestCase):
         self.assertEqual("br-ex-patch", patch_port.peer)
 
 
+class TestIbInterface(base.TestCase):
+
+    def test_ib_interface_addresses(self):
+        v4_addr = objects.Address('192.168.1.1/24')
+        v6_addr = objects.Address('2001:abc:a::/64')
+        ib_interface = objects.IbInterface('foo', addresses=[v4_addr, v6_addr])
+        self.assertEqual("192.168.1.1", ib_interface.v4_addresses()[0].ip)
+        self.assertEqual("2001:abc:a::", ib_interface.v6_addresses()[0].ip)
+
+    def test_from_json_dhcp(self):
+        data = '{"type": "ib_interface", "name": "ib0", "use_dhcp": true}'
+        ib_interface = objects.object_from_json(json.loads(data))
+        self.assertEqual("ib0", ib_interface.name)
+        self.assertTrue(ib_interface.use_dhcp)
+
+    def test_from_json_defroute(self):
+        data = '{"type": "ib_interface", "name": "ib0", "use_dhcp": true}'
+        ib_interface1 = objects.object_from_json(json.loads(data))
+        data = """{
+"type": "ib_interface",
+"name": "ib0",
+"use_dhcp": true,
+"defroute": false
+}
+"""
+        ib_interface2 = objects.object_from_json(json.loads(data))
+        self.assertTrue(ib_interface1.defroute)
+        self.assertFalse(ib_interface2.defroute)
+
+    def test_from_json_dhclient_args(self):
+        data = """{
+"type": "ib_interface",
+"name": "ib0",
+"use_dhcp": true,
+"dhclient_args": "--foobar"
+}
+"""
+        ib_interface1 = objects.object_from_json(json.loads(data))
+        self.assertEqual("--foobar", ib_interface1.dhclient_args)
+
+    def test_from_json_dns_servers(self):
+        data = """{
+"type": "ib_interface",
+"name": "ib0",
+"use_dhcp": true,
+"dns_servers": ["1.2.3.4"]
+}
+"""
+        ib_interface1 = objects.object_from_json(json.loads(data))
+        self.assertEqual(["1.2.3.4"], ib_interface1.dns_servers)
+
+    def test_from_json_dhcp_nic1(self):
+        def dummy_numbered_nics(nic_mapping=None):
+            return {"nic1": "ib0"}
+        self.stubs.Set(objects, '_numbered_nics', dummy_numbered_nics)
+
+        data = '{"type": "ib_interface", "name": "nic1", "use_dhcp": true}'
+        ib_interface = objects.object_from_json(json.loads(data))
+        self.assertEqual("ib0", ib_interface.name)
+        self.assertTrue(ib_interface.use_dhcp)
+
+    def test_from_json_with_addresses(self):
+        data = """{
+"type": "ib_interface",
+"name": "ib0",
+"use_dhcp": false,
+"mtu": 1501,
+"addresses": [{
+    "ip_netmask": "192.0.2.1/24"
+}],
+"routes": [{
+    "next_hop": "192.0.2.1",
+    "ip_netmask": "192.0.2.1/24"
+}]
+}
+"""
+        ib_interface = objects.object_from_json(json.loads(data))
+        self.assertEqual("ib0", ib_interface.name)
+        self.assertFalse(ib_interface.use_dhcp)
+        self.assertFalse(ib_interface.use_dhcpv6)
+        self.assertEqual(1501, ib_interface.mtu)
+        address1 = ib_interface.v4_addresses()[0]
+        self.assertEqual("192.0.2.1", address1.ip)
+        self.assertEqual("255.255.255.0", address1.netmask)
+        route1 = ib_interface.routes[0]
+        self.assertEqual("192.0.2.1", route1.next_hop)
+        self.assertEqual("192.0.2.1/24", route1.ip_netmask)
+
+
 class TestNumberedNicsMapping(base.TestCase):
 
     # We want to test the function, not the dummy..
