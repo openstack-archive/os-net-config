@@ -93,6 +93,8 @@ class NetConfig(object):
             self.add_ib_interface(obj)
         elif isinstance(obj, objects.OvsDpdkPort):
             self.add_ovs_dpdk_port(obj)
+        elif isinstance(obj, objects.OvsDpdkBond):
+            self.add_ovs_dpdk_bond(obj)
 
     def add_interface(self, interface):
         """Add an Interface object to the net config object.
@@ -191,6 +193,13 @@ class NetConfig(object):
         :param ovs_dpdk_port: The OvsDpdkPort object to add.
         """
         raise NotImplemented("add_ovs_dpdk_port is not implemented.")
+
+    def add_ovs_dpdk_bond(self, ovs_dpdk_bond):
+        """Add a OvsDpdkBond object to the net config object.
+
+        :param ovs_dpdk_bond: The OvsDpdkBond object to add.
+        """
+        raise NotImplemented("add_ovs_dpdk_bond is not implemented.")
 
     def apply(self, cleanup=False):
         """Apply the network configuration.

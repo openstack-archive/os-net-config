@@ -830,3 +830,49 @@ class TestNicMapping(base.TestCase):
         expected = {}
         # This only emits a warning, so it should still work
         self.assertEqual(expected, objects._mapped_nics())
+
+
+class TestOvsDpdkBond(base.TestCase):
+
+    def test_from_json_dhcp(self):
+        data = """{
+"type": "ovs_dpdk_bond",
+"name": "dpdkbond0",
+"use_dhcp": true,
+"members": [
+    {
+        "type": "ovs_dpdk_port",
+        "name": "dpdk0",
+        "members": [
+            {
+                "type": "interface",
+                "name": "eth1"
+            }
+        ]
+    },
+    {
+        "type": "ovs_dpdk_port",
+        "name": "dpdk1",
+        "members": [
+            {
+                "type": "interface",
+                "name": "eth2"
+            }
+        ]
+    }
+]
+}
+"""
+        bond = objects.object_from_json(json.loads(data))
+        self.assertEqual("dpdkbond0", bond.name)
+        self.assertTrue(bond.use_dhcp)
+        dpdk_port0 = bond.members[0]
+        self.assertEqual("dpdk0", dpdk_port0.name)
+        self.assertEqual("vfio-pci", dpdk_port0.driver)
+        iface1 = dpdk_port0.members[0]
+        self.assertEqual("eth1", iface1.name)
+        dpdk_port1 = bond.members[1]
+        self.assertEqual("dpdk1", dpdk_port1.name)
+        self.assertEqual("vfio-pci", dpdk_port1.driver)
+        iface2 = dpdk_port1.members[0]
+        self.assertEqual("eth2", iface2.name)

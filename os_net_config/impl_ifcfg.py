@@ -242,6 +242,21 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             data += "DEVICETYPE=ovs\n"
             data += "TYPE=OVSDPDKPort\n"
             data += "OVS_BRIDGE=%s\n" % base_opt.bridge_name
+        elif isinstance(base_opt, objects.OvsDpdkBond):
+            ovs_extra.extend(base_opt.ovs_extra)
+            if base_opt.primary_interface_name:
+                primary_name = base_opt.primary_interface_name
+                self.bond_primary_ifaces[base_opt.name] = primary_name
+            data += "DEVICETYPE=ovs\n"
+            data += "TYPE=OVSDPDKBond\n"
+            data += "OVS_BRIDGE=%s\n" % base_opt.bridge_name
+            if base_opt.members:
+                members = [member.name for member in base_opt.members]
+                self.member_names[base_opt.name] = members
+                data += ("BOND_IFACES=\"%s\"\n" % " ".join(members))
+            if base_opt.ovs_options:
+                data += "OVS_OPTIONS=\"%s\"\n" % base_opt.ovs_options
+            ovs_extra.extend(base_opt.ovs_extra)
         else:
             if base_opt.use_dhcp:
                 data += "BOOTPROTO=dhcp\n"
@@ -523,6 +538,26 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         data = self._add_common(ovs_dpdk_port)
         logger.debug('ovs dpdk port data: %s' % data)
         self.interface_data[ovs_dpdk_port.name] = data
+
+    def add_ovs_dpdk_bond(self, ovs_dpdk_bond):
+        """Add an OvsDPDKBond object to the net config object.
+
+        :param ovs_dpdk_bond: The OvsBond object to add.
+        """
+        logger.info('adding ovs dpdk bond: %s' % ovs_dpdk_bond.name)
+
+        # Bind the dpdk interface
+        for dpdk_port in ovs_dpdk_bond.members:
+            # DPDK Port will have only one member of type Interface, validation
+            # checks are added at the object creation stage.
+            ifname = dpdk_port.members[0].name
+            utils.bind_dpdk_interfaces(ifname, dpdk_port.driver, self.noop)
+
+        data = self._add_common(ovs_dpdk_bond)
+        logger.debug('ovs dpdk bond data: %s' % data)
+        self.interface_data[ovs_dpdk_bond.name] = data
+        if ovs_dpdk_bond.routes:
+            self._add_routes(ovs_dpdk_bond.name, ovs_dpdk_bond.routes)
 
     def generate_ivs_config(self, ivs_uplinks, ivs_interfaces):
         """Generate configuration content for ivs."""
