@@ -29,19 +29,19 @@ _TRUE_VALUES = ('True', 'true', '1', 'yes')
 class TestCase(testtools.TestCase):
 
     """Test case base class for all unit tests."""
-    stub_numbered_nics = True
+    stub_mapped_nics = True
 
     def setUp(self):
         """Run before each test method to initialize test environment."""
 
         super(TestCase, self).setUp()
         self.stubs = stubout.StubOutForTesting()
-        self.stubbed_numbered_nics = {}
+        self.stubbed_mapped_nics = {}
 
-        def dummy_numbered_nics(nic_mapping=None):
-            return self.stubbed_numbered_nics
-        if self.stub_numbered_nics:
-            self.stubs.Set(objects, '_numbered_nics', dummy_numbered_nics)
+        def dummy_mapped_nics(nic_mapping=None):
+            return self.stubbed_mapped_nics
+        if self.stub_mapped_nics:
+            self.stubs.Set(objects, '_mapped_nics', dummy_mapped_nics)
 
         test_timeout = os.environ.get('OS_TEST_TIMEOUT', 0)
         try:

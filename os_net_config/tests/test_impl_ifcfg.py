@@ -429,7 +429,7 @@ class TestIfcfgNetConfig(base.TestCase):
         self.stubs.Set(utils, 'interface_mac', test_interface_mac)
 
         nic_mapping = {'nic1': 'em1'}
-        self.stubbed_numbered_nics = nic_mapping
+        self.stubbed_mapped_nics = nic_mapping
         v4_addr = objects.Address('192.168.1.2/24')
         interface = objects.Interface('nic1', addresses=[v4_addr],
                                       nic_mapping=nic_mapping,

@@ -23,7 +23,7 @@ from os_net_config import utils
 
 logger = logging.getLogger(__name__)
 
-_NUMBERED_NICS = None
+_MAPPED_NICS = None
 
 
 class InvalidConfigException(ValueError):
@@ -71,21 +71,17 @@ def _get_required_field(json, name, object_name):
     return field
 
 
-def _numbered_nics(nic_mapping=None):
+def _mapped_nics(nic_mapping=None):
     mapping = nic_mapping or {}
-    global _NUMBERED_NICS
-    if _NUMBERED_NICS:
-        return _NUMBERED_NICS
-    _NUMBERED_NICS = {}
-    count = 0
+    global _MAPPED_NICS
+    if _MAPPED_NICS:
+        return _MAPPED_NICS
+    _MAPPED_NICS = {}
     active_nics = utils.ordered_active_nics()
-    for nic in active_nics:
-        count += 1
-        nic_alias = "nic%i" % count
-        nic_mapped = mapping.get(nic_alias, nic)
-
-        # The mapping is either invalid, or specifies a mac
+    for nic_alias, nic_mapped in mapping.items():
         if nic_mapped not in active_nics:
+            # The mapping is either invalid, or specifies a mac
+            is_mapping_valid = False
             for active in active_nics:
                 try:
                     active_mac = utils.interface_mac(active)
@@ -94,25 +90,39 @@ def _numbered_nics(nic_mapping=None):
                 if nic_mapped == active_mac:
                     logger.debug("%s matches device %s" % (nic_mapped, active))
                     nic_mapped = active
+                    is_mapping_valid = True
                     break
-            else:
+
+            if not is_mapping_valid:
                 # The mapping can't specify a non-active or non-existent nic
-                logger.warning('interface %s is not in an active nic (%s)'
+                logger.warning('interface %s is not an active nic (%s)'
                                % (nic_mapped, ', '.join(active_nics)))
                 continue
 
         # Duplicate mappings are not allowed
-        if nic_mapped in _NUMBERED_NICS.values():
+        if nic_mapped in _MAPPED_NICS.values():
             msg = ('interface %s already mapped, '
                    'check mapping file for duplicates'
                    % nic_mapped)
             raise InvalidConfigException(msg)
 
-        _NUMBERED_NICS[nic_alias] = nic_mapped
+        _MAPPED_NICS[nic_alias] = nic_mapped
         logger.info("%s mapped to: %s" % (nic_alias, nic_mapped))
-    if not _NUMBERED_NICS:
+
+    # Add default numbered mappings, but do not overwrite existing entries
+    for nic_mapped in set(active_nics).difference(set(_MAPPED_NICS.values())):
+        nic_alias = "nic%i" % (active_nics.index(nic_mapped) + 1)
+        if nic_alias in _MAPPED_NICS:
+            logger.warning("no mapping for interface %s because "
+                           "%s is mapped to %s"
+                           % (nic_mapped, nic_alias, _MAPPED_NICS[nic_alias]))
+        else:
+            _MAPPED_NICS[nic_alias] = nic_mapped
+            logger.info("%s mapped to: %s" % (nic_alias, nic_mapped))
+
+    if not _MAPPED_NICS:
         logger.warning('No active nics found.')
-    return _NUMBERED_NICS
+    return _MAPPED_NICS
 
 
 class Route(object):
@@ -158,18 +168,18 @@ class _BaseOpts(object):
         addresses = addresses or []
         routes = routes or []
         dns_servers = dns_servers or []
-        numbered_nic_names = _numbered_nics(nic_mapping)
+        mapped_nic_names = _mapped_nics(nic_mapping)
         self.hwaddr = None
         self.hwname = None
         self.renamed = False
-        if name in numbered_nic_names:
+        if name in mapped_nic_names:
             if persist_mapping:
                 self.name = name
-                self.hwname = numbered_nic_names[name]
+                self.hwname = mapped_nic_names[name]
                 self.hwaddr = utils.interface_mac(self.hwname)
                 self.renamed = True
             else:
-                self.name = numbered_nic_names[name]
+                self.name = mapped_nic_names[name]
         else:
             self.name = name
 
@@ -297,9 +307,9 @@ class Vlan(_BaseOpts):
                                    dns_servers)
         self.vlan_id = int(vlan_id)
 
-        numbered_nic_names = _numbered_nics(nic_mapping)
-        if device in numbered_nic_names:
-            self.device = numbered_nic_names[device]
+        mapped_nic_names = _mapped_nics(nic_mapping)
+        if device in mapped_nic_names:
+            self.device = mapped_nic_names[device]
         else:
             self.device = device
 

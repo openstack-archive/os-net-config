@@ -1,0 +1,8 @@
+# See the mapping.yaml sample for an overview of the mapping functionality.
+# This shows the use of mnemonic aliases instead of the default nicN aliases
+# in configs. It can be used with the -m option to override the default
+# mapping of the nicN aliases.
+interface_mapping:
+    provision: em1
+    bond0p1: em2
+    bond0p2: 12:34:56:de:f0:12
