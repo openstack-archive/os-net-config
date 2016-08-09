@@ -699,9 +699,6 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             self.write_config(location, data)
 
         if activate:
-            for linux_bond in restart_linux_bonds:
-                self.ifup(linux_bond)
-
             for linux_team in restart_linux_teams:
                 self.ifup(linux_team)
 
@@ -710,6 +707,9 @@ class IfcfgNetConfig(os_net_config.NetConfig):
 
             for interface in restart_interfaces:
                 self.ifup(interface)
+
+            for linux_bond in restart_linux_bonds:
+                self.ifup(linux_bond)
 
             for bond in self.bond_primary_ifaces:
                 self.ovs_appctl('bond/set-active-slave', bond,
