@@ -146,3 +146,21 @@ class TestCli(base.TestCase):
         stdout_yaml, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
                                            '-c %s --detailed-exit-codes'
                                            % interface_yaml, exitcodes=(0,))
+
+    def test_nfvswitch_noop_output(self):
+        nfvswitch_yaml = os.path.join(SAMPLE_BASE, 'nfvswitch.yaml')
+        nfvswitch_json = os.path.join(SAMPLE_BASE, 'nfvswitch.json')
+        stdout_yaml, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
+                                           '-c %s' % nfvswitch_yaml)
+        self.assertEqual('', stderr)
+        stdout_json, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
+                                           '-c %s' % nfvswitch_json)
+        self.assertEqual('', stderr)
+        sanity_devices = ['DEVICE=nic2',
+                          'DEVICE=nic3',
+                          'DEVICE=api201',
+                          'DEVICE=storage202',
+                          'DEVICETYPE=nfvswitch']
+        for dev in sanity_devices:
+            self.assertIn(dev, stdout_yaml)
+        self.assertEqual(stdout_yaml, stdout_json)

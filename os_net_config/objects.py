@@ -50,6 +50,10 @@ def object_from_json(json):
         return IvsBridge.from_json(json)
     elif obj_type == "ivs_interface":
         return IvsInterface.from_json(json)
+    elif obj_type == "nfvswitch_bridge":
+        return NfvswitchBridge.from_json(json)
+    elif obj_type == "nfvswitch_internal":
+        return NfvswitchInternal.from_json(json)
     elif obj_type == "ovs_tunnel":
         return OvsTunnel.from_json(json)
     elif obj_type == "ovs_patch_port":
@@ -181,6 +185,7 @@ class _BaseOpts(object):
         self.bridge_name = None  # internal
         self.linux_bridge_name = None  # internal
         self.ivs_bridge_name = None  # internal
+        self.nfvswitch_bridge_name = None  # internal
         self.linux_bond_name = None  # internal
         self.linux_team_name = None  # internal
         self.ovs_port = False  # internal
@@ -331,6 +336,32 @@ class IvsInterface(_BaseOpts):
         vlan_id = _get_required_field(json, 'vlan_id', 'IvsInterface')
         opts = _BaseOpts.base_opts_from_json(json)
         return IvsInterface(vlan_id, name, *opts)
+
+
+class NfvswitchInternal(_BaseOpts):
+    """Base class for nfvswitch internal interfaces."""
+
+    def __init__(self, vlan_id, name='nfvswitch', use_dhcp=False,
+                 use_dhcpv6=False, addresses=None, routes=None, mtu=1500,
+                 primary=False, nic_mapping=None, persist_mapping=False,
+                 defroute=True, dhclient_args=None, dns_servers=None):
+        addresses = addresses or []
+        routes = routes or []
+        dns_servers = dns_servers or []
+        name_vlan = '%s%i' % (name, vlan_id)
+        super(NfvswitchInternal, self).__init__(name_vlan, use_dhcp,
+                                                use_dhcpv6, addresses, routes,
+                                                mtu, primary, nic_mapping,
+                                                persist_mapping, defroute,
+                                                dhclient_args, dns_servers)
+        self.vlan_id = int(vlan_id)
+
+    @staticmethod
+    def from_json(json):
+        name = json.get('name')
+        vlan_id = _get_required_field(json, 'vlan_id', 'NfvswitchInternal')
+        opts = _BaseOpts.base_opts_from_json(json)
+        return NfvswitchInternal(vlan_id, name, *opts)
 
 
 class OvsBridge(_BaseOpts):
@@ -508,6 +539,76 @@ class IvsBridge(_BaseOpts):
                          persist_mapping=persist_mapping, defroute=defroute,
                          dhclient_args=dhclient_args,
                          dns_servers=dns_servers)
+
+
+class NfvswitchBridge(_BaseOpts):
+    """Base class for NFVSwitch bridges.
+
+    NFVSwitch is a virtual switch for Linux.
+    It is compatible with the KVM hypervisor and uses DPDK for packet
+    forwarding.
+    """
+
+    def __init__(self, name='nfvswitch', use_dhcp=False, use_dhcpv6=False,
+                 addresses=None, routes=None, mtu=1500, members=None,
+                 nic_mapping=None, persist_mapping=False, defroute=True,
+                 dhclient_args=None, dns_servers=None, cpus=""):
+        addresses = addresses or []
+        routes = routes or []
+        members = members or []
+        dns_servers = dns_servers or []
+        super(NfvswitchBridge, self).__init__(name, use_dhcp, use_dhcpv6,
+                                              addresses, routes, mtu, False,
+                                              nic_mapping, persist_mapping,
+                                              defroute, dhclient_args,
+                                              dns_servers)
+        self.cpus = cpus
+        self.members = members
+        for member in self.members:
+            if isinstance(member, OvsBond) or isinstance(member, LinuxBond):
+                msg = 'NFVSwitch does not support bond interfaces.'
+                raise InvalidConfigException(msg)
+            member.nfvswitch_bridge_name = name
+            member.ovs_port = False
+            self.primary_interface_name = None
+
+    @staticmethod
+    def from_json(json):
+        name = 'nfvswitch'
+        (use_dhcp, use_dhcpv6, addresses, routes, mtu, nic_mapping,
+         persist_mapping, defroute, dhclient_args,
+         dns_servers) = _BaseOpts.base_opts_from_json(
+             json, include_primary=False)
+
+        # members
+        members = []
+        members_json = json.get('members')
+        if members_json:
+            if isinstance(members_json, list):
+                for member in members_json:
+                    members.append(object_from_json(member))
+            else:
+                msg = 'Members must be a list.'
+                raise InvalidConfigException(msg)
+
+        cpus = ''
+        cpus_json = json.get('cpus')
+        if cpus_json:
+            if isinstance(cpus_json, basestring):
+                cpus = cpus_json
+            else:
+                msg = '"cpus" must be a string of numbers separated by commas.'
+                raise InvalidConfigException(msg)
+        else:
+            msg = 'Config "cpus" is mandatory.'
+            raise InvalidConfigException(msg)
+
+        return NfvswitchBridge(name, use_dhcp=use_dhcp, use_dhcpv6=use_dhcpv6,
+                               addresses=addresses, routes=routes, mtu=mtu,
+                               members=members, nic_mapping=nic_mapping,
+                               persist_mapping=persist_mapping,
+                               defroute=defroute, dhclient_args=dhclient_args,
+                               dns_servers=dns_servers, cpus=cpus)
 
 
 class LinuxTeam(_BaseOpts):

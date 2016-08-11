@@ -1,0 +1,38 @@
+{
+  "network_config": [
+    {
+      "type": "nfvswitch_bridge",
+      "cpus": "2,3,4,5",
+      "members": [
+        {
+          "type": "interface",
+          "name": "nic2",
+        },
+        {
+          "type": "interface",
+          "name": "nic3"
+        },
+        {
+          "type": "nfvswitch_internal",
+          "name": "api",
+          "addresses": [
+            {
+              "ip_netmask": "172.16.2.7/24"
+            }
+          ],
+          "vlan_id": 201
+        },
+        {
+          "type": "nfvswitch_internal",
+          "name": "storage",
+          "addresses": [
+            {
+              "ip_netmask": "172.16.1.6/24"
+            }
+          ],
+          "vlan_id": 202
+        }
+      ]
+    }
+  ]
+}

@@ -398,6 +398,87 @@ class TestIvsBridge(base.TestCase):
         self.assertIn(expected, err)
 
 
+class TestNfvswitchBridge(base.TestCase):
+
+    def test_from_json(self):
+        data = """{
+"type": "nfvswitch_bridge",
+"cpus": "2,3,4,5",
+"members": [
+        {"type": "interface", "name": "nic2"}
+    ]
+}
+"""
+        bridge = objects.object_from_json(json.loads(data))
+        self.assertEqual("nfvswitch", bridge.name)
+        self.assertEqual("2,3,4,5", bridge.cpus)
+        interface1 = bridge.members[0]
+        self.assertEqual("nic2", interface1.name)
+        self.assertEqual(False, interface1.ovs_port)
+        self.assertEqual("nfvswitch", interface1.nfvswitch_bridge_name)
+
+
+class TestNfvswitchInterface(base.TestCase):
+
+    def test_interface_from_json(self):
+        data = """{
+"type": "nfvswitch_bridge",
+"cpus": "2,3,4,5",
+"members": [
+        {"type": "interface","name": "nic1"},
+        {"type": "interface","name": "nic2"}
+    ]
+}
+"""
+        bridge = objects.object_from_json(json.loads(data))
+        self.assertEqual("nfvswitch", bridge.name)
+        self.assertEqual("2,3,4,5", bridge.cpus)
+        interface1 = bridge.members[0]
+        self.assertEqual("nic1", interface1.name)
+        interface2 = bridge.members[1]
+        self.assertEqual("nic2", interface2.name)
+        self.assertEqual(False, interface2.ovs_port)
+        self.assertEqual("nfvswitch", interface1.nfvswitch_bridge_name)
+
+    def test_nfvswitch_internal_from_json(self):
+        data = """{
+"type": "nfvswitch_bridge",
+"cpus": "2,3,4,5",
+"members": [
+        {"type": "nfvswitch_internal", "name": "storage", "vlan_id": 202},
+        {"type": "nfvswitch_internal", "name": "api", "vlan_id": 201}
+    ]
+}
+"""
+        bridge = objects.object_from_json(json.loads(data))
+        self.assertEqual("nfvswitch", bridge.name)
+        self.assertEqual("2,3,4,5", bridge.cpus)
+        interface1 = bridge.members[0]
+        self.assertEqual("storage202", interface1.name)
+        interface2 = bridge.members[1]
+        self.assertEqual("api201", interface2.name)
+        self.assertEqual(False, interface1.ovs_port)
+        self.assertEqual("nfvswitch", interface1.nfvswitch_bridge_name)
+
+    def test_bond_interface_from_json(self):
+        data = """{
+"type": "nfvswitch_bridge",
+"cpus": "2,3,4,5",
+"members": [{
+        "type": "linux_bond", "name": "bond1", "members":
+            [{"type": "interface", "name": "nic2"},
+             {"type": "interface", "name": "nic3"}]
+        }
+    ]
+}
+"""
+        err = self.assertRaises(objects.InvalidConfigException,
+                                objects.NfvswitchBridge.from_json,
+                                json.loads(data))
+        expected = 'NFVSwitch does not support bond interfaces.'
+        self.assertIn(expected, err)
+
+
 class TestBond(base.TestCase):
 
     def test_from_json_dhcp(self):
