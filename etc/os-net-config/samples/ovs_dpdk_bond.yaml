@@ -20,14 +20,14 @@ network_config:
               members:
                   -
                     type: interface
-                    name: eth1
+                    name: nic2
             -
               type: ovs_dpdk_port
               name: dpdk1
               members:
                   -
                     type: interface
-                    name: eth2
+                    name: nic3
       -
         type: vlan
         vlan_id: 16

@@ -1060,7 +1060,7 @@ class OvsDpdkBond(_BaseOpts):
                     if isinstance(obj, OvsDpdkPort):
                         members.append(obj)
                     else:
-                        msg = 'Membrs must be of type ovs_dpdk_port'
+                        msg = 'Members must be of type ovs_dpdk_port'
                         raise InvalidConfigException(msg)
             else:
                 msg = 'Members must be a list.'

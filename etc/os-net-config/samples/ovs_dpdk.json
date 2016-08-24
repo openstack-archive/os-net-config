@@ -10,7 +10,7 @@
                     "members": [
                         {
                             "type": "interface",
-                            "name": "eth1",
+                            "name": "nic2",
                         }
                     ]
                 }

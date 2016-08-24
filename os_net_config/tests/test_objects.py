@@ -834,7 +834,16 @@ class TestNicMapping(base.TestCase):
 
 class TestOvsDpdkBond(base.TestCase):
 
+    # We want to test the function, not the dummy..
+    stub_mapped_nics = False
+
+    def _stub_active_nics(self, nics):
+        def dummy_ordered_active_nics():
+            return nics
+        self.stubs.Set(utils, 'ordered_active_nics', dummy_ordered_active_nics)
+
     def test_from_json_dhcp(self):
+        self._stub_active_nics(['eth0', 'eth1', 'eth2'])
         data = """{
 "type": "ovs_dpdk_bond",
 "name": "dpdkbond0",
@@ -846,7 +855,7 @@ class TestOvsDpdkBond(base.TestCase):
         "members": [
             {
                 "type": "interface",
-                "name": "eth1"
+                "name": "nic2"
             }
         ]
     },
@@ -856,7 +865,7 @@ class TestOvsDpdkBond(base.TestCase):
         "members": [
             {
                 "type": "interface",
-                "name": "eth2"
+                "name": "nic3"
             }
         ]
     }

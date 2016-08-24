@@ -13,7 +13,7 @@
                             "members": [
                                 {
                                     "type": "interface",
-                                    "name": "eth1"
+                                    "name": "nic2"
                                 }
                             ]
                         },
@@ -23,7 +23,7 @@
                             "members": [
                                 {
                                     "type": "interface",
-                                    "name": "eth2"
+                                    "name": "nic3"
                                 }
                             ]
                         },

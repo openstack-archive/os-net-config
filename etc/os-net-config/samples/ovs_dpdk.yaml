@@ -16,6 +16,4 @@ network_config:
         driver: igb_uio
         members:
             - type: interface
-              # nic style number does not work as of now. real interface name has
-              # to be provided here.
-              name: eth1
+              name: nic2
