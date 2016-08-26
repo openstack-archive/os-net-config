@@ -158,6 +158,19 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             if base_opt.ovs_options:
                 data += "OVS_OPTIONS=\"%s\"\n" % base_opt.ovs_options
             ovs_extra.extend(base_opt.ovs_extra)
+        elif isinstance(base_opt, objects.OvsUserBridge):
+            data += "DEVICETYPE=ovs\n"
+            data += "TYPE=OVSUserBridge\n"
+            if base_opt.use_dhcp:
+                data += "OVSBOOTPROTO=dhcp\n"
+            if base_opt.members:
+                members = [member.name for member in base_opt.members]
+                self.member_names[base_opt.name] = members
+                if base_opt.use_dhcp:
+                    data += ("OVSDHCPINTERFACES=\"%s\"\n" % " ".join(members))
+            if base_opt.ovs_options:
+                data += "OVS_OPTIONS=\"%s\"\n" % base_opt.ovs_options
+            ovs_extra.extend(base_opt.ovs_extra)
         elif isinstance(base_opt, objects.OvsBond):
             if base_opt.primary_interface_name:
                 primary_name = base_opt.primary_interface_name
@@ -224,6 +237,11 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             data += "TYPE=OVSPatchPort\n"
             data += "OVS_BRIDGE=%s\n" % base_opt.bridge_name
             data += "OVS_PATCH_PEER=%s\n" % base_opt.peer
+        elif isinstance(base_opt, objects.OvsDpdkPort):
+            ovs_extra.extend(base_opt.ovs_extra)
+            data += "DEVICETYPE=ovs\n"
+            data += "TYPE=OVSDPDKPort\n"
+            data += "OVS_BRIDGE=%s\n" % base_opt.bridge_name
         else:
             if base_opt.use_dhcp:
                 data += "BOOTPROTO=dhcp\n"
@@ -369,6 +387,18 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         if bridge.routes:
             self._add_routes(bridge.name, bridge.routes)
 
+    def add_ovs_user_bridge(self, bridge):
+        """Add an OvsUserBridge object to the net config object.
+
+        :param bridge: The OvsUserBridge object to add.
+        """
+        logger.info('adding ovs user bridge: %s' % bridge.name)
+        data = self._add_common(bridge)
+        logger.debug('ovs user bridge data: %s' % data)
+        self.bridge_data[bridge.name] = data
+        if bridge.routes:
+            self._add_routes(bridge.name, bridge.routes)
+
     def add_linux_bridge(self, bridge):
         """Add a LinuxBridge object to the net config object.
 
@@ -475,6 +505,24 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             logger.info("InfiniBand interface %s being renamed to %s"
                         % (ib_interface.hwname, ib_interface.name))
             self.renamed_interfaces[ib_interface.hwname] = ib_interface.name
+
+    def add_ovs_dpdk_port(self, ovs_dpdk_port):
+        """Add a OvsDpdkPort object to the net config object.
+
+        :param ovs_dpdk_port: The OvsDpdkPort object to add.
+        """
+        logger.info('adding ovs dpdk port: %s' % ovs_dpdk_port.name)
+
+        # DPDK Port will have only one member of type Interface, validation
+        # checks are added at the object creation stage.
+        ifname = ovs_dpdk_port.members[0].name
+
+        # Bind the dpdk interface
+        utils.bind_dpdk_interfaces(ifname, ovs_dpdk_port.driver, self.noop)
+
+        data = self._add_common(ovs_dpdk_port)
+        logger.debug('ovs dpdk port data: %s' % data)
+        self.interface_data[ovs_dpdk_port.name] = data
 
     def generate_ivs_config(self, ivs_uplinks, ivs_interfaces):
         """Generate configuration content for ivs."""
@@ -648,7 +696,11 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                     utils.diff(br_route_path, route_data) or
                     utils.diff(br_route6_path, route6_data)):
                 restart_bridges.append(bridge_name)
-                restart_interfaces.extend(self.child_members(bridge_name))
+                # Avoid duplicate interface being added to the restart list
+                children = self.child_members(bridge_name)
+                for child in children:
+                    if child not in restart_interfaces:
+                        restart_interfaces.append(child)
                 update_files[bridge_path] = bridge_data
                 update_files[br_route_path] = route_data
                 update_files[br_route6_path] = route6_data
