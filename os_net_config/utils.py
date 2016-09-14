@@ -25,6 +25,14 @@ from oslo_concurrency import processutils
 
 logger = logging.getLogger(__name__)
 _SYS_CLASS_NET = '/sys/class/net'
+# File to contain the DPDK mapped nics, as nic name will not be available after
+# binding driver, which is required for correct nic numbering.
+# Format of the file (list mapped nic's details):
+#   -
+#     name: eth1
+#     pci_address: 0000:02:00.0
+#     mac_address: 01:02:03:04:05:06
+#     driver: vfio-pci
 _DPDK_MAPPING_FILE = '/var/lib/os-net-config/dpdk_mapping.yaml'
 
 
@@ -73,6 +81,12 @@ def interface_mac(name):
         with open('/sys/class/net/%s/address' % name, 'r') as f:
             return f.read().rstrip()
     except IOError:
+        # If the interface is bound to a DPDK driver, get the mac address from
+        # the dpdk mapping file as /sys files will be removed after binding.
+        dpdk_mac_address = _get_dpdk_mac_address(name)
+        if dpdk_mac_address:
+            return dpdk_mac_address
+
         logger.error("Unable to read mac address: %s" % name)
         raise
 
@@ -176,6 +190,7 @@ def bind_dpdk_interfaces(ifname, driver, noop):
                     msg = "Failed to modprobe vfio-pci module"
                     raise OvsDpdkBindException(msg)
 
+            mac_address = interface_mac(ifname)
             try:
                 out, err = processutils.execute('driverctl', 'set-override',
                                                 pci_address, driver)
@@ -183,7 +198,7 @@ def bind_dpdk_interfaces(ifname, driver, noop):
                     msg = "Failed to bind dpdk interface err - %s" % err
                     raise OvsDpdkBindException(msg)
                 else:
-                    _update_dpdk_map(ifname, pci_address, driver)
+                    _update_dpdk_map(ifname, pci_address, mac_address, driver)
 
             except processutils.ProcessExecutionError:
                 msg = "Failed to bind interface %s with dpdk" % ifname
@@ -219,19 +234,29 @@ def _get_pci_address(ifname, noop):
 # way to identify the nic name after it is bound. So, the DPDK bound nic info
 # is stored persistently in a file and is used to for nic numbering on
 # subsequent runs of os-net-config.
-def _update_dpdk_map(ifname, pci_address, driver):
+def _update_dpdk_map(ifname, pci_address, mac_address, driver):
     contents = get_file_data(_DPDK_MAPPING_FILE)
     dpdk_map = yaml.load(contents) if contents else []
     for item in dpdk_map:
         if item['pci_address'] == pci_address:
             item['name'] = ifname
+            item['mac_address'] = mac_address
             item['driver'] = driver
             break
     else:
         new_item = {}
         new_item['pci_address'] = pci_address
         new_item['name'] = ifname
+        new_item['mac_address'] = mac_address
         new_item['driver'] = driver
         dpdk_map.append(new_item)
 
     write_yaml_config(_DPDK_MAPPING_FILE, dpdk_map)
+
+
+def _get_dpdk_mac_address(name):
+    contents = get_file_data(_DPDK_MAPPING_FILE)
+    dpdk_map = yaml.load(contents) if contents else []
+    for item in dpdk_map:
+        if item['name'] == name:
+            return item['mac_address']

@@ -109,7 +109,13 @@ class TestUtils(base.TestCase):
                 return out, None
             if 'driverctl' in name:
                 return None, None
+
+        def test_get_dpdk_mac_address(name):
+            return '01:02:03:04:05:06'
         self.stubs.Set(processutils, 'execute', test_execute)
+        self.stubs.Set(utils, '_get_dpdk_mac_address',
+                       test_get_dpdk_mac_address)
+
         utils.bind_dpdk_interfaces('nic2', 'vfio-pci', False)
 
     def test_bind_dpdk_interfaces_fail(self):
@@ -119,34 +125,38 @@ class TestUtils(base.TestCase):
                 return out, None
             if 'driverctl' in name:
                 return None, 'Error'
+
+        def test_get_dpdk_mac_address(name):
+            return '01:02:03:04:05:06'
         self.stubs.Set(processutils, 'execute', test_execute)
+        self.stubs.Set(utils, '_get_dpdk_mac_address',
+                       test_get_dpdk_mac_address)
+
         self.assertRaises(utils.OvsDpdkBindException,
-                          utils.bind_dpdk_interfaces, 'nic2', 'vfio-pci',
+                          utils.bind_dpdk_interfaces, 'eth1', 'vfio-pci',
                           False)
 
-    def test_update_dpdk_map_new(self):
-        utils._update_dpdk_map('eth1', '0000:03:00.0', 'vfio-pci')
-        try:
-            contents = utils.get_file_data(utils._DPDK_MAPPING_FILE)
-        except IOError:
-            pass
+    def test__update_dpdk_map_new(self):
+        utils._update_dpdk_map('eth1', '0000:03:00.0', '01:02:03:04:05:06',
+                               'vfio-pci')
+        contents = utils.get_file_data(utils._DPDK_MAPPING_FILE)
 
         dpdk_map = yaml.load(contents) if contents else []
         self.assertEqual(1, len(dpdk_map))
         dpdk_test = [{'name': 'eth1', 'pci_address': '0000:03:00.0',
+                      'mac_address': '01:02:03:04:05:06',
                       'driver': 'vfio-pci'}]
         self.assertListEqual(dpdk_test, dpdk_map)
 
     def test_update_dpdk_map_exist(self):
         dpdk_test = [{'name': 'eth1', 'pci_address': '0000:03:00.0',
+                      'mac_address': '01:02:03:04:05:06',
                       'driver': 'vfio-pci'}]
         utils.write_yaml_config(utils._DPDK_MAPPING_FILE, dpdk_test)
 
-        utils._update_dpdk_map('eth1', '0000:03:00.0', 'vfio-pci')
-        try:
-            contents = utils.get_file_data(utils._DPDK_MAPPING_FILE)
-        except IOError:
-            pass
+        utils._update_dpdk_map('eth1', '0000:03:00.0', '01:02:03:04:05:06',
+                               'vfio-pci')
+        contents = utils.get_file_data(utils._DPDK_MAPPING_FILE)
 
         dpdk_map = yaml.load(contents) if contents else []
         self.assertEqual(1, len(dpdk_map))
@@ -158,8 +168,10 @@ class TestUtils(base.TestCase):
         utils.write_yaml_config(utils._DPDK_MAPPING_FILE, dpdk_test)
 
         dpdk_test = [{'name': 'eth1', 'pci_address': '0000:03:00.0',
-                      'driver': 'igb_uio'}]
-        utils._update_dpdk_map('eth1', '0000:03:00.0', 'igb_uio')
+                      'mac_address': '01:02:03:04:05:06',
+                      'driver': 'vfio-pci'}]
+        utils._update_dpdk_map('eth1', '0000:03:00.0', '01:02:03:04:05:06',
+                               'vfio-pci')
         try:
             contents = utils.get_file_data(utils._DPDK_MAPPING_FILE)
         except IOError:
@@ -183,8 +195,10 @@ class TestUtils(base.TestCase):
             with open(os.path.join(tmpdir, nic), 'w') as f:
                 f.write(nic)
 
-        utils._update_dpdk_map('eth1', '0000:03:00.0', 'igb_uio')
-        utils._update_dpdk_map('p3p1', '0000:04:00.0', 'igb_uio')
+        utils._update_dpdk_map('eth1', '0000:03:00.0', '01:02:03:04:05:06',
+                               'vfio-pci')
+        utils._update_dpdk_map('p3p1', '0000:04:00.0', '01:02:03:04:05:07',
+                               'igb_uio')
 
         nics = utils.ordered_active_nics()
 
@@ -200,3 +214,6 @@ class TestUtils(base.TestCase):
         self.assertEqual('z1', nics[9])
 
         shutil.rmtree(tmpdir)
+
+    def test_interface_mac_raises(self):
+        self.assertRaises(IOError, utils.interface_mac, 'ens20f2p3')
