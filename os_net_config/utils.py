@@ -18,12 +18,14 @@ import glob
 import logging
 import os
 import re
+import yaml
 
 from oslo_concurrency import processutils
 
 
 logger = logging.getLogger(__name__)
 _SYS_CLASS_NET = '/sys/class/net'
+_DPDK_MAPPING_FILE = '/var/lib/os-net-config/dpdk_mapping.yaml'
 
 
 class OvsDpdkBindException(ValueError):
@@ -33,6 +35,18 @@ class OvsDpdkBindException(ValueError):
 def write_config(filename, data):
     with open(filename, 'w') as f:
         f.write(str(data))
+
+
+def write_yaml_config(filepath, data):
+    ensure_directory_presence(filepath)
+    with open(filepath, 'w') as f:
+        yaml.dump(data, f, default_flow_style=False)
+
+
+def ensure_directory_presence(filepath):
+    dir_path = os.path.dirname(filepath)
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
 
 
 def get_file_data(filename):
@@ -93,6 +107,12 @@ def _natural_sort_key(s):
             for text in re.split(nsre, s)]
 
 
+def _is_embedded_nic(nic):
+    if nic.startswith('em') or nic.startswith('eth') or nic.startswith('eno'):
+        return True
+    return False
+
+
 def ordered_active_nics():
     embedded_nics = []
     nics = []
@@ -100,8 +120,7 @@ def ordered_active_nics():
     for name in glob.iglob(_SYS_CLASS_NET + '/*'):
         nic = name[(len(_SYS_CLASS_NET) + 1):]
         if _is_active_nic(nic):
-            if nic.startswith('em') or nic.startswith('eth') or \
-                    nic.startswith('eno'):
+            if _is_embedded_nic(nic):
                 logger.debug("%s is an embedded active nic" % nic)
                 embedded_nics.append(nic)
             else:
@@ -109,6 +128,24 @@ def ordered_active_nics():
                 nics.append(nic)
         else:
             logger.debug("%s is not an active nic" % nic)
+
+    # Adding nics which are bound to DPDK as it will not be found in '/sys'
+    # after it is bound to DPDK driver.
+    contents = get_file_data(_DPDK_MAPPING_FILE)
+    if contents:
+        dpdk_map = yaml.load(contents)
+        for item in dpdk_map:
+            nic = item['name']
+            if _is_embedded_nic(nic):
+                logger.debug("%s is an embedded DPDK bound nic" % nic)
+                embedded_nics.append(nic)
+            else:
+                logger.debug("%s is an DPDK bound nic" % nic)
+                nics.append(nic)
+    else:
+        logger.debug("No DPDK mapping available in path (%s)" %
+                     _DPDK_MAPPING_FILE)
+
     # NOTE: we could just natural sort all active devices,
     # but this ensures em, eno, and eth are ordered first
     # (more backwards compatible)
@@ -127,20 +164,30 @@ def diff(filename, data):
 
 
 def bind_dpdk_interfaces(ifname, driver, noop):
-    pci_addres = _get_pci_address(ifname, noop)
+    pci_address = _get_pci_address(ifname, noop)
     if not noop:
-        if pci_addres:
+        if pci_address:
             # modbprobe of the driver has to be done before binding.
             # for reboots, puppet will add the modprobe to /etc/rc.modules
-            processutils.execute('modprobe', 'vfio-pci')
+            if 'vfio-pci' in driver:
+                try:
+                    processutils.execute('modprobe', 'vfio-pci')
+                except processutils.ProcessExecutionError:
+                    msg = "Failed to modprobe vfio-pci module"
+                    raise OvsDpdkBindException(msg)
 
-            out, err = processutils.execute('driverctl', 'set-override',
-                                            pci_addres, driver)
-            if err:
+            try:
+                out, err = processutils.execute('driverctl', 'set-override',
+                                                pci_address, driver)
+                if err:
+                    msg = "Failed to bind dpdk interface err - %s" % err
+                    raise OvsDpdkBindException(msg)
+                else:
+                    _update_dpdk_map(ifname, pci_address, driver)
+
+            except processutils.ProcessExecutionError:
                 msg = "Failed to bind interface %s with dpdk" % ifname
                 raise OvsDpdkBindException(msg)
-            else:
-                processutils.execute('driverctl', 'load-override', pci_addres)
     else:
         logger.info('Interface %(name)s bound to DPDK driver %(driver)s '
                     'using driverctl command' %
@@ -150,13 +197,41 @@ def bind_dpdk_interfaces(ifname, driver, noop):
 def _get_pci_address(ifname, noop):
     # TODO(skramaja): Validate if the given interface supports dpdk
     if not noop:
-        # If ifname is already bound, then ethtool will not be able to list the
-        # device, in which case, binding is already done, proceed with scripts
-        out, err = processutils.execute('ethtool', '-i', ifname)
-        if not err:
-            for item in out.split('\n'):
-                if 'bus-info' in item:
-                    return item.split(' ')[1]
+        try:
+            out, err = processutils.execute('ethtool', '-i', ifname)
+            if not err:
+                for item in out.split('\n'):
+                    if 'bus-info' in item:
+                        return item.split(' ')[1]
+        except processutils.ProcessExecutionError:
+            # If ifname is already bound, then ethtool will not be able to
+            # list the device, in which case, binding is already done, proceed
+            # with scripts generation.
+            return
+
     else:
         logger.info('Fetch the PCI address of the interface %s using '
                     'ethtool' % ifname)
+
+
+# Once the interface is bound to a DPDK driver, all the references to the
+# interface including '/sys' and '/proc', will be removed. And there is no
+# way to identify the nic name after it is bound. So, the DPDK bound nic info
+# is stored persistently in a file and is used to for nic numbering on
+# subsequent runs of os-net-config.
+def _update_dpdk_map(ifname, pci_address, driver):
+    contents = get_file_data(_DPDK_MAPPING_FILE)
+    dpdk_map = yaml.load(contents) if contents else []
+    for item in dpdk_map:
+        if item['pci_address'] == pci_address:
+            item['name'] = ifname
+            item['driver'] = driver
+            break
+    else:
+        new_item = {}
+        new_item['pci_address'] = pci_address
+        new_item['name'] = ifname
+        new_item['driver'] = driver
+        dpdk_map.append(new_item)
+
+    write_yaml_config(_DPDK_MAPPING_FILE, dpdk_map)
