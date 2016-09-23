@@ -63,7 +63,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         self.interface_data = {}
         self.ivsinterface_data = {}
         self.nfvswitch_intiface_data = {}
-        self.nfvswitch_cpus = None
+        self.nfvswitch_options = None
         self.vlan_data = {}
         self.route_data = {}
         self.route6_data = {}
@@ -446,7 +446,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         is running, the nfvswitch virtual switch will be available.
         :param bridge: The NfvswitchBridge object to add.
         """
-        self.nfvswitch_cpus = bridge.cpus
+        self.nfvswitch_options = bridge.options
 
     def add_bond(self, bond):
         """Add an OvsBond object to the net config object.
@@ -583,9 +583,9 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                                   nfvswitch_internal_ifaces):
         """Generate configuration content for nfvswitch."""
 
-        cpu_str = ""
-        if self.nfvswitch_cpus:
-            cpu_str = " -c " + self.nfvswitch_cpus
+        options_str = ""
+        if self.nfvswitch_options:
+            options_str = self.nfvswitch_options
 
         ifaces = []
         for iface in nfvswitch_ifaces:
@@ -599,7 +599,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             ifaces.append(iface)
         internal_str = ''.join(ifaces)
 
-        data = "SETUP_ARGS=\"%s%s%s\"" % (cpu_str, iface_str, internal_str)
+        data = "SETUP_ARGS=\"%s%s%s\"" % (options_str, iface_str, internal_str)
         return data
 
     def apply(self, cleanup=False, activate=True):

@@ -628,7 +628,7 @@ class NfvswitchBridge(_BaseOpts):
     def __init__(self, name='nfvswitch', use_dhcp=False, use_dhcpv6=False,
                  addresses=None, routes=None, mtu=1500, members=None,
                  nic_mapping=None, persist_mapping=False, defroute=True,
-                 dhclient_args=None, dns_servers=None, cpus=""):
+                 dhclient_args=None, dns_servers=None, options=""):
         addresses = addresses or []
         routes = routes or []
         members = members or []
@@ -638,7 +638,7 @@ class NfvswitchBridge(_BaseOpts):
                                               nic_mapping, persist_mapping,
                                               defroute, dhclient_args,
                                               dns_servers)
-        self.cpus = cpus
+        self.options = options
         self.members = members
         for member in self.members:
             if isinstance(member, OvsBond) or isinstance(member, LinuxBond):
@@ -667,16 +667,9 @@ class NfvswitchBridge(_BaseOpts):
                 msg = 'Members must be a list.'
                 raise InvalidConfigException(msg)
 
-        cpus = ''
-        cpus_json = json.get('cpus')
-        if cpus_json:
-            if isinstance(cpus_json, basestring):
-                cpus = cpus_json
-            else:
-                msg = '"cpus" must be a string of numbers separated by commas.'
-                raise InvalidConfigException(msg)
-        else:
-            msg = 'Config "cpus" is mandatory.'
+        options = json.get('options')
+        if not options:
+            msg = 'Config "options" is mandatory.'
             raise InvalidConfigException(msg)
 
         return NfvswitchBridge(name, use_dhcp=use_dhcp, use_dhcpv6=use_dhcpv6,
@@ -684,7 +677,7 @@ class NfvswitchBridge(_BaseOpts):
                                members=members, nic_mapping=nic_mapping,
                                persist_mapping=persist_mapping,
                                defroute=defroute, dhclient_args=dhclient_args,
-                               dns_servers=dns_servers, cpus=cpus)
+                               dns_servers=dns_servers, options=options)
 
 
 class LinuxTeam(_BaseOpts):

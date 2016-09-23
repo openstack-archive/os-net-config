@@ -1,7 +1,7 @@
 network_config:
   -
     type: nfvswitch_bridge
-    cpus: "2,3,4,5"
+    options: "-c 2,3,4,5"
     members:
       -
         type: interface
