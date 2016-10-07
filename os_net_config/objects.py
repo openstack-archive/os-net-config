@@ -112,7 +112,7 @@ def _update_members(json, nic_mapping, persist_mapping):
     return members
 
 
-def _mapped_nics(nic_mapping=None):
+def mapped_nics(nic_mapping=None):
     mapping = nic_mapping or {}
     global _MAPPED_NICS
     if _MAPPED_NICS:
@@ -154,6 +154,17 @@ def _mapped_nics(nic_mapping=None):
                        'check mapping file for duplicates'
                        % nic_mapped)
                 raise InvalidConfigException(msg)
+
+            # Using a mapping name that overlaps with a real NIC is not allowed
+            # (However using the name of an inactive NIC as an alias is
+            # permitted).
+            if utils.is_active_nic(nic_alias):
+                msg = ('cannot map %s to alias %s, alias overlaps with active '
+                       'NIC.' % (nic_mapped, nic_alias))
+                raise InvalidConfigException(msg)
+            elif utils.is_real_nic(nic_alias):
+                logger.warning("Mapped nic %s overlaps with name of inactive "
+                               "NIC." % (nic_alias))
 
             _MAPPED_NICS[nic_alias] = nic_mapped
             logger.info("%s in mapping file mapped to: %s"
@@ -230,7 +241,7 @@ class _BaseOpts(object):
         addresses = addresses or []
         routes = routes or []
         dns_servers = dns_servers or []
-        mapped_nic_names = _mapped_nics(nic_mapping)
+        mapped_nic_names = mapped_nics(nic_mapping)
         self.hwaddr = None
         self.hwname = None
         self.renamed = False
@@ -379,7 +390,7 @@ class Vlan(_BaseOpts):
                                    dns_servers, nm_controlled)
         self.vlan_id = int(vlan_id)
 
-        mapped_nic_names = _mapped_nics(nic_mapping)
+        mapped_nic_names = mapped_nics(nic_mapping)
         if device in mapped_nic_names:
             self.device = mapped_nic_names[device]
         else:

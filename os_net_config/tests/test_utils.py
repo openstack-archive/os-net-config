@@ -333,8 +333,8 @@ class TestUtils(base.TestCase):
         nic_path = os.path.join(tmpdir, 'enp129s2', 'device', 'physfn')
         os.makedirs(nic_path)
 
-        self.assertEqual(utils._is_active_nic('ens802f0'), True)
-        self.assertEqual(utils._is_active_nic('enp129s2'), False)
+        self.assertEqual(utils.is_active_nic('ens802f0'), True)
+        self.assertEqual(utils.is_active_nic('enp129s2'), False)
 
         shutil.rmtree(tmpdir)
 

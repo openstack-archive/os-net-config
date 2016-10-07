@@ -41,7 +41,7 @@ class TestCase(testtools.TestCase):
         def dummy_mapped_nics(nic_mapping=None):
             return self.stubbed_mapped_nics
         if self.stub_mapped_nics:
-            self.stubs.Set(objects, '_mapped_nics', dummy_mapped_nics)
+            self.stubs.Set(objects, 'mapped_nics', dummy_mapped_nics)
 
         test_timeout = os.environ.get('OS_TEST_TIMEOUT', 0)
         try:

@@ -42,8 +42,14 @@ def parse_opts(argv):
     parser.add_argument('-m', '--mapping-file', metavar='MAPPING_FILE',
                         help="""path to the interface mapping file.""",
                         default='/etc/os-net-config/mapping.yaml')
+    parser.add_argument('-i', '--interfaces', metavar='INTERFACES',
+                        help="""Identify the real interface for a nic name. """
+                        """If a real name is given, it is returned if live. """
+                        """If no value is given, display full NIC mapping. """
+                        """Exit after printing, ignoring other parameters. """,
+                        nargs='*', default=None)
     parser.add_argument('-p', '--provider', metavar='PROVIDER',
-                        help="""The provider to use."""
+                        help="""The provider to use. """
                         """One of: ifcfg, eni, iproute.""",
                         default=None)
     parser.add_argument('-r', '--root-dir', metavar='ROOT_DIR',
@@ -53,7 +59,7 @@ def parse_opts(argv):
                         action='store_true',
                         help="""Enable detailed exit codes. """
                         """If enabled an exit code of '2' means """
-                        """that files were modified."""
+                        """that files were modified. """
                         """Disabled by default.""",
                         default=False)
 
@@ -160,19 +166,6 @@ def main(argv=sys.argv):
             logger.error('Unable to set provider for this operating system.')
             return 1
 
-    # Read config file containing network configs to apply
-    if os.path.exists(opts.config_file):
-        with open(opts.config_file) as cf:
-            iface_array = yaml.load(cf.read()).get("network_config")
-            logger.debug('network_config JSON: %s' % str(iface_array))
-    else:
-        logger.error('No config file exists at: %s' % opts.config_file)
-        return 1
-
-    if not isinstance(iface_array, list):
-        logger.error('No interfaces defined in config: %s' % opts.config_file)
-        return 1
-
     # Read the interface mapping file, if it exists
     # This allows you to override the default network naming abstraction
     # mappings by specifying a specific nicN->name or nicN->MAC mapping
@@ -186,6 +179,59 @@ def main(argv=sys.argv):
     else:
         iface_mapping = None
         persist_mapping = False
+
+    # If --interfaces is specified, either return the real name of the
+    # interfaces specified, or return the map of all nic abstractions/names.
+    if opts.interfaces is not None:
+        reported_nics = {}
+        mapped_nics = objects.mapped_nics(iface_mapping)
+        retval = 0
+        if len(opts.interfaces) > 0:
+            for requested_nic in opts.interfaces:
+                found = False
+                # Check to see if requested iface is a mapped NIC name.
+                if requested_nic in mapped_nics:
+                    reported_nics[requested_nic] = mapped_nics[requested_nic]
+                    found = True
+                # Check to see if the requested iface is a real NIC name
+                if requested_nic in mapped_nics.values():
+                    if found is True:  # Name matches alias and real NIC
+                        # (return the mapped NIC, but warn of overlap).
+                        logger.warning('"%s" overlaps with real NIC name.'
+                                       % (requested_nic))
+                    else:
+                        reported_nics[requested_nic] = requested_nic
+                        found = True
+                if not found:
+                    retval = 1
+            if reported_nics:
+                logger.debug("Interface mapping requested for interface: "
+                             "%s" % reported_nics.keys())
+        else:
+            logger.debug("Interface mapping requested for all interfaces")
+            reported_nics = mapped_nics
+        # Return the report on the mapped NICs. If all NICs were found, exit
+        # cleanly, otherwise exit with status 1.
+        logger.debug("Interface report requested, exiting after report.")
+        print(reported_nics)
+        return retval
+
+    # Read config file containing network configs to apply
+    if os.path.exists(opts.config_file):
+        try:
+            with open(opts.config_file) as cf:
+                iface_array = yaml.load(cf.read()).get("network_config")
+                logger.debug('network_config JSON: %s' % str(iface_array))
+        except IOError:
+            logger.error("Error reading file: %s" % opts.config_file)
+            return 1
+    else:
+        logger.error('No config file exists at: %s' % opts.config_file)
+        return 1
+
+    if not isinstance(iface_array, list):
+        logger.error('No interfaces defined in config: %s' % opts.config_file)
+        return 1
 
     for iface_json in iface_array:
         iface_json.update({'nic_mapping': iface_mapping})

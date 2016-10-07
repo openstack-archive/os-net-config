@@ -99,8 +99,28 @@ def interface_mac(name):
         raise
 
 
-def _is_active_nic(interface_name):
+def is_active_nic(interface_name):
     return _is_available_nic(interface_name, True)
+
+
+def is_real_nic(interface_name):
+    if interface_name == 'lo':
+        return True
+
+    device_dir = _SYS_CLASS_NET + '/%s/device' % interface_name
+    has_device_dir = os.path.isdir(device_dir)
+
+    address = None
+    try:
+        with open(_SYS_CLASS_NET + '/%s/address' % interface_name, 'r') as f:
+            address = f.read().rstrip()
+    except IOError:
+        return False
+
+    if has_device_dir and address:
+        return True
+    else:
+        return False
 
 
 def _is_available_nic(interface_name, check_active=True):
@@ -108,21 +128,13 @@ def _is_available_nic(interface_name, check_active=True):
         if interface_name == 'lo':
             return False
 
-        device_dir = _SYS_CLASS_NET + '/%s/device' % interface_name
-        has_device_dir = os.path.isdir(device_dir)
-        if not has_device_dir:
+        if not is_real_nic(interface_name):
             return False
 
         operstate = None
         with open(_SYS_CLASS_NET + '/%s/operstate' % interface_name, 'r') as f:
             operstate = f.read().rstrip().lower()
         if check_active and operstate != 'up':
-            return False
-
-        address = None
-        with open(_SYS_CLASS_NET + '/%s/address' % interface_name, 'r') as f:
-            address = f.read().rstrip()
-        if not address:
             return False
 
         # If SR-IOV Virtual Functions (VF) are enabled in an interface, there

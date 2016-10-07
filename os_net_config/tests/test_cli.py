@@ -16,10 +16,12 @@
 
 import os.path
 import sys
+import yaml
 
 import os_net_config
 from os_net_config import cli
 from os_net_config import impl_ifcfg
+from os_net_config import objects
 from os_net_config.tests import base
 import six
 
@@ -235,3 +237,39 @@ class TestCli(base.TestCase):
         for dev in sanity_devices:
             self.assertIn(dev, stdout_yaml)
         self.assertEqual(stdout_yaml, stdout_json)
+
+    def test_nic_mapping_report_output(self):
+        mapping_report = os.path.join(SAMPLE_BASE, 'mapping_report.yaml')
+
+        def dummy_mapped_nics(nic_mapping=None):
+            return nic_mapping
+        self.stubs.Set(objects, 'mapped_nics', dummy_mapped_nics)
+
+        stdout, stderr = self.run_cli('ARG0 --interfaces '
+                                      '--exit-on-validation-errors '
+                                      '-m %s' % mapping_report)
+        self.assertEqual('', stderr)
+        stdout_list = yaml.load(stdout)
+        self.assertEqual(stdout_list['nic1'], 'em1')
+        self.assertEqual(stdout_list['nic2'], 'em2')
+        self.assertEqual(stdout_list['nic3'], 'em4')
+        self.assertEqual(stdout_list['nic4'], 'em3')
+
+    def test_nic_mapping_report_with_explicit_interface_name(self):
+        mapping_report = os.path.join(SAMPLE_BASE, 'mapping_report.yaml')
+
+        def dummy_mapped_nics(nic_mapping=None):
+            return nic_mapping
+        self.stubs.Set(objects, 'mapped_nics', dummy_mapped_nics)
+
+        stdout, stderr = self.run_cli('ARG0 --interfaces em2 em3 '
+                                      '--exit-on-validation-errors '
+                                      '-m %s' % mapping_report)
+        self.assertEqual('', stderr)
+        stdout_list = yaml.load(stdout)
+        self.assertNotIn('em1', stdout_list.keys())
+        self.assertNotIn('em1', stdout_list.values())
+        self.assertEqual(stdout_list['em2'], 'em2')
+        self.assertEqual(stdout_list['em3'], 'em3')
+        self.assertNotIn('em4', stdout_list.keys())
+        self.assertNotIn('em4', stdout_list.values())
