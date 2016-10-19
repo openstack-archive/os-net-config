@@ -181,14 +181,17 @@ class ENINetConfig(os_net_config.NetConfig):
         logger.info('adding custom route for interface: %s' % interface_name)
         data = ""
         for route in routes:
+            options = ""
+            if route.route_options:
+                options = " %s" % (route.route_options)
             if route.default and not route.ip_netmask:
                 rt = netaddr.IPNetwork("0.0.0.0/0")
             else:
                 rt = netaddr.IPNetwork(route.ip_netmask)
-            data += "up route add -net %s netmask %s gw %s\n" % (
-                    str(rt.ip), str(rt.netmask), route.next_hop)
-            data += "down route del -net %s netmask %s gw %s\n" % (
-                    str(rt.ip), str(rt.netmask), route.next_hop)
+            data += "up route add -net %s netmask %s gw %s%s\n" % (
+                    str(rt.ip), str(rt.netmask), route.next_hop, options)
+            data += "down route del -net %s netmask %s gw %s%s\n" % (
+                    str(rt.ip), str(rt.netmask), route.next_hop, options)
         self.routes[interface_name] = data
         logger.debug('route data: %s' % self.routes[interface_name])
 

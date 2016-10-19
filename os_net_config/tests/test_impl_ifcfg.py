@@ -115,12 +115,14 @@ _OVS_BRIDGE_IFCFG = _BASE_IFCFG + "DEVICETYPE=ovs\n"
 
 _LINUX_BRIDGE_IFCFG = _BASE_IFCFG + "BRIDGE=br-ctlplane\nBOOTPROTO=none\n"
 
-_ROUTES = """default via 192.168.1.1 dev em1
+_ROUTES = """default via 192.168.1.1 dev em1 metric 10
 172.19.0.0/24 via 192.168.1.1 dev em1
+172.20.0.0/24 via 192.168.1.5 dev em1 metric 100
 """
 
 _ROUTES_V6 = """default via 2001:db8::1 dev em1
 2001:db8:dead:beef:cafe::/56 via fd00:fd00:2000::1 dev em1
+2001:db8:dead:beff::/64 via fd00:fd00:2000::1 dev em1 metric 100
 """
 
 
@@ -454,25 +456,35 @@ class TestIfcfgNetConfig(base.TestCase):
         self.assertEqual(_V6_IFCFG_MULTIPLE, self.get_interface_config())
 
     def test_network_with_routes(self):
-        route1 = objects.Route('192.168.1.1', default=True)
+        route1 = objects.Route('192.168.1.1', default=True,
+                               route_options="metric 10")
         route2 = objects.Route('192.168.1.1', '172.19.0.0/24')
+        route3 = objects.Route('192.168.1.5', '172.20.0.0/24',
+                               route_options="metric 100")
         v4_addr = objects.Address('192.168.1.2/24')
         interface = objects.Interface('em1', addresses=[v4_addr],
-                                      routes=[route1, route2])
+                                      routes=[route1, route2, route3])
         self.provider.add_interface(interface)
         self.assertEqual(_V4_IFCFG, self.get_interface_config())
         self.assertEqual(_ROUTES, self.get_route_config())
 
     def test_network_with_ipv6_routes(self):
-        route1 = objects.Route('192.168.1.1', default=True)
+        route1 = objects.Route('192.168.1.1', default=True,
+                               route_options="metric 10")
         route2 = objects.Route('192.168.1.1', '172.19.0.0/24')
-        route3 = objects.Route('2001:db8::1', default=True)
-        route4 = objects.Route('fd00:fd00:2000::1',
+        route3 = objects.Route('192.168.1.5', '172.20.0.0/24',
+                               route_options="metric 100")
+        route4 = objects.Route('2001:db8::1', default=True)
+        route5 = objects.Route('fd00:fd00:2000::1',
                                '2001:db8:dead:beef:cafe::/56')
+        route6 = objects.Route('fd00:fd00:2000::1',
+                               '2001:db8:dead:beff::/64',
+                               route_options="metric 100")
         v4_addr = objects.Address('192.168.1.2/24')
         v6_addr = objects.Address('2001:abc:a::/64')
         interface = objects.Interface('em1', addresses=[v4_addr, v6_addr],
-                                      routes=[route1, route2, route3, route4])
+                                      routes=[route1, route2, route3,
+                                              route4, route5, route6])
         self.provider.add_interface(interface)
         self.assertEqual(_V4_V6_IFCFG, self.get_interface_config())
         self.assertEqual(_ROUTES_V6, self.get_route6_config())
@@ -884,11 +896,14 @@ class TestIfcfgNetConfigApply(base.TestCase):
         super(TestIfcfgNetConfigApply, self).tearDown()
 
     def test_network_apply(self):
-        route1 = objects.Route('192.168.1.1', default=True)
+        route1 = objects.Route('192.168.1.1', default=True,
+                               route_options="metric 10")
         route2 = objects.Route('192.168.1.1', '172.19.0.0/24')
+        route3 = objects.Route('192.168.1.5', '172.20.0.0/24',
+                               route_options="metric 100")
         v4_addr = objects.Address('192.168.1.2/24')
         interface = objects.Interface('em1', addresses=[v4_addr],
-                                      routes=[route1, route2])
+                                      routes=[route1, route2, route3])
         self.provider.add_interface(interface)
 
         self.provider.apply()

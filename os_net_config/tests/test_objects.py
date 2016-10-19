@@ -25,26 +25,30 @@ from os_net_config import utils
 class TestRoute(base.TestCase):
 
     def test_from_json(self):
-        data = '{"next_hop": "172.19.0.1", "ip_netmask": "172.19.0.0/24"}'
+        data = '{"next_hop": "172.19.0.1", "ip_netmask": "172.19.0.0/24", ' \
+               '"route_options": "metric 10"}'
         route = objects.Route.from_json(json.loads(data))
         self.assertEqual("172.19.0.1", route.next_hop)
         self.assertEqual("172.19.0.0/24", route.ip_netmask)
         self.assertFalse(route.default)
+        self.assertEqual("metric 10", route.route_options)
 
     def test_from_json_default_route(self):
         data = '{"next_hop": "172.19.0.1", "ip_netmask": "172.19.0.0/24", ' \
-               '"default": true}'
+               '"default": true, "route_options": "metric 10"}'
         route = objects.Route.from_json(json.loads(data))
         self.assertEqual("172.19.0.1", route.next_hop)
         self.assertEqual("172.19.0.0/24", route.ip_netmask)
         self.assertTrue(route.default)
+        self.assertEqual("metric 10", route.route_options)
 
         data = '{"next_hop": "172.19.0.1", "ip_netmask": "172.19.0.0/24", ' \
-               '"default": "true"}'
+               '"default": "true", "route_options": "metric 10"}'
         route = objects.Route.from_json(json.loads(data))
         self.assertEqual("172.19.0.1", route.next_hop)
         self.assertEqual("172.19.0.0/24", route.ip_netmask)
         self.assertTrue(route.default)
+        self.assertEqual("metric 10", route.route_options)
 
 
 class TestAddress(base.TestCase):
@@ -151,7 +155,8 @@ class TestInterface(base.TestCase):
 }],
 "routes": [{
     "next_hop": "192.0.2.1",
-    "ip_netmask": "192.0.2.1/24"
+    "ip_netmask": "192.0.2.1/24",
+    "route_options": "metric 10"
 }]
 }
 """
@@ -166,6 +171,7 @@ class TestInterface(base.TestCase):
         route1 = interface.routes[0]
         self.assertEqual("192.0.2.1", route1.next_hop)
         self.assertEqual("192.0.2.1/24", route1.ip_netmask)
+        self.assertEqual("metric 10", route1.route_options)
 
 
 class TestVlan(base.TestCase):
@@ -727,7 +733,8 @@ class TestIbInterface(base.TestCase):
 }],
 "routes": [{
     "next_hop": "192.0.2.1",
-    "ip_netmask": "192.0.2.1/24"
+    "ip_netmask": "192.0.2.1/24",
+    "route_options": "metric 10"
 }]
 }
 """
@@ -742,6 +749,7 @@ class TestIbInterface(base.TestCase):
         route1 = ib_interface.routes[0]
         self.assertEqual("192.0.2.1", route1.next_hop)
         self.assertEqual("192.0.2.1/24", route1.ip_netmask)
+        self.assertEqual("metric 10", route1.route_options)
 
 
 class TestNicMapping(base.TestCase):

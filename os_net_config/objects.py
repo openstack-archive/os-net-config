@@ -134,17 +134,20 @@ def _mapped_nics(nic_mapping=None):
 class Route(object):
     """Base class for network routes."""
 
-    def __init__(self, next_hop, ip_netmask="", default=False):
+    def __init__(self, next_hop, ip_netmask="", default=False,
+                 route_options=""):
         self.next_hop = next_hop
         self.ip_netmask = ip_netmask
         self.default = default
+        self.route_options = route_options
 
     @staticmethod
     def from_json(json):
         next_hop = _get_required_field(json, 'next_hop', 'Route')
         ip_netmask = json.get('ip_netmask', "")
+        route_options = json.get('route_options', "")
         default = strutils.bool_from_string(str(json.get('default', False)))
-        return Route(next_hop, ip_netmask, default)
+        return Route(next_hop, ip_netmask, default, route_options)
 
 
 class Address(object):

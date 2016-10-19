@@ -313,24 +313,29 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         data6 = ""
         first_line6 = ""
         for route in routes:
+            options = ""
+            if route.route_options:
+                options = " %s" % (route.route_options)
             if ":" not in route.next_hop:
                 # Route is an IPv4 route
                 if route.default:
-                    first_line = "default via %s dev %s\n" % (route.next_hop,
-                                                              interface_name)
+                    first_line = "default via %s dev %s%s\n" % (
+                                 route.next_hop, interface_name,
+                                 options)
                 else:
-                    data += "%s via %s dev %s\n" % (route.ip_netmask,
-                                                    route.next_hop,
-                                                    interface_name)
+                    data += "%s via %s dev %s%s\n" % (
+                            route.ip_netmask, route.next_hop,
+                            interface_name, options)
             else:
                 # Route is an IPv6 route
                 if route.default:
-                    first_line6 = "default via %s dev %s\n" % (route.next_hop,
-                                                               interface_name)
+                    first_line6 = "default via %s dev %s%s\n" % (
+                                  route.next_hop, interface_name,
+                                  options)
                 else:
-                    data6 += "%s via %s dev %s\n" % (route.ip_netmask,
-                                                     route.next_hop,
-                                                     interface_name)
+                    data6 += "%s via %s dev %s%s\n" % (
+                             route.ip_netmask, route.next_hop,
+                             interface_name, options)
         self.route_data[interface_name] = first_line + data
         self.route6_data[interface_name] = first_line6 + data6
         logger.debug('route data: %s' % self.route_data[interface_name])

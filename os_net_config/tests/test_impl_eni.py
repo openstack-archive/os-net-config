@@ -90,6 +90,8 @@ iface vlan5 inet manual
 
 _RTS = """up route add -net 172.19.0.0 netmask 255.255.255.0 gw 192.168.1.1
 down route del -net 172.19.0.0 netmask 255.255.255.0 gw 192.168.1.1
+up route add -net 172.20.0.0 netmask 255.255.255.0 gw 192.168.1.5 metric 100
+down route del -net 172.20.0.0 netmask 255.255.255.0 gw 192.168.1.5 metric 100
 """
 
 
@@ -169,8 +171,10 @@ class TestENINetConfig(base.TestCase):
 
     def test_network_with_routes(self):
         route1 = objects.Route('192.168.1.1', '172.19.0.0/24')
+        route2 = objects.Route('192.168.1.5', '172.20.0.0/24',
+                               route_options="metric 100")
         v4_addr = objects.Address('192.168.1.2/24')
-        interface = self._default_interface([v4_addr], [route1])
+        interface = self._default_interface([v4_addr], [route1, route2])
         self.provider.add_interface(interface)
         self.assertEqual(_V4_IFACE_STATIC_IP, self.get_interface_config())
         self.assertEqual(_RTS, self.get_route_config())
@@ -261,10 +265,12 @@ class TestENINetConfigApply(base.TestCase):
         super(TestENINetConfigApply, self).tearDown()
 
     def test_network_apply(self):
-        route = objects.Route('192.168.1.1', '172.19.0.0/24')
+        route1 = objects.Route('192.168.1.1', '172.19.0.0/24')
+        route2 = objects.Route('192.168.1.5', '172.20.0.0/24',
+                               route_options="metric 100")
         v4_addr = objects.Address('192.168.1.2/24')
         interface = objects.Interface('eth0', addresses=[v4_addr],
-                                      routes=[route])
+                                      routes=[route1, route2])
         self.provider.add_interface(interface)
 
         self.provider.apply()
@@ -273,10 +279,12 @@ class TestENINetConfigApply(base.TestCase):
         self.assertIn('eth0', self.ifup_interface_names)
 
     def test_apply_noactivate(self):
-        route = objects.Route('192.168.1.1', '172.19.0.0/24')
+        route1 = objects.Route('192.168.1.1', '172.19.0.0/24')
+        route2 = objects.Route('192.168.1.5', '172.20.0.0/24',
+                               route_options="metric 100")
         v4_addr = objects.Address('192.168.1.2/24')
         interface = objects.Interface('eth0', addresses=[v4_addr],
-                                      routes=[route])
+                                      routes=[route1, route2])
         self.provider.add_interface(interface)
 
         self.provider.apply(activate=False)

@@ -13,6 +13,11 @@
           "ip_netmask": "0.0.0.0/0",
           "next_hop": "192.0.2.254",
           "default": "true"
+        },
+        {
+          "ip_netmask": "10.1.2.0/24",
+          "next_hop": "192.0.2.5",
+          "route_options": "metric 10"
         }
       ]
     },
