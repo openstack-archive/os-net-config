@@ -16,6 +16,7 @@ network_config:
     name: em2
     use_dhcp: true
     defroute: false
+    ethtool_opts: "speed 1000 duplex full"
   -
     type: interface
     name: em3
