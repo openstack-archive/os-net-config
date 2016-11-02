@@ -279,7 +279,7 @@ class Interface(_BaseOpts):
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
                  routes=None, mtu=None, primary=False, nic_mapping=None,
                  persist_mapping=False, defroute=True, dhclient_args=None,
-                 dns_servers=None):
+                 dns_servers=None, ethtool_opts=None):
         addresses = addresses or []
         routes = routes or []
         dns_servers = dns_servers or []
@@ -287,12 +287,14 @@ class Interface(_BaseOpts):
                                         routes, mtu, primary, nic_mapping,
                                         persist_mapping, defroute,
                                         dhclient_args, dns_servers)
+        self.ethtool_opts = ethtool_opts
 
     @staticmethod
     def from_json(json):
         name = _get_required_field(json, 'name', 'Interface')
         opts = _BaseOpts.base_opts_from_json(json)
-        return Interface(name, *opts)
+        ethtool_opts = json.get('ethtool_opts', None)
+        return Interface(name, *opts, ethtool_opts=ethtool_opts)
 
 
 class Vlan(_BaseOpts):
@@ -931,7 +933,7 @@ class IbInterface(_BaseOpts):
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
                  routes=None, mtu=None, primary=False, nic_mapping=None,
                  persist_mapping=False, defroute=True, dhclient_args=None,
-                 dns_servers=None):
+                 dns_servers=None, ethtool_opts=None):
         addresses = addresses or []
         routes = routes or []
         dns_servers = dns_servers or []
@@ -939,12 +941,14 @@ class IbInterface(_BaseOpts):
                                           addresses, routes, mtu, primary,
                                           nic_mapping, persist_mapping,
                                           defroute, dhclient_args, dns_servers)
+        self.ethtool_opts = ethtool_opts
 
     @staticmethod
     def from_json(json):
         name = _get_required_field(json, 'name', 'IbInterface')
+        ethtool_opts = json.get('ethtool_opts', None)
         opts = _BaseOpts.base_opts_from_json(json)
-        return IbInterface(name, *opts)
+        return IbInterface(name, *opts, ethtool_opts=ethtool_opts)
 
 
 class OvsDpdkPort(_BaseOpts):

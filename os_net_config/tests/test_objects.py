@@ -150,6 +150,7 @@ class TestInterface(base.TestCase):
 "name": "em1",
 "use_dhcp": false,
 "mtu": 1501,
+"ethtool_opts": "speed 1000 duplex full",
 "addresses": [{
     "ip_netmask": "192.0.2.1/24"
 }],
@@ -165,6 +166,7 @@ class TestInterface(base.TestCase):
         self.assertFalse(interface.use_dhcp)
         self.assertFalse(interface.use_dhcpv6)
         self.assertEqual(1501, interface.mtu)
+        self.assertEqual("speed 1000 duplex full", interface.ethtool_opts)
         address1 = interface.v4_addresses()[0]
         self.assertEqual("192.0.2.1", address1.ip)
         self.assertEqual("255.255.255.0", address1.netmask)
