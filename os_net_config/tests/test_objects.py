@@ -98,6 +98,27 @@ class TestInterface(base.TestCase):
         self.assertEqual("em1", interface.name)
         self.assertTrue(interface.use_dhcp)
 
+    def test_from_json_hotplug(self):
+        data = """{
+"type": "interface",
+"name": "em1",
+"hotplug": true
+}
+"""
+        interface = objects.object_from_json(json.loads(data))
+        self.assertEqual("em1", interface.name)
+        self.assertTrue(interface.hotplug)
+
+    def test_from_json_hotplug_off_by_default(self):
+        data = """{
+"type": "interface",
+"name": "em1"
+}
+"""
+        interface = objects.object_from_json(json.loads(data))
+        self.assertEqual("em1", interface.name)
+        self.assertFalse(interface.hotplug)
+
     def test_from_json_defroute(self):
         data = '{"type": "interface", "name": "em1", "use_dhcp": true}'
         interface1 = objects.object_from_json(json.loads(data))

@@ -127,7 +127,10 @@ class ENINetConfig(os_net_config.NetConfig):
             data += address_data
             data += "    vlan-raw-device %s\n" % interface.device
         else:
-            data += "auto %s\n" % interface.name
+            if isinstance(interface, objects.Interface) and interface.hotplug:
+                data += "allow-hotplug %s\n" % interface.name
+            else:
+                data += "auto %s\n" % interface.name
             data += _iface
             data += address_data
         if interface.mtu:

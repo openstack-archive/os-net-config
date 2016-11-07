@@ -19,5 +19,10 @@ network_config:
     type: interface
     name: em2
     use_dhcp: true
-    defroute: no
+    defroute: false
     ethtool_opts: "speed 1000 duplex full"
+  -
+    type: interface
+    name: em3
+    use_dhcp: true
+    hotplug: true

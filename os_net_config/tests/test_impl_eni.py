@@ -32,6 +32,12 @@ _V4_IFACE_STATIC_IP = _AUTO + """iface eth0 inet static
     netmask 255.255.255.0
 """
 
+_IFACE_HOTPLUG = """allow-hotplug eth0
+iface eth0 inet static
+    address 192.168.1.2
+    netmask 255.255.255.0
+"""
+
 _V4_IFACE_STATIC_IP_MULTIPLE = (_V4_IFACE_STATIC_IP + _AUTO +
                                 """iface eth0 inet static
     address 10.0.0.2
@@ -117,8 +123,9 @@ class TestENINetConfig(base.TestCase):
     def get_route_config(self):
         return self.provider.routes[self.if_name]
 
-    def _default_interface(self, addr=[], rts=[]):
-        return objects.Interface(self.if_name, addresses=addr, routes=rts)
+    def _default_interface(self, addr=[], rts=[], hotplug=False):
+        return objects.Interface(self.if_name, addresses=addr, routes=rts,
+                                 hotplug=hotplug)
 
     def test_interface_no_ip(self):
         interface = self._default_interface()
@@ -130,6 +137,12 @@ class TestENINetConfig(base.TestCase):
         interface = self._default_interface([v4_addr])
         self.provider.add_interface(interface)
         self.assertEqual(_V4_IFACE_STATIC_IP, self.get_interface_config())
+
+    def test_add_interface_with_hotplug(self):
+        v4_addr = objects.Address('192.168.1.2/24')
+        interface = self._default_interface(addr=[v4_addr], hotplug=True)
+        self.provider.add_interface(interface)
+        self.assertEqual(_IFACE_HOTPLUG, self.get_interface_config())
 
     def test_add_interface_with_v4_multiple(self):
         v4_addresses = [objects.Address('192.168.1.2/24'),
