@@ -646,6 +646,42 @@ class TestOvsTunnel(base.TestCase):
             ["ovs extra"],
             tun0.ovs_extra)
 
+    def test_ovs_extra_formatting(self):
+        data = """{
+"type": "ovs_bridge",
+"name": "br-foo",
+"ovs_extra": [
+   "set {name} fail_mode=standalone"
+],
+"members": [{
+    "type": "ovs_tunnel",
+    "name": "tun0",
+    "tunnel_type": "gre",
+    "ovs_options": [
+        "remote_ip=192.168.1.1"
+    ],
+    "ovs_extra": [
+        "ovs extra",
+        "ovs {name} extra"
+    ]
+}]
+}
+"""
+        bridge = objects.object_from_json(json.loads(data))
+        self.assertEqual("br-foo", bridge.name)
+        self.assertEqual(["set br-foo fail_mode=standalone"], bridge.ovs_extra)
+        tun0 = bridge.members[0]
+        self.assertEqual("tun0", tun0.name)
+        self.assertFalse(tun0.ovs_port)
+        self.assertEqual("br-foo", tun0.bridge_name)
+        self.assertEqual("gre", tun0.tunnel_type)
+        self.assertEqual(
+            ["options:remote_ip=192.168.1.1"],
+            tun0.ovs_options)
+        self.assertEqual(
+            ["ovs extra", "ovs tun0 extra"],
+            tun0.ovs_extra)
+
 
 class TestOvsPatchPort(base.TestCase):
 
@@ -658,6 +694,24 @@ class TestOvsPatchPort(base.TestCase):
 }
 """
         patch_port = objects.object_from_json(json.loads(data))
+        self.assertEqual("br-pub-patch", patch_port.name)
+        self.assertEqual("br-ex", patch_port.bridge_name)
+        self.assertEqual("br-ex-patch", patch_port.peer)
+
+    def test_from_json_with_extra(self):
+        data = """{
+"type": "ovs_patch_port",
+"name": "br-pub-patch",
+"bridge_name": "br-ex",
+"peer": "br-ex-patch",
+"ovs_extra": [
+        "ovs {name} extra"
+]
+}
+"""
+        patch_port = objects.object_from_json(json.loads(data))
+        self.assertEqual(["ovs br-pub-patch extra"],
+                         patch_port.ovs_extra)
         self.assertEqual("br-pub-patch", patch_port.name)
         self.assertEqual("br-ex", patch_port.bridge_name)
         self.assertEqual("br-ex-patch", patch_port.peer)

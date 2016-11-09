@@ -577,6 +577,22 @@ class TestIfcfgNetConfig(base.TestCase):
         self.assertEqual(_OVS_BRIDGE_DHCP_OVS_EXTRA,
                          self.provider.bridge_data['br-ctlplane'])
 
+    def test_network_ovs_bridge_with_dhcp_primary_interface_with_format(self):
+        def test_interface_mac(name):
+            return "a1:b2:c3:d4:e5"
+        self.stubs.Set(utils, 'interface_mac', test_interface_mac)
+
+        interface = objects.Interface('em1', primary=True)
+        ovs_extra = "br-set-external-id {name} bridge-id {name}"
+        bridge = objects.OvsBridge('br-ctlplane', use_dhcp=True,
+                                   members=[interface],
+                                   ovs_extra=[ovs_extra])
+        self.provider.add_interface(interface)
+        self.provider.add_bridge(bridge)
+        self.assertEqual(_OVS_INTERFACE, self.get_interface_config())
+        self.assertEqual(_OVS_BRIDGE_DHCP_OVS_EXTRA,
+                         self.provider.bridge_data['br-ctlplane'])
+
     def test_network_ivs_with_uplink_and_interface(self):
         interface = objects.Interface('em1')
         v4_addr = objects.Address('172.16.2.7/24')

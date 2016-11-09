@@ -131,6 +131,12 @@ def _mapped_nics(nic_mapping=None):
     return _MAPPED_NICS
 
 
+def format_ovs_extra(obj, templates):
+    """Map OVS object properties into a string to be used for ovs_extra."""
+
+    return [t.format(name=obj.name) for t in templates or []]
+
+
 class Route(object):
     """Base class for network routes."""
 
@@ -395,7 +401,6 @@ class OvsBridge(_BaseOpts):
         addresses = addresses or []
         routes = routes or []
         members = members or []
-        ovs_extra = ovs_extra or []
         dns_servers = dns_servers or []
         super(OvsBridge, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
                                         routes, mtu, False, nic_mapping,
@@ -403,7 +408,7 @@ class OvsBridge(_BaseOpts):
                                         dhclient_args, dns_servers)
         self.members = members
         self.ovs_options = ovs_options
-        self.ovs_extra = ovs_extra
+        self.ovs_extra = format_ovs_extra(self, ovs_extra)
         for member in self.members:
             member.bridge_name = name
             if not isinstance(member, OvsTunnel):
@@ -460,7 +465,7 @@ class OvsUserBridge(_BaseOpts):
                                             dns_servers)
         self.members = members or []
         self.ovs_options = ovs_options
-        self.ovs_extra = ovs_extra or []
+        self.ovs_extra = format_ovs_extra(self, ovs_extra)
         for member in self.members:
             member.bridge_name = name
             if not isinstance(member, OvsTunnel) and \
@@ -808,7 +813,6 @@ class OvsBond(_BaseOpts):
         addresses = addresses or []
         routes = routes or []
         members = members or []
-        ovs_extra = ovs_extra or []
         dns_servers = dns_servers or []
         super(OvsBond, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
                                       routes, mtu, primary, nic_mapping,
@@ -816,7 +820,7 @@ class OvsBond(_BaseOpts):
                                       dns_servers)
         self.members = members
         self.ovs_options = ovs_options
-        self.ovs_extra = ovs_extra
+        self.ovs_extra = format_ovs_extra(self, ovs_extra)
         for member in self.members:
             if member.primary:
                 if self.primary_interface_name:
@@ -870,7 +874,6 @@ class OvsTunnel(_BaseOpts):
                  ovs_extra=None):
         addresses = addresses or []
         routes = routes or []
-        ovs_extra = ovs_extra or []
         dns_servers = dns_servers or []
         super(OvsTunnel, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
                                         routes, mtu, primary, nic_mapping,
@@ -878,7 +881,7 @@ class OvsTunnel(_BaseOpts):
                                         dhclient_args, dns_servers)
         self.tunnel_type = tunnel_type
         self.ovs_options = ovs_options or []
-        self.ovs_extra = ovs_extra or []
+        self.ovs_extra = format_ovs_extra(self, ovs_extra)
 
     @staticmethod
     def from_json(json):
@@ -902,7 +905,6 @@ class OvsPatchPort(_BaseOpts):
                  ovs_options=None, ovs_extra=None):
         addresses = addresses or []
         routes = routes or []
-        ovs_extra = ovs_extra or []
         dns_servers = dns_servers or []
         super(OvsPatchPort, self).__init__(name, use_dhcp, use_dhcpv6,
                                            addresses, routes, mtu, primary,
@@ -912,7 +914,7 @@ class OvsPatchPort(_BaseOpts):
         self.bridge_name = bridge_name
         self.peer = peer
         self.ovs_options = ovs_options or []
-        self.ovs_extra = ovs_extra or []
+        self.ovs_extra = format_ovs_extra(self, ovs_extra)
 
     @staticmethod
     def from_json(json):
@@ -967,7 +969,7 @@ class OvsDpdkPort(_BaseOpts):
                                           dns_servers)
         self.members = members or []
         self.ovs_options = ovs_options or []
-        self.ovs_extra = ovs_extra or []
+        self.ovs_extra = format_ovs_extra(self, ovs_extra)
         self.driver = driver
 
     @staticmethod
@@ -1024,7 +1026,7 @@ class OvsDpdkBond(_BaseOpts):
                                           defroute, dhclient_args, dns_servers)
         self.members = members or []
         self.ovs_options = ovs_options
-        self.ovs_extra = ovs_extra or []
+        self.ovs_extra = format_ovs_extra(self, ovs_extra)
 
         for member in self.members:
             if member.primary:
