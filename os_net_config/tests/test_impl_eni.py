@@ -72,7 +72,7 @@ _OVS_BRIDGE_DHCP_PRIMARY_INTERFACE = _OVS_BRIDGE_DHCP + \
 
 _OVS_BRIDGE_DHCP_OVS_EXTRA = _OVS_BRIDGE_DHCP + \
     "    ovs_extra set bridge br0 other-config:hwaddr=a1:b2:c3:d4:e5" + \
-    " -- br-set-external-id br-ctlplane bridge-id br-ctlplane\n"
+    " -- br-set-external-id br0 bridge-id br0\n"
 
 
 _VLAN_NO_IP = """auto vlan5
@@ -206,7 +206,24 @@ class TestENINetConfig(base.TestCase):
         self.stubs.Set(utils, 'interface_mac', test_interface_mac)
 
         interface = objects.Interface(self.if_name, primary=True)
-        ovs_extra = "br-set-external-id br-ctlplane bridge-id br-ctlplane"
+        ovs_extra = "br-set-external-id br0 bridge-id br0"
+        bridge = objects.OvsBridge('br0', use_dhcp=True,
+                                   members=[interface],
+                                   ovs_extra=[ovs_extra])
+        self.provider.add_bridge(bridge)
+        self.provider.add_interface(interface)
+        self.assertEqual(_OVS_PORT_IFACE, self.get_interface_config())
+        self.assertEqual(_OVS_BRIDGE_DHCP_OVS_EXTRA,
+                         self.provider.bridges['br0'])
+
+    def test_network_ovs_bridge_with_dhcp_and_primary_with_ovs_format(self):
+
+        def test_interface_mac(name):
+            return "a1:b2:c3:d4:e5"
+        self.stubs.Set(utils, 'interface_mac', test_interface_mac)
+
+        interface = objects.Interface(self.if_name, primary=True)
+        ovs_extra = "br-set-external-id {name} bridge-id {name}"
         bridge = objects.OvsBridge('br0', use_dhcp=True,
                                    members=[interface],
                                    ovs_extra=[ovs_extra])
