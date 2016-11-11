@@ -843,6 +843,7 @@ class TestIfcfgNetConfigApply(base.TestCase):
         self.temp_cleanup_file = tempfile.NamedTemporaryFile(delete=False)
         self.ifup_interface_names = []
         self.ovs_appctl_cmds = []
+        self.stop_dhclient_interfaces = []
 
         def test_ifcfg_path(name):
             return self.temp_ifcfg_file.name
@@ -863,6 +864,11 @@ class TestIfcfgNetConfigApply(base.TestCase):
         def test_cleanup_pattern():
             return self.temp_cleanup_file.name
         self.stubs.Set(impl_ifcfg, 'cleanup_pattern', test_cleanup_pattern)
+
+        def test_stop_dhclient_process(interface):
+            self.stop_dhclient_interfaces.append(interface)
+        self.stubs.Set(impl_ifcfg, 'stop_dhclient_process',
+                       test_stop_dhclient_process)
 
         def test_execute(*args, **kwargs):
             if args[0] == '/sbin/ifup':
@@ -912,6 +918,21 @@ class TestIfcfgNetConfigApply(base.TestCase):
         self.assertEqual(_OVS_BRIDGE_DHCP, bridge_data)
         route_data = utils.get_file_data(self.temp_route_file.name)
         self.assertEqual("", route_data)
+
+    def test_dhclient_stop_on_iface_activate(self):
+        self.stop_dhclient_interfaces = []
+        v4_addr = objects.Address('192.168.1.2/24')
+        interface = objects.Interface('em1', addresses=[v4_addr])
+        interface2 = objects.Interface('em2', use_dhcp=True)
+        interface3 = objects.Interface('em3', use_dhcp=False)
+        self.provider.add_interface(interface)
+        self.provider.add_interface(interface2)
+        self.provider.add_interface(interface3)
+        self.provider.apply()
+        # stop dhclient on em1 due to static IP and em3 due to no IP
+        self.assertIn('em1', self.stop_dhclient_interfaces)
+        self.assertIn('em3', self.stop_dhclient_interfaces)
+        self.assertNotIn('em2', self.stop_dhclient_interfaces)
 
     def test_apply_noactivate(self):
         interface = objects.Interface('em1')
