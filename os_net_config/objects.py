@@ -25,6 +25,8 @@ logger = logging.getLogger(__name__)
 
 _MAPPED_NICS = None
 
+DEFAULT_OVS_BRIDGE_FAIL_MODE = 'standalone'
+
 
 class InvalidConfigException(ValueError):
     pass
@@ -392,7 +394,8 @@ class OvsBridge(_BaseOpts):
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
                  routes=None, mtu=None, members=None, ovs_options=None,
                  ovs_extra=None, nic_mapping=None, persist_mapping=False,
-                 defroute=True, dhclient_args=None, dns_servers=None):
+                 defroute=True, dhclient_args=None, dns_servers=None,
+                 fail_mode=None):
         addresses = addresses or []
         routes = routes or []
         members = members or []
@@ -403,6 +406,9 @@ class OvsBridge(_BaseOpts):
                                         dhclient_args, dns_servers)
         self.members = members
         self.ovs_options = ovs_options
+        ovs_extra = ovs_extra or []
+        if fail_mode:
+            ovs_extra.append('set bridge {name} fail_mode=%s' % fail_mode)
         self.ovs_extra = format_ovs_extra(self, ovs_extra)
         for member in self.members:
             member.bridge_name = name
@@ -425,7 +431,8 @@ class OvsBridge(_BaseOpts):
          dhclient_args, dns_servers) = _BaseOpts.base_opts_from_json(
              json, include_primary=False)
         ovs_options = json.get('ovs_options')
-        ovs_extra = json.get('ovs_extra', [])
+        ovs_extra = json.get('ovs_extra')
+        fail_mode = json.get('ovs_fail_mode', DEFAULT_OVS_BRIDGE_FAIL_MODE)
         members = []
 
         # members
@@ -443,7 +450,8 @@ class OvsBridge(_BaseOpts):
                          members=members, ovs_options=ovs_options,
                          ovs_extra=ovs_extra, nic_mapping=nic_mapping,
                          persist_mapping=persist_mapping, defroute=defroute,
-                         dhclient_args=dhclient_args, dns_servers=dns_servers)
+                         dhclient_args=dhclient_args, dns_servers=dns_servers,
+                         fail_mode=fail_mode)
 
 
 class OvsUserBridge(_BaseOpts):
@@ -452,7 +460,8 @@ class OvsUserBridge(_BaseOpts):
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
                  routes=None, mtu=None, members=None, ovs_options=None,
                  ovs_extra=None, nic_mapping=None, persist_mapping=False,
-                 defroute=True, dhclient_args=None, dns_servers=None):
+                 defroute=True, dhclient_args=None, dns_servers=None,
+                 fail_mode=None):
         super(OvsUserBridge, self).__init__(name, use_dhcp, use_dhcpv6,
                                             addresses, routes, mtu, False,
                                             nic_mapping, persist_mapping,
@@ -460,6 +469,9 @@ class OvsUserBridge(_BaseOpts):
                                             dns_servers)
         self.members = members or []
         self.ovs_options = ovs_options
+        ovs_extra = ovs_extra or []
+        if fail_mode:
+            ovs_extra.append('set bridge {name} fail_mode=%s' % fail_mode)
         self.ovs_extra = format_ovs_extra(self, ovs_extra)
         for member in self.members:
             member.bridge_name = name
@@ -484,7 +496,8 @@ class OvsUserBridge(_BaseOpts):
          dhclient_args, dns_servers) = _BaseOpts.base_opts_from_json(
              json, include_primary=False)
         ovs_options = json.get('ovs_options')
-        ovs_extra = json.get('ovs_extra', [])
+        ovs_extra = json.get('ovs_extra')
+        fail_mode = json.get('ovs_fail_mode', DEFAULT_OVS_BRIDGE_FAIL_MODE)
         members = []
 
         # members
@@ -503,7 +516,7 @@ class OvsUserBridge(_BaseOpts):
                              ovs_extra=ovs_extra, nic_mapping=nic_mapping,
                              persist_mapping=persist_mapping,
                              defroute=defroute, dhclient_args=dhclient_args,
-                             dns_servers=dns_servers)
+                             dns_servers=dns_servers, fail_mode=fail_mode)
 
 
 class LinuxBridge(_BaseOpts):

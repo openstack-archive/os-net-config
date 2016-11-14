@@ -643,7 +643,7 @@ class TestOvsTunnel(base.TestCase):
 "type": "ovs_bridge",
 "name": "br-foo",
 "ovs_extra": [
-   "set {name} fail_mode=standalone"
+   "set bridge {name} something"
 ],
 "members": [{
     "type": "ovs_tunnel",
@@ -661,7 +661,9 @@ class TestOvsTunnel(base.TestCase):
 """
         bridge = objects.object_from_json(json.loads(data))
         self.assertEqual("br-foo", bridge.name)
-        self.assertEqual(["set br-foo fail_mode=standalone"], bridge.ovs_extra)
+        self.assertEqual(["set bridge br-foo something",
+                          "set bridge br-foo fail_mode=standalone"],
+                         bridge.ovs_extra)
         tun0 = bridge.members[0]
         self.assertEqual("tun0", tun0.name)
         self.assertFalse(tun0.ovs_port)

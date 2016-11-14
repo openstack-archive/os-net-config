@@ -66,9 +66,14 @@ iface br0 inet dhcp
     pre-up ip addr flush dev eth0
 """
 
+_OVS_BRIDGE_DHCP_STANDALONE = _OVS_BRIDGE_DHCP + \
+    "    ovs_extra set bridge br0 fail_mode=standalone\n"
+
+_OVS_BRIDGE_DHCP_SECURE = _OVS_BRIDGE_DHCP + \
+    "    ovs_extra set bridge br0 fail_mode=secure\n"
+
 _OVS_BRIDGE_DHCP_PRIMARY_INTERFACE = _OVS_BRIDGE_DHCP + \
     "    ovs_extra set bridge br0 other-config:hwaddr=a1:b2:c3:d4:e5\n"
-
 
 _OVS_BRIDGE_DHCP_OVS_EXTRA = _OVS_BRIDGE_DHCP + \
     "    ovs_extra set bridge br0 other-config:hwaddr=a1:b2:c3:d4:e5" + \
@@ -183,6 +188,28 @@ class TestENINetConfig(base.TestCase):
         self.provider.add_interface(interface)
         self.assertEqual(_OVS_PORT_IFACE, self.get_interface_config())
         self.assertEqual(_OVS_BRIDGE_DHCP, self.provider.bridges['br0'])
+
+    def test_network_ovs_bridge_with_standalone_fail_mode(self):
+        interface = self._default_interface()
+        bridge = objects.OvsBridge('br0', use_dhcp=True,
+                                   members=[interface],
+                                   fail_mode='standalone')
+        self.provider.add_bridge(bridge)
+        self.provider.add_interface(interface)
+        self.assertEqual(_OVS_PORT_IFACE, self.get_interface_config())
+        self.assertEqual(_OVS_BRIDGE_DHCP_STANDALONE,
+                         self.provider.bridges['br0'])
+
+    def test_network_ovs_bridge_with_secure_fail_mode(self):
+        interface = self._default_interface()
+        bridge = objects.OvsBridge('br0', use_dhcp=True,
+                                   members=[interface],
+                                   fail_mode='secure')
+        self.provider.add_bridge(bridge)
+        self.provider.add_interface(interface)
+        self.assertEqual(_OVS_PORT_IFACE, self.get_interface_config())
+        self.assertEqual(_OVS_BRIDGE_DHCP_SECURE,
+                         self.provider.bridges['br0'])
 
     def test_network_ovs_bridge_with_dhcp_and_primary_interface(self):
 
