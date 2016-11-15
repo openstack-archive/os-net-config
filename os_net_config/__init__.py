@@ -101,105 +101,105 @@ class NetConfig(object):
 
         :param interface: The Interface object to add.
         """
-        raise NotImplemented("add_interface is not implemented.")
+        raise NotImplementedError("add_interface is not implemented.")
 
     def add_vlan(self, vlan):
         """Add a Vlan object to the net config object.
 
         :param vlan: The vlan object to add.
         """
-        raise NotImplemented("add_vlan is not implemented.")
+        raise NotImplementedError("add_vlan is not implemented.")
 
     def add_bridge(self, bridge):
         """Add an OvsBridge object to the net config object.
 
         :param bridge: The OvsBridge object to add.
         """
-        raise NotImplemented("add_bridge is not implemented.")
+        raise NotImplementedError("add_bridge is not implemented.")
 
     def add_ovs_user_bridge(self, bridge):
         """Add an OvsUserBridge object to the net config object.
 
         :param bridge: The OvsUserBridge object to add.
         """
-        raise NotImplemented("add_ovs_user_bridge is not implemented.")
+        raise NotImplementedError("add_ovs_user_bridge is not implemented.")
 
     def add_linux_bridge(self, bridge):
         """Add a LinuxBridge object to the net config object.
 
         :param bridge: The LinuxBridge object to add.
         """
-        raise NotImplemented("add_linux_bridge is not implemented.")
+        raise NotImplementedError("add_linux_bridge is not implemented.")
 
     def add_ivs_bridge(self, bridge):
         """Add a IvsBridge object to the net config object.
 
         :param bridge: The IvsBridge object to add.
         """
-        raise NotImplemented("add_ivs_bridge is not implemented.")
+        raise NotImplementedError("add_ivs_bridge is not implemented.")
 
     def add_nfvswitch_bridge(self, bridge):
         """Add a NfvswitchBridge object to the net config object.
 
         :param bridge: The NfvswitchBridge object to add.
         """
-        raise NotImplemented("add_nfvswitch_bridge is not implemented.")
+        raise NotImplementedError("add_nfvswitch_bridge is not implemented.")
 
     def add_bond(self, bond):
         """Add an OvsBond object to the net config object.
 
         :param bond: The OvsBond object to add.
         """
-        raise NotImplemented("add_bond is not implemented.")
+        raise NotImplementedError("add_bond is not implemented.")
 
     def add_linux_bond(self, bond):
         """Add a LinuxBond object to the net config object.
 
         :param bond: The LinuxBond object to add.
         """
-        raise NotImplemented("add_linux_bond is not implemented.")
+        raise NotImplementedError("add_linux_bond is not implemented.")
 
     def add_linux_team(self, team):
         """Add a LinuxTeam object to the net config object.
 
         :param team: The LinuxTeam object to add.
         """
-        raise NotImplemented("add_linux_team is not implemented.")
+        raise NotImplementedError("add_linux_team is not implemented.")
 
     def add_ovs_tunnel(self, tunnel):
         """Add a OvsTunnel object to the net config object.
 
         :param tunnel: The OvsTunnel object to add.
         """
-        raise NotImplemented("add_ovs_tunnel is not implemented.")
+        raise NotImplementedError("add_ovs_tunnel is not implemented.")
 
     def add_ovs_patch_port(self, ovs_patch_port):
         """Add a OvsPatchPort object to the net config object.
 
         :param ovs_patch_port: The OvsPatchPort object to add.
         """
-        raise NotImplemented("add_ovs_patch_port is not implemented.")
+        raise NotImplementedError("add_ovs_patch_port is not implemented.")
 
     def add_ib_interface(self, ib_interface):
         """Add an InfiniBand Interface object to the net config object.
 
         :param interface: The InfiniBand Interface object to add.
         """
-        raise NotImplemented("add_ib_interface is not implemented.")
+        raise NotImplementedError("add_ib_interface is not implemented.")
 
     def add_ovs_dpdk_port(self, ovs_dpdk_port):
         """Add a OvsDpdkPort object to the net config object.
 
         :param ovs_dpdk_port: The OvsDpdkPort object to add.
         """
-        raise NotImplemented("add_ovs_dpdk_port is not implemented.")
+        raise NotImplementedError("add_ovs_dpdk_port is not implemented.")
 
     def add_ovs_dpdk_bond(self, ovs_dpdk_bond):
         """Add a OvsDpdkBond object to the net config object.
 
         :param ovs_dpdk_bond: The OvsDpdkBond object to add.
         """
-        raise NotImplemented("add_ovs_dpdk_bond is not implemented.")
+        raise NotImplementedError("add_ovs_dpdk_bond is not implemented.")
 
     def apply(self, cleanup=False):
         """Apply the network configuration.
@@ -211,7 +211,7 @@ class NetConfig(object):
             for each file that was changed (or would be changed if in --noop
             mode).
         """
-        raise NotImplemented("apply is not implemented.")
+        raise NotImplementedError("apply is not implemented.")
 
     def execute(self, msg, cmd, *args, **kwargs):
         """Print a message and run a command.
