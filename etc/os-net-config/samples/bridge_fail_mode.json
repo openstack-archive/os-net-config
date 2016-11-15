@@ -1,0 +1,15 @@
+{ "network_config": [
+        {
+            "type": "ovs_bridge",
+            "name": "br-ctlplane",
+            "ovs_fail_mode": "secure",
+            "use_dhcp": "true",
+            "members": [
+                {
+                    "type": "interface",
+                    "name": "em1"
+                }
+            ]
+        }
+    ]
+}

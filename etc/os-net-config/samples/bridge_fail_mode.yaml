@@ -1,0 +1,10 @@
+network_config:
+  -
+    type: ovs_bridge
+    name: br-ctlplane
+    use_dhcp: true
+    ovs_fail_mode: secure
+    members:
+      -
+        type: interface
+        name: em1
