@@ -16,6 +16,7 @@
 
 import glob
 import logging
+import os
 import re
 
 import os_net_config
@@ -24,6 +25,9 @@ from os_net_config import utils
 
 
 logger = logging.getLogger(__name__)
+
+# Import the raw NetConfig object so we can call its methods
+netconfig = os_net_config.NetConfig()
 
 
 def ifcfg_config_path(name):
@@ -53,6 +57,39 @@ def route6_config_path(name):
 
 def cleanup_pattern():
     return "/etc/sysconfig/network-scripts/ifcfg-*"
+
+
+def dhclient_path():
+    if os.path.exists("/usr/sbin/dhclient"):
+        return "/usr/sbin/dhclient"
+    elif os.path.exists("/sbin/dhclient"):
+        return "/sbin/dhclient"
+    else:
+        raise RuntimeError("Could not find dhclient")
+
+
+def stop_dhclient_process(interface):
+    """Stop a DHCP process when no longer needed.
+
+    This method exists so that it may be stubbed out for unit tests.
+    :param interface: The interface on which to stop dhclient.
+    """
+    pid_file = '/var/run/dhclient-%s.pid' % (interface)
+    try:
+        dhclient = dhclient_path()
+    except RuntimeError as err:
+        logger.info('Exception when stopping dhclient: %s' % err)
+        return
+
+    if os.path.exists(pid_file):
+        msg = 'Stopping %s on interface %s' % (dhclient, interface)
+        netconfig.execute(msg, dhclient, '-r', '-pf',
+                          pid_file, interface)
+        try:
+            os.unlink(pid_file)
+        except OSError as err:
+            logger.error('Could not remove dhclient pid file \'%s\': %s' %
+                         (pid_file, err))
 
 
 class IfcfgNetConfig(os_net_config.NetConfig):
@@ -639,6 +676,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         ivs_interfaces = []  # ivs internal ports
         nfvswitch_interfaces = []       # nfvswitch physical interfaces
         nfvswitch_internal_ifaces = []  # nfvswitch internal/management ports
+        stop_dhclient_interfaces = []
 
         for interface_name, iface_data in self.interface_data.iteritems():
             route_data = self.route_data.get(interface_name, '')
@@ -662,6 +700,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 update_files[interface_path] = iface_data
                 update_files[route_path] = route_data
                 update_files[route6_path] = route6_data
+                if "BOOTPROTO=dhcp" not in iface_data:
+                    stop_dhclient_interfaces.append(interface_name)
             else:
                 logger.info('No changes required for interface: %s' %
                             interface_name)
@@ -889,6 +929,10 @@ class IfcfgNetConfig(os_net_config.NetConfig):
 
             for bridge in restart_bridges:
                 self.ifup(bridge, iftype='bridge')
+
+            # If dhclient is running and dhcp not set, stop dhclient
+            for interface in stop_dhclient_interfaces:
+                stop_dhclient_process(interface)
 
             for interface in restart_interfaces:
                 self.ifup(interface)
