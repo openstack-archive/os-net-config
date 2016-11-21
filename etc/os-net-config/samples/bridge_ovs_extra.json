@@ -1,0 +1,18 @@
+{ "network_config": [
+        {
+            "type": "ovs_bridge",
+            "name": "br-ctlplane",
+            "ovs_extra": [
+              "br-set-external-id br-ctlplane bridge-id br-ctlplane",
+              "set bridge {name} stp_enable=true"
+            ],
+            "use_dhcp": "true",
+            "members": [
+                {
+                    "type": "interface",
+                    "name": "em1"
+                }
+            ]
+        }
+    ]
+}
