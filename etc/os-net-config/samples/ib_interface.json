@@ -20,7 +20,7 @@
       "type": "ib_interface",
       "name": "ib1",
       "use_dhcp": true,
-      "defroute": no
+      "defroute": false
     }
   ]
 }

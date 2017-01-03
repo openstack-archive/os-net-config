@@ -287,7 +287,7 @@ class Interface(_BaseOpts):
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
                  routes=None, mtu=None, primary=False, nic_mapping=None,
                  persist_mapping=False, defroute=True, dhclient_args=None,
-                 dns_servers=None, ethtool_opts=None):
+                 dns_servers=None, ethtool_opts=None, hotplug=False):
         addresses = addresses or []
         routes = routes or []
         dns_servers = dns_servers or []
@@ -296,13 +296,16 @@ class Interface(_BaseOpts):
                                         persist_mapping, defroute,
                                         dhclient_args, dns_servers)
         self.ethtool_opts = ethtool_opts
+        self.hotplug = hotplug
 
     @staticmethod
     def from_json(json):
         name = _get_required_field(json, 'name', 'Interface')
+        hotplug = strutils.bool_from_string(str(json.get('hotplug', False)))
         opts = _BaseOpts.base_opts_from_json(json)
         ethtool_opts = json.get('ethtool_opts', None)
-        return Interface(name, *opts, ethtool_opts=ethtool_opts)
+        return Interface(name, *opts, ethtool_opts=ethtool_opts,
+                         hotplug=hotplug)
 
 
 class Vlan(_BaseOpts):
