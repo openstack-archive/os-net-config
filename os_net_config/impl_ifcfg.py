@@ -681,7 +681,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         nfvswitch_internal_ifaces = []  # nfvswitch internal/management ports
         stop_dhclient_interfaces = []
 
-        for interface_name, iface_data in self.interface_data.iteritems():
+        for interface_name, iface_data in self.interface_data.items():
             route_data = self.route_data.get(interface_name, '')
             route6_data = self.route6_data.get(interface_name, '')
             interface_path = self.root_dir + ifcfg_config_path(interface_name)
@@ -709,7 +709,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 logger.info('No changes required for interface: %s' %
                             interface_name)
 
-        for interface_name, iface_data in self.ivsinterface_data.iteritems():
+        for interface_name, iface_data in self.ivsinterface_data.items():
             route_data = self.route_data.get(interface_name, '')
             route6_data = self.route6_data.get(interface_name, '')
             interface_path = self.root_dir + ifcfg_config_path(interface_name)
@@ -730,7 +730,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 logger.info('No changes required for ivs interface: %s' %
                             interface_name)
 
-        for iface_name, iface_data in self.nfvswitch_intiface_data.iteritems():
+        for iface_name, iface_data in self.nfvswitch_intiface_data.items():
             route_data = self.route_data.get(iface_name, '')
             route6_data = self.route6_data.get(iface_name, '')
             iface_path = self.root_dir + ifcfg_config_path(iface_name)
@@ -751,7 +751,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 logger.info('No changes required for nfvswitch interface: %s' %
                             iface_name)
 
-        for vlan_name, vlan_data in self.vlan_data.iteritems():
+        for vlan_name, vlan_data in self.vlan_data.items():
             route_data = self.route_data.get(vlan_name, '')
             route6_data = self.route6_data.get(vlan_name, '')
             vlan_path = self.root_dir + ifcfg_config_path(vlan_name)
@@ -771,7 +771,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 logger.info('No changes required for vlan interface: %s' %
                             vlan_name)
 
-        for bridge_name, bridge_data in self.bridge_data.iteritems():
+        for bridge_name, bridge_data in self.bridge_data.items():
             route_data = self.route_data.get(bridge_name, '')
             route6_data = self.route6_data.get(bridge_name, '')
             bridge_path = self.root_dir + bridge_config_path(bridge_name)
@@ -795,7 +795,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             else:
                 logger.info('No changes required for bridge: %s' % bridge_name)
 
-        for bridge_name, bridge_data in self.linuxbridge_data.iteritems():
+        for bridge_name, bridge_data in self.linuxbridge_data.items():
             route_data = self.route_data.get(bridge_name, '')
             route6_data = self.route6_data.get(bridge_name, '')
             bridge_path = self.root_dir + bridge_config_path(bridge_name)
@@ -815,7 +815,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             else:
                 logger.info('No changes required for bridge: %s' % bridge_name)
 
-        for team_name, team_data in self.linuxteam_data.iteritems():
+        for team_name, team_data in self.linuxteam_data.items():
             route_data = self.route_data.get(team_name, '')
             route6_data = self.route6_data.get(team_name, '')
             team_path = self.root_dir + bridge_config_path(team_name)
@@ -836,7 +836,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 logger.info('No changes required for linux team: %s' %
                             team_name)
 
-        for bond_name, bond_data in self.linuxbond_data.iteritems():
+        for bond_name, bond_data in self.linuxbond_data.items():
             route_data = self.route_data.get(bond_name, '')
             route6_data = self.route6_data.get(bond_name, '')
             bond_path = self.root_dir + bridge_config_path(bond_name)
@@ -858,7 +858,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                             bond_name)
 
         # Infiniband interfaces are handled similarly to Ethernet interfaces
-        for interface_name, iface_data in self.ib_interface_data.iteritems():
+        for interface_name, iface_data in self.ib_interface_data.items():
             route_data = self.route_data.get(interface_name, '')
             route6_data = self.route6_data.get(interface_name, '')
             interface_path = self.root_dir + ifcfg_config_path(interface_name)
@@ -909,10 +909,10 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             for bridge in restart_bridges:
                 self.ifdown(bridge, iftype='bridge')
 
-            for oldname, newname in self.renamed_interfaces.iteritems():
+            for oldname, newname in self.renamed_interfaces.items():
                 self.ifrename(oldname, newname)
 
-        for location, data in update_files.iteritems():
+        for location, data in update_files.items():
             self.write_config(location, data)
 
         if ivs_uplinks or ivs_interfaces:

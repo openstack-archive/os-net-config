@@ -428,7 +428,7 @@ class TestIvsInterface(base.TestCase):
                                 objects.IvsBridge.from_json,
                                 json.loads(data))
         expected = 'IVS does not support bond interfaces.'
-        self.assertIn(expected, err)
+        self.assertIn(expected, six.text_type(err))
 
 
 class TestNfvswitchBridge(base.TestCase):
@@ -493,7 +493,7 @@ class TestNfvswitchInterface(base.TestCase):
                                 objects.NfvswitchBridge.from_json,
                                 json.loads(data))
         expected = 'NFVSwitch does not support bond interfaces.'
-        self.assertIn(expected, err)
+        self.assertIn(expected, six.text_type(err))
 
 
 class TestBond(base.TestCase):

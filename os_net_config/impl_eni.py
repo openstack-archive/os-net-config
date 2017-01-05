@@ -215,12 +215,12 @@ class ENINetConfig(os_net_config.NetConfig):
 
         # write out bridges first. This ensures that an ifup -a
         # on reboot brings them up first
-        for bridge_name, bridge_data in self.bridges.iteritems():
+        for bridge_name, bridge_data in self.bridges.items():
             route_data = self.routes.get(bridge_name)
             bridge_data += (route_data or '')
             new_config += bridge_data
 
-        for interface_name, iface_data in self.interfaces.iteritems():
+        for interface_name, iface_data in self.interfaces.items():
             route_data = self.routes.get(interface_name)
             iface_data += (route_data or '')
             new_config += iface_data

@@ -186,7 +186,7 @@ def main(argv=sys.argv):
     files_changed = provider.apply(cleanup=opts.cleanup,
                                    activate=not opts.no_activate)
     if opts.noop:
-        for location, data in files_changed.iteritems():
+        for location, data in files_changed.items():
             print("File: %s\n" % location)
             print(data)
             print("----")
