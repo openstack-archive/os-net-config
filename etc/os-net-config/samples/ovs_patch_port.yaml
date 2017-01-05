@@ -10,7 +10,7 @@ network_config:
         # force the MAC address of the bridge to this interface
         primary: true
         mtu: 1500
-    ovs_extra: "br-set-external-id br-ctlplane bridge-id br-ctlplane"
+    ovs_extra: ["br-set-external-id br-ctlplane bridge-id br-ctlplane"]
   -
     type: ovs_patch_port
     name: br_pub-patch
