@@ -281,15 +281,18 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             data += "OVS_BRIDGE=%s\n" % base_opt.bridge_name
         elif isinstance(base_opt, objects.OvsDpdkBond):
             ovs_extra.extend(base_opt.ovs_extra)
-            if base_opt.primary_interface_name:
-                primary_name = base_opt.primary_interface_name
-                self.bond_primary_ifaces[base_opt.name] = primary_name
+            # Referring to bug:1643026, the below commenting of the interfaces,
+            # is to workaround the error, but is not the long term solution.
+            # The long term solution is to run DPDK options before
+            # os-net-config, which is being tracked at BUG:1654975
+            # if base_opt.primary_interface_name:
+            #    primary_name = base_opt.primary_interface_name
+            #    self.bond_primary_ifaces[base_opt.name] = primary_name
             data += "DEVICETYPE=ovs\n"
             data += "TYPE=OVSDPDKBond\n"
             data += "OVS_BRIDGE=%s\n" % base_opt.bridge_name
             if base_opt.members:
                 members = [member.name for member in base_opt.members]
-                self.member_names[base_opt.name] = members
                 data += ("BOND_IFACES=\"%s\"\n" % " ".join(members))
             if base_opt.ovs_options:
                 data += "OVS_OPTIONS=\"%s\"\n" % base_opt.ovs_options
