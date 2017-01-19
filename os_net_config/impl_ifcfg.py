@@ -34,6 +34,13 @@ def ifcfg_config_path(name):
     return "/etc/sysconfig/network-scripts/ifcfg-%s" % name
 
 
+def remove_ifcfg_config(ifname):
+    if re.match('[\w-]+$', ifname):
+        ifcfg_file = ifcfg_config_path(ifname)
+        if os.path.exists(ifcfg_file):
+            os.remove(ifcfg_file)
+
+
 # NOTE(dprince): added here for testability
 def bridge_config_path(name):
     return ifcfg_config_path(name)
@@ -587,6 +594,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
 
         # Bind the dpdk interface
         utils.bind_dpdk_interfaces(ifname, ovs_dpdk_port.driver, self.noop)
+        if not self.noop:
+            remove_ifcfg_config(ifname)
 
         data = self._add_common(ovs_dpdk_port)
         logger.debug('ovs dpdk port data: %s' % data)
@@ -605,6 +614,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             # checks are added at the object creation stage.
             ifname = dpdk_port.members[0].name
             utils.bind_dpdk_interfaces(ifname, dpdk_port.driver, self.noop)
+            if not self.noop:
+                remove_ifcfg_config(ifname)
 
         data = self._add_common(ovs_dpdk_bond)
         logger.debug('ovs dpdk bond data: %s' % data)
