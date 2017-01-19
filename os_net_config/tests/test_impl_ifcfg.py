@@ -894,6 +894,13 @@ class TestIfcfgNetConfigApply(base.TestCase):
             return self.temp_ifcfg_file.name
         self.stubs.Set(impl_ifcfg, 'ifcfg_config_path', test_ifcfg_path)
 
+        def test_remove_ifcfg_config(name):
+            ifcfg_file = self.temp_ifcfg_file.name
+            if os.path.exists(ifcfg_file):
+                os.remove(ifcfg_file)
+        self.stubs.Set(impl_ifcfg, 'remove_ifcfg_config',
+                       test_remove_ifcfg_config)
+
         def test_routes_path(name):
             return self.temp_route_file.name
         self.stubs.Set(impl_ifcfg, 'route_config_path', test_routes_path)
