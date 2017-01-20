@@ -14,6 +14,11 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+#
+# NOTE: When making changes to the object model, remember to also update
+#       schema.yaml to reflect changes to the schema of config files!
+#
+
 import logging
 import netaddr
 from oslo_utils import strutils

@@ -52,9 +52,11 @@ class TestCli(base.TestCase):
         bond_yaml = os.path.join(SAMPLE_BASE, 'bond.yaml')
         bond_json = os.path.join(SAMPLE_BASE, 'bond.json')
         stdout_yaml, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
+                                           '--exit-on-validation-errors '
                                            '-c %s' % bond_yaml)
         self.assertEqual('', stderr)
         stdout_json, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
+                                           '--exit-on-validation-errors '
                                            '-c %s' % bond_json)
         self.assertEqual('', stderr)
         sanity_devices = ['DEVICE=br-ctlplane',
@@ -70,9 +72,11 @@ class TestCli(base.TestCase):
         ivs_yaml = os.path.join(SAMPLE_BASE, 'ivs.yaml')
         ivs_json = os.path.join(SAMPLE_BASE, 'ivs.json')
         stdout_yaml, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
+                                           '--exit-on-validation-errors '
                                            '-c %s' % ivs_yaml)
         self.assertEqual('', stderr)
         stdout_json, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
+                                           '--exit-on-validation-errors '
                                            '-c %s' % ivs_json)
         self.assertEqual('', stderr)
         sanity_devices = ['DEVICE=nic2',
@@ -87,11 +91,13 @@ class TestCli(base.TestCase):
     def test_bridge_noop_output(self):
         bridge_yaml = os.path.join(SAMPLE_BASE, 'bridge_dhcp.yaml')
         bridge_json = os.path.join(SAMPLE_BASE, 'bridge_dhcp.json')
-        stdout_yaml, stderr = self.run_cli('ARG0 --provider=eni --noop -c %s' %
-                                           bridge_yaml)
+        stdout_yaml, stderr = self.run_cli('ARG0 --provider=eni --noop '
+                                           '--exit-on-validation-errors '
+                                           '-c %s' % bridge_yaml)
         self.assertEqual('', stderr)
-        stdout_json, stderr = self.run_cli('ARG0 --provider=eni --noop -c %s' %
-                                           bridge_json)
+        stdout_json, stderr = self.run_cli('ARG0 --provider=eni --noop '
+                                           '--exit-on-validation-errors '
+                                           '-c %s' % bridge_json)
         self.assertEqual('', stderr)
         sanity_devices = ['iface br-ctlplane inet dhcp',
                           'iface em1',
@@ -103,11 +109,13 @@ class TestCli(base.TestCase):
     def test_vlan_noop_output(self):
         vlan_yaml = os.path.join(SAMPLE_BASE, 'bridge_vlan.yaml')
         vlan_json = os.path.join(SAMPLE_BASE, 'bridge_vlan.json')
-        stdout_yaml, stderr = self.run_cli('ARG0 --provider=ifcfg --noop -c %s'
-                                           % vlan_yaml)
+        stdout_yaml, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
+                                           '--exit-on-validation-errors '
+                                           '-c %s' % vlan_yaml)
         self.assertEqual('', stderr)
-        stdout_json, stderr = self.run_cli('ARG0 --provider=ifcfg --noop -c %s'
-                                           % vlan_json)
+        stdout_json, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
+                                           '--exit-on-validation-errors '
+                                           '-c %s' % vlan_json)
         self.assertEqual('', stderr)
         sanity_devices = ['DEVICE=br-ctlplane',
                           'DEVICE=em1',
@@ -120,11 +128,13 @@ class TestCli(base.TestCase):
     def test_interface_noop_output(self):
         interface_yaml = os.path.join(SAMPLE_BASE, 'interface.yaml')
         interface_json = os.path.join(SAMPLE_BASE, 'interface.json')
-        stdout_yaml, stderr = self.run_cli('ARG0 --provider=ifcfg --noop -c %s'
-                                           % interface_yaml)
+        stdout_yaml, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
+                                           '--exit-on-validation-errors '
+                                           '-c %s' % interface_yaml)
         self.assertEqual('', stderr)
-        stdout_json, stderr = self.run_cli('ARG0 --provider=ifcfg --noop -c %s'
-                                           % interface_json)
+        stdout_json, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
+                                           '--exit-on-validation-errors '
+                                           '-c %s' % interface_json)
         self.assertEqual('', stderr)
         sanity_devices = ['DEVICE=em1',
                           'BOOTPROTO=static',
@@ -137,6 +147,7 @@ class TestCli(base.TestCase):
         for provider in ('ifcfg', 'eni'):
             bond_yaml = os.path.join(SAMPLE_BASE, 'bridge_dhcp.yaml')
             stdout_yaml, stderr = self.run_cli('ARG0 --provider=%s --noop '
+                                               '--exit-on-validation-errors '
                                                '--root-dir=/rootfs '
                                                '-c %s' % (provider, bond_yaml))
             self.assertEqual('', stderr)
@@ -145,6 +156,7 @@ class TestCli(base.TestCase):
     def test_interface_noop_detailed_exit_codes(self):
         interface_yaml = os.path.join(SAMPLE_BASE, 'interface.yaml')
         stdout_yaml, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
+                                           '--exit-on-validation-errors '
                                            '-c %s --detailed-exit-codes'
                                            % interface_yaml, exitcodes=(2,))
 
@@ -162,6 +174,7 @@ class TestCli(base.TestCase):
 
         self.stubs.Set(impl_ifcfg, 'IfcfgNetConfig', TestImpl)
         stdout_yaml, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
+                                           '--exit-on-validation-errors '
                                            '-c %s --detailed-exit-codes'
                                            % interface_yaml, exitcodes=(0,))
 
@@ -169,9 +182,11 @@ class TestCli(base.TestCase):
         ivs_yaml = os.path.join(SAMPLE_BASE, 'ovs_dpdk_bond.yaml')
         ivs_json = os.path.join(SAMPLE_BASE, 'ovs_dpdk_bond.json')
         stdout_yaml, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
+                                           '--exit-on-validation-errors '
                                            '-c %s' % ivs_yaml)
         self.assertEqual('', stderr)
         stdout_json, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
+                                           '--exit-on-validation-errors '
                                            '-c %s' % ivs_json)
         self.assertEqual('', stderr)
         sanity_devices = ['DEVICE=br-link',
@@ -186,9 +201,11 @@ class TestCli(base.TestCase):
         nfvswitch_yaml = os.path.join(SAMPLE_BASE, 'nfvswitch.yaml')
         nfvswitch_json = os.path.join(SAMPLE_BASE, 'nfvswitch.json')
         stdout_yaml, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
+                                           '--exit-on-validation-errors '
                                            '-c %s' % nfvswitch_yaml)
         self.assertEqual('', stderr)
         stdout_json, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
+                                           '--exit-on-validation-errors '
                                            '-c %s' % nfvswitch_json)
         self.assertEqual('', stderr)
         sanity_devices = ['DEVICE=nic2',
@@ -204,9 +221,11 @@ class TestCli(base.TestCase):
         ivs_yaml = os.path.join(SAMPLE_BASE, 'ovs_dpdk.yaml')
         ivs_json = os.path.join(SAMPLE_BASE, 'ovs_dpdk.json')
         stdout_yaml, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
+                                           '--exit-on-validation-errors '
                                            '-c %s' % ivs_yaml)
         self.assertEqual('', stderr)
         stdout_json, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
+                                           '--exit-on-validation-errors '
                                            '-c %s' % ivs_json)
         self.assertEqual('', stderr)
         sanity_devices = ['DEVICE=br-link',

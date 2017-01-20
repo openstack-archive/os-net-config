@@ -1,0 +1,1003 @@
+---
+$schema: http://json-schema.org/draft-04/schema
+
+definitions:
+    # base types
+    param:
+        oneOf:
+        - type: object
+          properties:
+            get_param:
+                type: string
+          additionalProperties: False
+        - type: object
+          properties:
+            get_input:
+                type: string
+          additionalProperties: False
+    string_or_param:
+        oneOf:
+          - type: string
+          - $ref: "#/definitions/param"
+    int_or_param:
+        oneOf:
+          - type: integer
+          - $ref: "#/definitions/param"
+    bool_or_param:
+        oneOf:
+          - type: boolean
+          - # also accept strings of boolean values (like oslo_utils.strutils)
+            type: string
+            pattern: "(?i)^(t|true|on|y|yes|1|f|false|off|n|no|0)$"
+          - $ref: "#/definitions/param"
+
+    # IP address and address+prefix types
+    ipv4_address_string:
+        type: string
+        pattern: "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?).){3}\
+            (25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+    ipv6_address_string:
+        type: string
+        pattern: "^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}\
+            |([0-9a-fA-F]{1,4}:){1,7}:\
+            |([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}\
+            |([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}\
+            |([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}\
+            |([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}\
+            |([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}\
+            |[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})\
+            |:((:[0-9a-fA-F]{1,4}){1,7}|:))$"
+    ip_address_string:
+        oneOf:
+          - $ref: "#/definitions/ipv4_address_string"
+          - $ref: "#/definitions/ipv6_address_string"
+    ip_address_string_or_param:
+        oneOf:
+          - $ref: "#/definitions/ip_address_string"
+          - $ref: "#/definitions/param"
+    list_of_ip_address_string_or_param:
+        oneOf:
+          - type: array
+            items:
+                $ref: "#/definitions/ip_address_string_or_param"
+            minItems: 1
+          - $ref: "#/definitions/param"
+
+    ipv4_cidr_string:
+        type: string
+        pattern: "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?).){3}\
+            (25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\
+            /(3[0-2]|[1-2][0-9]|[0-9])$"
+    ipv6_cidr_string:
+        type: string
+        pattern: "^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}\
+            |([0-9a-fA-F]{1,4}:){1,7}:\
+            |([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}\
+            |([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}\
+            |([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}\
+            |([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}\
+            |([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}\
+            |[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})\
+            |:((:[0-9a-fA-F]{1,4}){1,7}|:))\
+            /(12[0-8]|1[0-1][0-9]|[1-9][0-9]|[0-9])$"
+    ip_cidr_string:
+        oneOf:
+          - $ref: "#/definitions/ipv4_cidr_string"
+          - $ref: "#/definitions/ipv6_cidr_string"
+    ip_cidr_string_or_param:
+        oneOf:
+          - $ref: "#/definitions/ip_cidr_string"
+          - $ref: "#/definitions/param"
+          - type: object
+            properties:
+                list_join:
+                    type: array
+                    items:
+                      - enum: ["/"]
+                      - type: array
+                        items:
+                          - $ref: "#/definitions/ip_address_string_or_param"
+                          - $ref: "#/definitions/int_or_param"
+            required:
+                - list_join
+            additionalProperties: False
+
+    # os-net-config derived types
+    address:
+        type: object
+        properties:
+            ip_netmask:
+                $ref: "#/definitions/ip_cidr_string_or_param"
+        required:
+          - ip_netmask
+        additionalProperties: False
+    list_of_address:
+        type: array
+        items:
+            $ref: "#/definitions/address"
+        minItems: 1
+
+    route:
+        type: object
+        properties:
+            next_hop:
+                $ref: "#/definitions/ip_address_string_or_param"
+            ip_netmask:
+                $ref: "#/definitions/ip_cidr_string_or_param"
+            default:
+                $ref: "#/definitions/bool_or_param"
+            route_options:
+                $ref: "#/definitions/string_or_param"
+        required:
+          - next_hop
+        additionalProperties: False
+    list_of_route:
+        type: array
+        items:
+            $ref: "#/definitions/route"
+        minItems: 1
+
+    nic_mapping:
+        type: ["object", "null"]
+
+    bonding_options:
+        type: string
+
+    ovs_options_string:
+        type: string
+        pattern: "^((?:[a-zA-Z][a-zA-Z0-9: _-]*)=(?:[a-zA-Z0-9._-]+)[ ]*)+$"
+    ovs_options_string_or_param:
+        oneOf:
+          - $ref: "#/definitions/ovs_options_string"
+          - $ref: "#/definitions/param"
+    ovs_single_option_string:
+        type: string
+        pattern: "^([a-zA-Z][a-zA-Z0-9: _-]*)=([a-zA-Z0-9._-]+)$"
+    ovs_options_list:
+        type: array
+        items:
+            $ref: "#/definitions/ovs_single_option_string"
+        minItems: 1
+    ovs_options_list_or_param:
+        oneOf:
+          - $ref: "#/definitions/ovs_options_list"
+          - $ref: "#/definitions/param"
+    ovs_fail_mode:
+        enum: ["standalone", "secure"]
+    ovs_fail_mode_or_param:
+        oneOf:
+          - $ref: "#/definitions/ovs_fail_mode"
+          - $ref: "#/definitions/param"
+    ovs_extra_string:
+        type: string
+    ovs_extra:
+        oneOf:
+          - $ref: "#/definitions/ovs_extra_string"
+          - type: array
+            items:
+                $ref: "#/definitions/ovs_extra_string"
+            minItems: 1
+    ovs_extra_or_param:
+        oneOf:
+          - $ref: "#/definitions/ovs_extra"
+          - $ref: "#/definitions/param"
+    ovs_tunnel_type:
+        enum: ["vxlan", "gre"]
+    ovs_tunnel_type_or_param:
+        oneOf:
+          - $ref: "#/definitions/ovs_tunnel_type"
+          - $ref: "#/definitions/param"
+
+    # os-net-config device types
+    interface:
+        type: object
+        properties:
+            type:
+                enum: ["interface"]
+            name:
+                $ref: "#/definitions/string_or_param"
+            primary:
+                $ref: "#/definitions/bool_or_param"
+            ethtool_opts:
+                $ref: "#/definitions/string_or_param"
+            hotplug:
+                $ref: "#/definitions/bool_or_param"
+            # common options:
+            use_dhcp:
+                $ref: "#/definitions/bool_or_param"
+            use_dhcp6:
+                $ref: "#/definitions/bool_or_param"
+            addresses:
+                $ref: "#/definitions/list_of_address"
+            routes:
+                $ref: "#/definitions/list_of_route"
+            mtu:
+                $ref: "#/definitions/int_or_param"
+            nic_mapping:
+                $ref: "#/definitions/nic_mapping"
+            persist_mapping:
+                $ref: "#/definitions/bool_or_param"
+            defroute:
+                $ref: "#/definitions/bool_or_param"
+            dhclient_args:
+                $ref: "#/definitions/string_or_param"
+            dns_servers:
+                $ref: "#/definitions/list_of_ip_address_string_or_param"
+            nm_controlled:
+                $ref: "#/definitions/bool_or_param"
+        required:
+          - type
+          - name
+        additionalProperties: False
+
+    vlan:
+        type: object
+        properties:
+            type:
+                enum: ["vlan"]
+            vlan_id:
+                $ref: "#/definitions/int_or_param"
+            device:
+                $ref: "#/definitions/string_or_param"
+            primary:
+                $ref: "#/definitions/bool_or_param"
+            # common options:
+            use_dhcp:
+                $ref: "#/definitions/bool_or_param"
+            use_dhcp6:
+                $ref: "#/definitions/bool_or_param"
+            addresses:
+                $ref: "#/definitions/list_of_address"
+            routes:
+                $ref: "#/definitions/list_of_route"
+            mtu:
+                $ref: "#/definitions/int_or_param"
+            nic_mapping:
+                $ref: "#/definitions/nic_mapping"
+            persist_mapping:
+                $ref: "#/definitions/bool_or_param"
+            defroute:
+                $ref: "#/definitions/bool_or_param"
+            dhclient_args:
+                $ref: "#/definitions/string_or_param"
+            dns_servers:
+                $ref: "#/definitions/list_of_ip_address_string_or_param"
+            nm_controlled:
+                $ref: "#/definitions/bool_or_param"
+        required:
+          - type
+          - vlan_id
+        additionalProperties: False
+
+    ovs_bridge:
+        type: object
+        properties:
+            type:
+                enum: ["ovs_bridge"]
+            name:
+                $ref: "#/definitions/string_or_param"
+            members:
+                type: array
+                items:
+                    oneOf:
+                      - $ref: "#/definitions/interface"
+                      - $ref: "#/definitions/vlan"
+                      - $ref: "#/definitions/linux_bond"
+                      - $ref: "#/definitions/ovs_bond"
+                      - $ref: "#/definitions/ovs_tunnel"
+                      - $ref: "#/definitions/ovs_patch_port"
+            ovs_options:
+                $ref: "#/definitions/ovs_options_string_or_param"
+            ovs_extra:
+                $ref: "#/definitions/ovs_extra_or_param"
+            ovs_fail_mode:
+                $ref: "#/definitions/ovs_fail_mode_or_param"
+            # common options:
+            use_dhcp:
+                $ref: "#/definitions/bool_or_param"
+            use_dhcp6:
+                $ref: "#/definitions/bool_or_param"
+            addresses:
+                $ref: "#/definitions/list_of_address"
+            routes:
+                $ref: "#/definitions/list_of_route"
+            mtu:
+                $ref: "#/definitions/int_or_param"
+            nic_mapping:
+                $ref: "#/definitions/nic_mapping"
+            persist_mapping:
+                $ref: "#/definitions/bool_or_param"
+            defroute:
+                $ref: "#/definitions/bool_or_param"
+            dhclient_args:
+                $ref: "#/definitions/string_or_param"
+            dns_servers:
+                $ref: "#/definitions/list_of_ip_address_string_or_param"
+            nm_controlled:
+                $ref: "#/definitions/bool_or_param"
+        required:
+          - type
+          - name
+          - members
+        additionalProperties: False
+
+    ovs_user_bridge:
+        type: object
+        properties:
+            type:
+                enum: ["ovs_user_bridge"]
+            name:
+                $ref: "#/definitions/string_or_param"
+            members:
+                type: array
+                items:
+                    oneOf:
+                      - $ref: "#/definitions/interface"
+                      - $ref: "#/definitions/vlan"
+                      - $ref: "#/definitions/ovs_bond"
+                      - $ref: "#/definitions/ovs_patch_port"
+                      - $ref: "#/definitions/ovs_tunnel"
+                      - $ref: "#/definitions/ovs_dpdk_bond"
+                      - $ref: "#/definitions/ovs_dpdk_port"
+            ovs_options:
+                $ref: "#/definitions/ovs_options_string_or_param"
+            ovs_extra:
+                $ref: "#/definitions/ovs_extra_or_param"
+            ovs_fail_mode:
+                $ref: "#/definitions/ovs_fail_mode_or_param"
+            # common options:
+            use_dhcp:
+                $ref: "#/definitions/bool_or_param"
+            use_dhcp6:
+                $ref: "#/definitions/bool_or_param"
+            addresses:
+                $ref: "#/definitions/list_of_address"
+            routes:
+                $ref: "#/definitions/list_of_route"
+            mtu:
+                $ref: "#/definitions/int_or_param"
+            nic_mapping:
+                $ref: "#/definitions/nic_mapping"
+            persist_mapping:
+                $ref: "#/definitions/bool_or_param"
+            defroute:
+                $ref: "#/definitions/bool_or_param"
+            dhclient_args:
+                $ref: "#/definitions/string_or_param"
+            dns_servers:
+                $ref: "#/definitions/list_of_ip_address_string_or_param"
+            nm_controlled:
+                $ref: "#/definitions/bool_or_param"
+        required:
+          - type
+          - name
+          - members
+        additionalProperties: False
+
+    ovs_bond:
+        type: object
+        properties:
+            type:
+                enum: ["ovs_bond"]
+            name:
+                $ref: "#/definitions/string_or_param"
+            members:
+                type: array
+                items:
+                    oneOf:
+                      - $ref: "#/definitions/interface"
+                      - $ref: "#/definitions/vlan"
+                minItems: 1
+            ovs_options:
+                $ref: "#/definitions/ovs_options_string_or_param"
+            ovs_extra:
+                $ref: "#/definitions/ovs_extra_or_param"
+            # common options:
+            use_dhcp:
+                $ref: "#/definitions/bool_or_param"
+            use_dhcp6:
+                $ref: "#/definitions/bool_or_param"
+            addresses:
+                $ref: "#/definitions/list_of_address"
+            routes:
+                $ref: "#/definitions/list_of_route"
+            mtu:
+                $ref: "#/definitions/int_or_param"
+            nic_mapping:
+                $ref: "#/definitions/nic_mapping"
+            persist_mapping:
+                $ref: "#/definitions/bool_or_param"
+            defroute:
+                $ref: "#/definitions/bool_or_param"
+            dhclient_args:
+                $ref: "#/definitions/string_or_param"
+            dns_servers:
+                $ref: "#/definitions/list_of_ip_address_string_or_param"
+            nm_controlled:
+                $ref: "#/definitions/bool_or_param"
+        required:
+          - type
+          - name
+          - members
+        additionalProperties: False
+
+    ovs_patch_port:
+        type: object
+        properties:
+            type:
+                enum: ["ovs_patch_port"]
+            name:
+                $ref: "#/definitions/string_or_param"
+            bridge_name:
+                $ref: "#/definitions/string_or_param"
+            peer:
+                $ref: "#/definitions/string_or_param"
+            primary:
+                $ref: "#/definitions/bool_or_param"
+            ovs_options:
+                $ref: "#/definitions/ovs_options_list_or_param"
+            ovs_extra:
+                $ref: "#/definitions/ovs_extra_or_param"
+            # common options:
+            use_dhcp:
+                $ref: "#/definitions/bool_or_param"
+            use_dhcp6:
+                $ref: "#/definitions/bool_or_param"
+            addresses:
+                $ref: "#/definitions/list_of_address"
+            routes:
+                $ref: "#/definitions/list_of_route"
+            mtu:
+                $ref: "#/definitions/int_or_param"
+            nic_mapping:
+                $ref: "#/definitions/nic_mapping"
+            persist_mapping:
+                $ref: "#/definitions/bool_or_param"
+            defroute:
+                $ref: "#/definitions/bool_or_param"
+            dhclient_args:
+                $ref: "#/definitions/string_or_param"
+            dns_servers:
+                $ref: "#/definitions/list_of_ip_address_string_or_param"
+            nm_controlled:
+                $ref: "#/definitions/bool_or_param"
+        required:
+          - type
+          - name
+          - bridge_name
+          - peer
+        additionalProperties: False
+
+    ovs_tunnel:
+        type: object
+        properties:
+            type:
+                enum: ["ovs_tunnel"]
+            name:
+                $ref: "#/definitions/string_or_param"
+            tunnel_type:
+                $ref: "#/definitions/ovs_tunnel_type_or_param"
+            primary:
+                $ref: "#/definitions/bool_or_param"
+            ovs_options:
+                $ref: "#/definitions/ovs_options_list_or_param"
+            ovs_extra:
+                $ref: "#/definitions/ovs_extra_or_param"
+            # common options:
+            use_dhcp:
+                $ref: "#/definitions/bool_or_param"
+            use_dhcp6:
+                $ref: "#/definitions/bool_or_param"
+            addresses:
+                $ref: "#/definitions/list_of_address"
+            routes:
+                $ref: "#/definitions/list_of_route"
+            mtu:
+                $ref: "#/definitions/int_or_param"
+            nic_mapping:
+                $ref: "#/definitions/nic_mapping"
+            persist_mapping:
+                $ref: "#/definitions/bool_or_param"
+            defroute:
+                $ref: "#/definitions/bool_or_param"
+            dhclient_args:
+                $ref: "#/definitions/string_or_param"
+            dns_servers:
+                $ref: "#/definitions/list_of_ip_address_string_or_param"
+            nm_controlled:
+                $ref: "#/definitions/bool_or_param"
+        required:
+          - type
+          - name
+          - tunnel_type
+        additionalProperties: False
+
+    ovs_dpdk_bond:
+        type: object
+        properties:
+            type:
+                enum: ["ovs_dpdk_bond"]
+            name:
+                $ref: "#/definitions/string_or_param"
+            members:
+                type: array
+                items:
+                  - $ref: "#/definitions/ovs_dpdk_port"
+            ovs_options:
+                $ref: "#/definitions/ovs_options_string_or_param"
+            ovs_extra:
+                $ref: "#/definitions/ovs_extra_or_param"
+            rx_queue:
+                $ref: "#/definitions/int_or_param"
+            # common options:
+            use_dhcp:
+                $ref: "#/definitions/bool_or_param"
+            use_dhcp6:
+                $ref: "#/definitions/bool_or_param"
+            addresses:
+                $ref: "#/definitions/list_of_address"
+            routes:
+                $ref: "#/definitions/list_of_route"
+            mtu:
+                $ref: "#/definitions/int_or_param"
+            nic_mapping:
+                $ref: "#/definitions/nic_mapping"
+            persist_mapping:
+                $ref: "#/definitions/bool_or_param"
+            defroute:
+                $ref: "#/definitions/bool_or_param"
+            dhclient_args:
+                $ref: "#/definitions/string_or_param"
+            dns_servers:
+                $ref: "#/definitions/list_of_ip_address_string_or_param"
+            nm_controlled:
+                $ref: "#/definitions/bool_or_param"
+        required:
+          - type
+          - name
+          - members
+        additionalProperties: False
+
+    ovs_dpdk_port:
+        type: object
+        properties:
+            type:
+                enum: ["ovs_dpdk_port"]
+            name:
+                $ref: "#/definitions/string_or_param"
+            driver:
+                $ref: "#/definitions/string_or_param"
+            members:
+                type: array
+                items:
+                  - $ref: "#/definitions/interface"
+                minItems: 1
+                maxItems: 1
+            primary:
+                $ref: "#/definitions/bool_or_param"
+            ovs_options:
+                $ref: "#/definitions/ovs_options_string_or_param"
+            ovs_extra:
+                $ref: "#/definitions/ovs_extra_or_param"
+            rx_queue:
+                $ref: "#/definitions/int_or_param"
+            # common options:
+            use_dhcp:
+                $ref: "#/definitions/bool_or_param"
+            use_dhcp6:
+                $ref: "#/definitions/bool_or_param"
+            addresses:
+                $ref: "#/definitions/list_of_address"
+            routes:
+                $ref: "#/definitions/list_of_route"
+            mtu:
+                $ref: "#/definitions/int_or_param"
+            nic_mapping:
+                $ref: "#/definitions/nic_mapping"
+            persist_mapping:
+                $ref: "#/definitions/bool_or_param"
+            defroute:
+                $ref: "#/definitions/bool_or_param"
+            dhclient_args:
+                $ref: "#/definitions/string_or_param"
+            dns_servers:
+                $ref: "#/definitions/list_of_ip_address_string_or_param"
+            nm_controlled:
+                $ref: "#/definitions/bool_or_param"
+        required:
+          - type
+          - name
+          - members
+        additionalProperties: False
+
+    vpp_interface:
+        type: object
+        properties:
+            type:
+                enum: ["vpp_interface"]
+            name:
+                $ref: "#/definitions/string_or_param"
+            uio_driver:
+                $ref: "#/definitions/string_or_param"
+            options:
+                $ref: "#/definitions/string_or_param"
+            # common options:
+            use_dhcp:
+                $ref: "#/definitions/bool_or_param"
+            use_dhcp6:
+                $ref: "#/definitions/bool_or_param"
+            addresses:
+                $ref: "#/definitions/list_of_address"
+            routes:
+                $ref: "#/definitions/list_of_route"
+            mtu:
+                $ref: "#/definitions/int_or_param"
+            nic_mapping:
+                $ref: "#/definitions/nic_mapping"
+            persist_mapping:
+                $ref: "#/definitions/bool_or_param"
+            defroute:
+                $ref: "#/definitions/bool_or_param"
+            dhclient_args:
+                $ref: "#/definitions/string_or_param"
+            dns_servers:
+                $ref: "#/definitions/list_of_ip_address_string_or_param"
+            nm_controlled:
+                $ref: "#/definitions/bool_or_param"
+        required:
+          - type
+          - name
+        additionalProperties: False
+
+    linux_bridge:
+        type: object
+        properties:
+            type:
+                enum: ["linux_bridge"]
+            name:
+                $ref: "#/definitions/string_or_param"
+            members:
+                type: array
+                items:
+                    oneOf:
+                      - $ref: "#/definitions/interface"
+                      - $ref: "#/definitions/vlan"
+                      - $ref: "#/definitions/linux_bond"
+            # common options:
+            use_dhcp:
+                $ref: "#/definitions/bool_or_param"
+            use_dhcp6:
+                $ref: "#/definitions/bool_or_param"
+            addresses:
+                $ref: "#/definitions/list_of_address"
+            routes:
+                $ref: "#/definitions/list_of_route"
+            mtu:
+                $ref: "#/definitions/int_or_param"
+            nic_mapping:
+                $ref: "#/definitions/nic_mapping"
+            persist_mapping:
+                $ref: "#/definitions/bool_or_param"
+            defroute:
+                $ref: "#/definitions/bool_or_param"
+            dhclient_args:
+                $ref: "#/definitions/string_or_param"
+            dns_servers:
+                $ref: "#/definitions/list_of_ip_address_string_or_param"
+            nm_controlled:
+                $ref: "#/definitions/bool_or_param"
+        required:
+          - type
+          - name
+          - members
+        additionalProperties: False
+
+    linux_bond:
+        type: object
+        properties:
+            type:
+                enum: ["linux_bond"]
+            name:
+                $ref: "#/definitions/string_or_param"
+            members:
+                type: array
+                items:
+                    oneOf:
+                      - $ref: "#/definitions/interface"
+                      - $ref: "#/definitions/vlan"
+            bonding_options:
+                $ref: "#/definitions/bonding_options"
+            # common options:
+            use_dhcp:
+                $ref: "#/definitions/bool_or_param"
+            use_dhcp6:
+                $ref: "#/definitions/bool_or_param"
+            addresses:
+                $ref: "#/definitions/list_of_address"
+            routes:
+                $ref: "#/definitions/list_of_route"
+            mtu:
+                $ref: "#/definitions/int_or_param"
+            nic_mapping:
+                $ref: "#/definitions/nic_mapping"
+            persist_mapping:
+                $ref: "#/definitions/bool_or_param"
+            defroute:
+                $ref: "#/definitions/bool_or_param"
+            dhclient_args:
+                $ref: "#/definitions/string_or_param"
+            dns_servers:
+                $ref: "#/definitions/list_of_ip_address_string_or_param"
+            nm_controlled:
+                $ref: "#/definitions/bool_or_param"
+        required:
+          - type
+          - name
+          - members
+        additionalProperties: False
+
+    linux_team:
+        type: object
+        properties:
+            type:
+                enum: ["team"]
+            name:
+                $ref: "#/definitions/string_or_param"
+            members:
+                type: array
+                items:
+                    oneOf:
+                      - $ref: "#/definitions/interface"
+                      - $ref: "#/definitions/vlan"
+            bonding_options:
+                $ref: "#/definitions/bonding_options"
+            # common options:
+            use_dhcp:
+                $ref: "#/definitions/bool_or_param"
+            use_dhcp6:
+                $ref: "#/definitions/bool_or_param"
+            addresses:
+                $ref: "#/definitions/list_of_address"
+            routes:
+                $ref: "#/definitions/list_of_route"
+            mtu:
+                $ref: "#/definitions/int_or_param"
+            nic_mapping:
+                $ref: "#/definitions/nic_mapping"
+            persist_mapping:
+                $ref: "#/definitions/bool_or_param"
+            defroute:
+                $ref: "#/definitions/bool_or_param"
+            dhclient_args:
+                $ref: "#/definitions/string_or_param"
+            dns_servers:
+                $ref: "#/definitions/list_of_ip_address_string_or_param"
+            nm_controlled:
+                $ref: "#/definitions/bool_or_param"
+        required:
+          - type
+          - name
+          - members
+        additionalProperties: False
+
+    ivs_bridge:
+        type: object
+        properties:
+            type:
+                enum: ["ivs_bridge"]
+            members:
+                type: array
+                items:
+                    oneOf:
+                      - $ref: "#/definitions/interface"
+                      - $ref: "#/definitions/ivs_interface"
+            # common options:
+            use_dhcp:
+                $ref: "#/definitions/bool_or_param"
+            use_dhcp6:
+                $ref: "#/definitions/bool_or_param"
+            addresses:
+                $ref: "#/definitions/list_of_address"
+            routes:
+                $ref: "#/definitions/list_of_route"
+            mtu:
+                $ref: "#/definitions/int_or_param"
+            nic_mapping:
+                $ref: "#/definitions/nic_mapping"
+            persist_mapping:
+                $ref: "#/definitions/bool_or_param"
+            defroute:
+                $ref: "#/definitions/bool_or_param"
+            dhclient_args:
+                $ref: "#/definitions/string_or_param"
+            dns_servers:
+                $ref: "#/definitions/list_of_ip_address_string_or_param"
+            nm_controlled:
+                $ref: "#/definitions/bool_or_param"
+        required:
+          - type
+          - members
+        additionalProperties: False
+
+    ivs_interface:
+        type: object
+        properties:
+            type:
+                enum: ["ivs_interface"]
+            name:
+                $ref: "#/definitions/string_or_param"
+            vlan_id:
+                $ref: "#/definitions/int_or_param"
+            primary:
+                $ref: "#/definitions/bool_or_param"
+            # common options:
+            use_dhcp:
+                $ref: "#/definitions/bool_or_param"
+            use_dhcp6:
+                $ref: "#/definitions/bool_or_param"
+            addresses:
+                $ref: "#/definitions/list_of_address"
+            routes:
+                $ref: "#/definitions/list_of_route"
+            mtu:
+                $ref: "#/definitions/int_or_param"
+            nic_mapping:
+                $ref: "#/definitions/nic_mapping"
+            persist_mapping:
+                $ref: "#/definitions/bool_or_param"
+            defroute:
+                $ref: "#/definitions/bool_or_param"
+            dhclient_args:
+                $ref: "#/definitions/string_or_param"
+            dns_servers:
+                $ref: "#/definitions/list_of_ip_address_string_or_param"
+            nm_controlled:
+                $ref: "#/definitions/bool_or_param"
+        required:
+          - type
+          - vlan_id
+        additionalProperties: False
+
+    nfvswitch_bridge:
+        type: object
+        properties:
+            type:
+                enum: ["nfvswitch_bridge"]
+            members:
+                type: array
+                items:
+                    oneOf:
+                        - $ref: "#/definitions/interface"
+                        - $ref: "#/definitions/vlan"
+                        - $ref: "#/definitions/nfvswitch_internal"
+            options:
+                $ref: "#/definitions/string_or_param"
+            # common options:
+            use_dhcp:
+                $ref: "#/definitions/bool_or_param"
+            use_dhcp6:
+                $ref: "#/definitions/bool_or_param"
+            addresses:
+                $ref: "#/definitions/list_of_address"
+            routes:
+                $ref: "#/definitions/list_of_route"
+            mtu:
+                $ref: "#/definitions/int_or_param"
+            nic_mapping:
+                $ref: "#/definitions/nic_mapping"
+            persist_mapping:
+                $ref: "#/definitions/bool_or_param"
+            defroute:
+                $ref: "#/definitions/bool_or_param"
+            dhclient_args:
+                $ref: "#/definitions/string_or_param"
+            dns_servers:
+                $ref: "#/definitions/list_of_ip_address_string_or_param"
+            nm_controlled:
+                $ref: "#/definitions/bool_or_param"
+        required:
+          - type
+          - options
+          - members
+        additionalProperties: False
+
+    nfvswitch_internal:
+        type: object
+        properties:
+            type:
+                enum: ["nfvswitch_internal"]
+            name:
+                $ref: "#/definitions/string_or_param"
+            vlan_id:
+                $ref: "#/definitions/int_or_param"
+            primary:
+                $ref: "#/definitions/bool_or_param"
+            # common options:
+            use_dhcp:
+                $ref: "#/definitions/bool_or_param"
+            use_dhcp6:
+                $ref: "#/definitions/bool_or_param"
+            addresses:
+                $ref: "#/definitions/list_of_address"
+            routes:
+                $ref: "#/definitions/list_of_route"
+            mtu:
+                $ref: "#/definitions/int_or_param"
+            nic_mapping:
+                $ref: "#/definitions/nic_mapping"
+            persist_mapping:
+                $ref: "#/definitions/bool_or_param"
+            defroute:
+                $ref: "#/definitions/bool_or_param"
+            dhclient_args:
+                $ref: "#/definitions/string_or_param"
+            dns_servers:
+                $ref: "#/definitions/list_of_ip_address_string_or_param"
+            nm_controlled:
+                $ref: "#/definitions/bool_or_param"
+        required:
+          - type
+          - vlan_id
+        additionalProperties: False
+
+    ib_interface:
+        type: object
+        properties:
+            type:
+                enum: ["ib_interface"]
+            name:
+                $ref: "#/definitions/string_or_param"
+            primary:
+                $ref: "#/definitions/bool_or_param"
+            ethtool_opts:
+                $ref: "#/definitions/string_or_param"
+            # common options:
+            use_dhcp:
+                $ref: "#/definitions/bool_or_param"
+            use_dhcp6:
+                $ref: "#/definitions/bool_or_param"
+            addresses:
+                $ref: "#/definitions/list_of_address"
+            routes:
+                $ref: "#/definitions/list_of_route"
+            mtu:
+                $ref: "#/definitions/int_or_param"
+            nic_mapping:
+                $ref: "#/definitions/nic_mapping"
+            persist_mapping:
+                $ref: "#/definitions/bool_or_param"
+            defroute:
+                $ref: "#/definitions/bool_or_param"
+            dhclient_args:
+                $ref: "#/definitions/string_or_param"
+            dns_servers:
+                $ref: "#/definitions/list_of_ip_address_string_or_param"
+            nm_controlled:
+                $ref: "#/definitions/bool_or_param"
+        required:
+          - type
+          - name
+        additionalProperties: False
+
+type: array
+items:
+    oneOf:
+      - $ref: "#/definitions/interface"
+      - $ref: "#/definitions/vlan"
+      - $ref: "#/definitions/ovs_bridge"
+      - $ref: "#/definitions/ovs_user_bridge"
+      - $ref: "#/definitions/ovs_bond"
+      - $ref: "#/definitions/ovs_patch_port"
+      - $ref: "#/definitions/ovs_tunnel"
+      - $ref: "#/definitions/ovs_dpdk_bond"
+      - $ref: "#/definitions/ovs_dpdk_port"
+      - $ref: "#/definitions/linux_bridge"
+      - $ref: "#/definitions/linux_bond"
+      - $ref: "#/definitions/linux_team"
+      - $ref: "#/definitions/ivs_bridge"
+      - $ref: "#/definitions/ivs_interface"
+      - $ref: "#/definitions/nfvswitch_bridge"
+      - $ref: "#/definitions/nfvswitch_internal"
+      - $ref: "#/definitions/ib_interface"
+      - $ref: "#/definitions/vpp_interface"
+minItems: 1

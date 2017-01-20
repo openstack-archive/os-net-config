@@ -25,6 +25,7 @@ from os_net_config import impl_eni
 from os_net_config import impl_ifcfg
 from os_net_config import impl_iproute
 from os_net_config import objects
+from os_net_config import validator
 from os_net_config import version
 
 
@@ -55,6 +56,14 @@ def parse_opts(argv):
                         """that files were modified."""
                         """Disabled by default.""",
                         default=False)
+
+    parser.add_argument(
+        '--exit-on-validation-errors',
+        action='store_true',
+        help="Exit with an error if configuration file validation fails. "
+             "Without this option, just log a warning and continue.",
+        default=False)
+
     parser.add_argument(
         '-d', '--debug',
         dest="debug",
@@ -181,6 +190,16 @@ def main(argv=sys.argv):
     for iface_json in iface_array:
         iface_json.update({'nic_mapping': iface_mapping})
         iface_json.update({'persist_mapping': persist_mapping})
+
+    validation_errors = validator.validate_config(iface_array)
+    if validation_errors:
+        if opts.exit_on_validation_errors:
+            logger.error('\n'.join(validation_errors))
+            return 1
+        else:
+            logger.warning('\n'.join(validation_errors))
+
+    for iface_json in iface_array:
         obj = objects.object_from_json(iface_json)
         provider.add_object(obj)
     files_changed = provider.apply(cleanup=opts.cleanup,
