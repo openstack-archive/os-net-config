@@ -107,7 +107,16 @@ def _is_active_nic(interface_name):
         with open(_SYS_CLASS_NET + '/%s/address' % interface_name, 'r') as f:
             address = f.read().rstrip()
 
-        if has_device_dir and operstate == 'up' and address:
+        # If SR-IOV Virtual Functions (VF) are enabled in an interface, there
+        # will be additional nics created for each VF. It has to be ignored in
+        # the nic numbering. All the VFs will have a reference to the PF with
+        # directory name as 'physfn', if this directory is present it should be
+        # ignored.
+        vf_path_check = _SYS_CLASS_NET + '/%s/device/physfn' % interface_name
+        is_sriov_vf = os.path.isdir(vf_path_check)
+
+        if (has_device_dir and operstate == 'up' and address and
+                not is_sriov_vf):
             return True
         else:
             return False
