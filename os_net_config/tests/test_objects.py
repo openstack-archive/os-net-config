@@ -309,7 +309,7 @@ class TestBridge(base.TestCase):
         self.assertEqual("set bridge br-foo fail_mode=standalone",
                          bridge.ovs_extra[1])
 
-    def test_from_json_ovs_extra_invalid(self):
+    def test_from_json_ovs_extra_string(self):
         data = """{
 "type": "ovs_bridge",
 "name": "br-foo",
@@ -317,11 +317,11 @@ class TestBridge(base.TestCase):
 "ovs_fail_mode": "standalone"
 }
 """
-        json_data = json.loads(data)
-        err = self.assertRaises(objects.InvalidConfigException,
-                                objects.object_from_json, json_data)
-        expected = 'ovs_extra must be a list.'
-        self.assertIn(expected, six.text_type(err))
+        bridge = objects.object_from_json(json.loads(data))
+        self.assertTrue(2 == len(bridge.ovs_extra))
+        self.assertEqual("bar", bridge.ovs_extra[0])
+        self.assertEqual("set bridge br-foo fail_mode=standalone",
+                         bridge.ovs_extra[1])
 
 
 class TestLinuxBridge(base.TestCase):
