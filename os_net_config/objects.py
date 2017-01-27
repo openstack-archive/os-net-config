@@ -439,7 +439,10 @@ class OvsBridge(_BaseOpts):
          dhclient_args, dns_servers) = _BaseOpts.base_opts_from_json(
              json, include_primary=False)
         ovs_options = json.get('ovs_options')
-        ovs_extra = json.get('ovs_extra')
+        ovs_extra = json.get('ovs_extra', [])
+        if not isinstance(ovs_extra, list):
+            msg = 'ovs_extra must be a list.'
+            raise InvalidConfigException(msg)
         fail_mode = json.get('ovs_fail_mode', DEFAULT_OVS_BRIDGE_FAIL_MODE)
         members = []
 
@@ -504,7 +507,10 @@ class OvsUserBridge(_BaseOpts):
          dhclient_args, dns_servers) = _BaseOpts.base_opts_from_json(
              json, include_primary=False)
         ovs_options = json.get('ovs_options')
-        ovs_extra = json.get('ovs_extra')
+        ovs_extra = json.get('ovs_extra', [])
+        if not isinstance(ovs_extra, list):
+            msg = 'ovs_extra must be a list.'
+            raise InvalidConfigException(msg)
         fail_mode = json.get('ovs_fail_mode', DEFAULT_OVS_BRIDGE_FAIL_MODE)
         members = []
 
@@ -860,6 +866,9 @@ class OvsBond(_BaseOpts):
              json, include_primary=False)
         ovs_options = json.get('ovs_options')
         ovs_extra = json.get('ovs_extra', [])
+        if ovs_extra and not isinstance(ovs_extra, list):
+            msg = 'ovs_extra must be a list.'
+            raise InvalidConfigException(msg)
         members = []
 
         # members
@@ -906,6 +915,9 @@ class OvsTunnel(_BaseOpts):
         ovs_options = json.get('ovs_options', [])
         ovs_options = ['options:%s' % opt for opt in ovs_options]
         ovs_extra = json.get('ovs_extra', [])
+        if not isinstance(ovs_extra, list):
+            msg = 'ovs_extra must be a list.'
+            raise InvalidConfigException(msg)
         opts = _BaseOpts.base_opts_from_json(json)
         return OvsTunnel(name, *opts, tunnel_type=tunnel_type,
                          ovs_options=ovs_options, ovs_extra=ovs_extra)
@@ -940,6 +952,9 @@ class OvsPatchPort(_BaseOpts):
         ovs_options = json.get('ovs_options', [])
         ovs_options = ['options:%s' % opt for opt in ovs_options]
         ovs_extra = json.get('ovs_extra', [])
+        if not isinstance(ovs_extra, list):
+            msg = 'ovs_extra must be a list.'
+            raise InvalidConfigException(msg)
         opts = _BaseOpts.base_opts_from_json(json)
         return OvsPatchPort(name, *opts, bridge_name=bridge_name, peer=peer,
                             ovs_options=ovs_options, ovs_extra=ovs_extra)
@@ -1023,6 +1038,9 @@ class OvsDpdkPort(_BaseOpts):
         ovs_options = json.get('ovs_options', [])
         ovs_options = ['options:%s' % opt for opt in ovs_options]
         ovs_extra = json.get('ovs_extra', [])
+        if not isinstance(ovs_extra, list):
+            msg = 'ovs_extra must be a list.'
+            raise InvalidConfigException(msg)
         opts = _BaseOpts.base_opts_from_json(json)
         return OvsDpdkPort(name, *opts, members=members, driver=driver,
                            ovs_options=ovs_options, ovs_extra=ovs_extra)
@@ -1067,6 +1085,9 @@ class OvsDpdkBond(_BaseOpts):
              json, include_primary=False)
         ovs_options = json.get('ovs_options')
         ovs_extra = json.get('ovs_extra', [])
+        if not isinstance(ovs_extra, list):
+            msg = 'ovs_extra must be a list.'
+            raise InvalidConfigException(msg)
         members = []
 
         # members
