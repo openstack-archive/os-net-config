@@ -217,3 +217,27 @@ class TestUtils(base.TestCase):
 
     def test_interface_mac_raises(self):
         self.assertRaises(IOError, utils.interface_mac, 'ens20f2p3')
+
+    def test_is_active_nic_for_sriov_vf(self):
+
+        tmpdir = tempfile.mkdtemp()
+        self.stubs.Set(utils, '_SYS_CLASS_NET', tmpdir)
+
+        # SR-IOV PF = ens802f0
+        # SR-IOV VF = enp129s2
+        for nic in ['ens802f0', 'enp129s2']:
+            nic_path = os.path.join(tmpdir, nic)
+            os.makedirs(nic_path)
+            os.makedirs(os.path.join(nic_path, 'device'))
+            with open(os.path.join(nic_path, 'operstate'), 'w') as f:
+                f.write('up')
+            with open(os.path.join(nic_path, 'address'), 'w') as f:
+                f.write('1.2.3.4')
+
+        nic_path = os.path.join(tmpdir, 'enp129s2', 'device', 'physfn')
+        os.makedirs(nic_path)
+
+        self.assertEqual(utils._is_active_nic('ens802f0'), True)
+        self.assertEqual(utils._is_active_nic('enp129s2'), False)
+
+        shutil.rmtree(tmpdir)
