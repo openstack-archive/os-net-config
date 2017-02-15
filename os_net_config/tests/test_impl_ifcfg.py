@@ -20,6 +20,7 @@ import tempfile
 from oslo_concurrency import processutils
 
 from os_net_config import impl_ifcfg
+from os_net_config import NetConfig
 from os_net_config import objects
 from os_net_config.tests import base
 from os_net_config import utils
@@ -1164,3 +1165,32 @@ class TestIfcfgNetConfigApply(base.TestCase):
         self.provider.apply(cleanup=True)
         self.assertTrue(os.path.exists(tmp_lo_file))
         os.remove(tmp_lo_file)
+
+    def test_ovs_restart_called(self):
+        interface = objects.Interface('em1')
+        dpdk_port = objects.OvsDpdkPort('dpdk0', members=[interface])
+        execute_strings = []
+
+        def test_execute(*args, **kwargs):
+            execute_strings.append(args[1])
+            pass
+        self.stubs.Set(NetConfig, 'execute', test_execute)
+
+        self.provider.noop = True
+        self.provider.add_ovs_dpdk_port(dpdk_port)
+        self.provider.apply()
+        self.assertIn('Restart openvswitch', execute_strings)
+
+    def test_ovs_restart_not_called(self):
+        interface = objects.Interface('em1')
+        execute_strings = []
+
+        def test_execute(*args, **kwargs):
+            execute_strings.append(args[1])
+            pass
+        self.stubs.Set(NetConfig, 'execute', test_execute)
+
+        self.provider.noop = True
+        self.provider.add_interface(interface)
+        self.provider.apply()
+        self.assertNotIn('Restart openvswitch', execute_strings)
