@@ -683,6 +683,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         nfvswitch_interfaces = []       # nfvswitch physical interfaces
         nfvswitch_internal_ifaces = []  # nfvswitch internal/management ports
         stop_dhclient_interfaces = []
+        ovs_needs_restart = False
 
         for interface_name, iface_data in self.interface_data.items():
             route_data = self.route_data.get(interface_name, '')
@@ -708,6 +709,11 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 update_files[route6_path] = route6_data
                 if "BOOTPROTO=dhcp" not in iface_data:
                     stop_dhclient_interfaces.append(interface_name)
+                # Openvswitch needs to be restarted when OVSDPDKPort or
+                # OVSDPDKBond is added
+                if "OVSDPDK" in iface_data:
+                    ovs_needs_restart = True
+
             else:
                 logger.info('No changes required for interface: %s' %
                             interface_name)
@@ -914,6 +920,16 @@ class IfcfgNetConfig(os_net_config.NetConfig):
 
             for oldname, newname in self.renamed_interfaces.items():
                 self.ifrename(oldname, newname)
+
+        # DPDK initialization is done before running os-net-config, to make
+        # the DPDK ports available when enabled. DPDK Hotplug support is
+        # supported only in OvS 2.7 version. Until then, OvS needs to be
+        # restarted after adding a DPDK port. This change will be removed on
+        # migration to OvS 2.7 where DPDK Hotplug support is available.
+        if ovs_needs_restart:
+            msg = "Restart openvswitch"
+            self.execute(msg, '/usr/bin/systemctl',
+                         'restart', 'openvswitch')
 
         for location, data in update_files.items():
             self.write_config(location, data)
