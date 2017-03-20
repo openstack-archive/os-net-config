@@ -1173,7 +1173,6 @@ class TestIfcfgNetConfigApply(base.TestCase):
 
         def test_execute(*args, **kwargs):
             execute_strings.append(args[1])
-            pass
         self.stubs.Set(NetConfig, 'execute', test_execute)
 
         self.provider.noop = True
@@ -1187,7 +1186,6 @@ class TestIfcfgNetConfigApply(base.TestCase):
 
         def test_execute(*args, **kwargs):
             execute_strings.append(args[1])
-            pass
         self.stubs.Set(NetConfig, 'execute', test_execute)
 
         self.provider.noop = True
