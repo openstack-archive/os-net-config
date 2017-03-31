@@ -1,10 +1,13 @@
-pbr>=0.6,!=0.7,<1.0
-anyjson>=0.3.3
-Babel>=0.9.6
-six>=1.6.0
-eventlet>=0.13.0
-iso8601>=0.1.9
-netaddr>=0.7.6
-oslo.concurrency>=1.4.1 # Apache-2.0
-oslo.utils>=1.2.0 # Apache-2.0
-PyYAML>=3.1.0
+# The order of packages is significant, because pip processes them in the order
+# of appearance. Changing the order has an impact on the overall integration
+# process, which may cause wedges in the gate later.
+pbr>=2.0.0 # Apache-2.0
+anyjson>=0.3.3 # BSD
+Babel>=2.3.4 # BSD
+six>=1.9.0 # MIT
+eventlet!=0.18.3,>=0.18.2 # MIT
+iso8601>=0.1.11 # MIT
+netaddr!=0.7.16,>=0.7.13 # BSD
+oslo.concurrency>=3.8.0 # Apache-2.0
+oslo.utils>=3.20.0 # Apache-2.0
+PyYAML>=3.10.0 # MIT
