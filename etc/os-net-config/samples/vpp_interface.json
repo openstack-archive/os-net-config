@@ -1,0 +1,14 @@
+{ "network_config": [
+    {
+        "type": "vpp_interface",
+        "name": "nic2",
+        "addresses": [
+          {
+            "ip_netmask": "192.0.2.1/24"
+          }
+        ],
+        "uio_driver": "uio_pci_generic",
+        "options": "vlan-strip-offload off"
+    }
+  ]
+}

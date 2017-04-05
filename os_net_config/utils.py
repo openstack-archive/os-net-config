@@ -35,8 +35,16 @@ _SYS_CLASS_NET = '/sys/class/net'
 #     driver: vfio-pci
 _DPDK_MAPPING_FILE = '/var/lib/os-net-config/dpdk_mapping.yaml'
 
+# VPP startup operational configuration file. The content of this file will
+# be executed when VPP starts as if typed from CLI.
+_VPP_EXEC_FILE = '/etc/vpp/vpp-exec'
+
 
 class OvsDpdkBindException(ValueError):
+    pass
+
+
+class VppException(ValueError):
     pass
 
 
@@ -82,7 +90,7 @@ def interface_mac(name):
             return f.read().rstrip()
     except IOError:
         # If the interface is bound to a DPDK driver, get the mac address from
-        # the dpdk mapping file as /sys files will be removed after binding.
+        # the DPDK mapping file as /sys files will be removed after binding.
         dpdk_mac_address = _get_dpdk_mac_address(name)
         if dpdk_mac_address:
             return dpdk_mac_address
@@ -187,7 +195,7 @@ def diff(filename, data):
 
 
 def bind_dpdk_interfaces(ifname, driver, noop):
-    pci_address = _get_pci_address(ifname, noop)
+    pci_address = get_pci_address(ifname, noop)
     if not noop:
         if pci_address:
             # modbprobe of the driver has to be done before binding.
@@ -218,7 +226,7 @@ def bind_dpdk_interfaces(ifname, driver, noop):
                     {'name': ifname, 'driver': driver})
 
 
-def _get_pci_address(ifname, noop):
+def get_pci_address(ifname, noop):
     # TODO(skramaja): Validate if the given interface supports dpdk
     if not noop:
         try:
@@ -241,11 +249,10 @@ def _get_pci_address(ifname, noop):
 # Once the interface is bound to a DPDK driver, all the references to the
 # interface including '/sys' and '/proc', will be removed. And there is no
 # way to identify the nic name after it is bound. So, the DPDK bound nic info
-# is stored persistently in a file and is used to for nic numbering on
-# subsequent runs of os-net-config.
+# is stored persistently in _DPDK_MAPPING_FILE and is used to for nic numbering
+# on subsequent runs of os-net-config.
 def _update_dpdk_map(ifname, pci_address, mac_address, driver):
-    contents = get_file_data(_DPDK_MAPPING_FILE)
-    dpdk_map = yaml.load(contents) if contents else []
+    dpdk_map = _get_dpdk_map()
     for item in dpdk_map:
         if item['pci_address'] == pci_address:
             item['name'] = ifname
@@ -263,9 +270,215 @@ def _update_dpdk_map(ifname, pci_address, mac_address, driver):
     write_yaml_config(_DPDK_MAPPING_FILE, dpdk_map)
 
 
+def _get_dpdk_map():
+    contents = get_file_data(_DPDK_MAPPING_FILE)
+    dpdk_map = yaml.load(contents) if contents else []
+    return dpdk_map
+
+
 def _get_dpdk_mac_address(name):
     contents = get_file_data(_DPDK_MAPPING_FILE)
     dpdk_map = yaml.load(contents) if contents else []
     for item in dpdk_map:
         if item['name'] == name:
             return item['mac_address']
+
+
+def restart_vpp(vpp_interfaces):
+    for vpp_int in vpp_interfaces:
+        if 'vfio-pci' in vpp_int.uio_driver:
+            processutils.execute('modprobe', 'vfio-pci')
+    logger.info('Restarting VPP')
+    processutils.execute('systemctl', 'restart', 'vpp')
+
+
+def _get_vpp_interface_name(pci_addr):
+    """Get VPP interface name from a given PCI address
+
+    From a running VPP instance, attempt to find the interface name from
+    a given PCI address of a NIC.
+
+    VppException will be raised if pci_addr is not formatted correctly.
+    ProcessExecutionError will be raised if VPP interface mapped to pci_addr
+    is not found.
+
+    :param pci_addr: PCI address to lookup, in the form of DDDD:BB:SS.F, where
+                     - DDDD = Domain
+                     - BB = Bus Number
+                     - SS = Slot number
+                     - F = Function
+    :return: VPP interface name. None if an interface is not found.
+    """
+    if not pci_addr:
+        return None
+
+    try:
+        processutils.execute('systemctl', 'is-active', 'vpp')
+        out, err = processutils.execute('vppctl', 'show', 'interfaces')
+        m = re.search(r':([0-9a-fA-F]{2}):([0-9a-fA-F]{2}).([0-9a-fA-F])',
+                      pci_addr)
+        if m:
+            formatted_pci = "%x/%x/%x" % (int(m.group(1), 16),
+                                          int(m.group(2), 16),
+                                          int(m.group(3), 16))
+        else:
+            raise VppException('Invalid PCI address format: %s' % pci_addr)
+
+        m = re.search(r'^(\w+%s)\s+' % formatted_pci, out, re.MULTILINE)
+        if m:
+            logger.debug('VPP interface found: %s' % m.group(1))
+            return m.group(1)
+        else:
+            logger.debug('Interface with pci address %s not bound to VPP'
+                         % pci_addr)
+            return None
+    except processutils.ProcessExecutionError:
+        logger.debug('Interface with pci address %s not bound to vpp' %
+                     pci_addr)
+
+
+def generate_vpp_config(vpp_config_path, vpp_interfaces):
+    """Generate configuration content for VPP
+
+    Generate interface related configuration content for VPP. Current
+    configuration will be preserved, with interface related configurations
+    updated or inserted. The config only affects 'dpdk' section of VPP config
+    file, and only those lines affecting interfaces, specifically, lines
+    containing the following:
+    dpdk {
+      ...
+      dev <pci_dev> {<options>}
+      uio-driver <uio_driver_name>
+      ...
+    }
+
+    :param vpp_config_path: VPP Configuration file path
+    :param vpp_interfaces: List of VPP interface objects
+    :return: updated VPP config content.
+    """
+
+    data = get_file_data(vpp_config_path)
+
+    # Add interface config to 'dpdk' section
+    for vpp_interface in vpp_interfaces:
+        if vpp_interface.pci_dev:
+            logger.info('vpp interface %s pci dev: %s'
+                        % (vpp_interface.name, vpp_interface.pci_dev))
+
+            if vpp_interface.options:
+                int_cfg = '%s {%s}' % (vpp_interface.pci_dev,
+                                       vpp_interface.options)
+            else:
+                int_cfg = vpp_interface.pci_dev
+
+            # Make sure 'dpdk' section exists in the config
+            if not re.search(r'^\s*dpdk\s*\{', data, re.MULTILINE):
+                data += "\ndpdk {\n}\n"
+
+            # Find existing config line for the device we are trying to
+            # configure, the line should look like 'dev <pci_dev>  ...'
+            # If such config line is found, we will replace the line with
+            # appropriate configuration, otherwise, add a new config line
+            # in 'dpdk' section of the config.
+            m = re.search(r'^\s*dev\s+%s\s*(\{[^}]*\})?\s*'
+                          % vpp_interface.pci_dev, data,
+                          re.IGNORECASE | re.MULTILINE)
+            if m:
+                data = re.sub(m.group(0), '  dev %s\n' % int_cfg, data)
+            else:
+                data = re.sub(r'(^\s*dpdk\s*\{)',
+                              r'\1\n  dev %s\n' % int_cfg,
+                              data,
+                              flags=re.MULTILINE)
+
+            if vpp_interface.uio_driver:
+                # Check if there is existing uio-driver configuration, if
+                # found, the line will be replaced with the appropriate
+                # configuration, otherwise, add a new line in 'dpdk' section.
+                m = re.search(r'^\s*uio-driver.*$', data, re.MULTILINE)
+                if m:
+                    data = re.sub(m.group(0), r'  uio-driver %s'
+                                  % vpp_interface.uio_driver, data)
+                else:
+                    data = re.sub(r'(dpdk\s*\{)',
+                                  r'\1\n  uio-driver %s'
+                                  % vpp_interface.uio_driver,
+                                  data)
+        else:
+            logger.debug('pci address not found for interface %s, may have'
+                         'already been bound to vpp' % vpp_interface.name)
+
+    # Add start up script for VPP to config. This script will be executed by
+    # VPP on service start.
+    if not re.search(r'^\s*unix\s*\{', data, re.MULTILINE):
+        data += "\nunix {\n}\n"
+
+    m = re.search(r'^\s*(exec|startup-config).*$',
+                  data,
+                  re.IGNORECASE | re.MULTILINE)
+    if m:
+        data = re.sub(m.group(0), '  exec %s' % _VPP_EXEC_FILE, data)
+    else:
+        data = re.sub(r'(^\s*unix\s*\{)',
+                      r'\1\n  exec %s' % _VPP_EXEC_FILE,
+                      data,
+                      flags=re.MULTILINE)
+    # Make sure startup script exists to avoid VPP startup failure.
+    open(_VPP_EXEC_FILE, 'a').close()
+
+    return data
+
+
+def update_vpp_mapping(vpp_interfaces):
+    """Verify VPP interface binding and update mapping file
+
+    VppException will be raised if interfaces are not properly bound.
+
+    :param vpp_interfaces: List of VPP interface objects
+    """
+    vpp_start_cli = ""
+
+    for vpp_int in vpp_interfaces:
+        if not vpp_int.pci_dev:
+            dpdk_map = _get_dpdk_map()
+            for dpdk_int in dpdk_map:
+                if dpdk_int['name'] == vpp_int.name:
+                    vpp_int.pci_dev = dpdk_int['pci_address']
+                    break
+            else:
+                raise VppException('Interface %s has no PCI address and is not'
+                                   ' found in mapping file' % vpp_int.name)
+
+        # Try to get VPP interface name. In case VPP service is down
+        # for some reason, we will restart VPP and try again. Currently
+        # only trying one more time, can turn into a retry_counter if needed
+        # in the future.
+        for i in range(2):
+            vpp_name = _get_vpp_interface_name(vpp_int.pci_dev)
+            if not vpp_name:
+                restart_vpp(vpp_interfaces)
+            else:
+                break
+        else:
+            raise VppException('Interface %s with pci address %s not '
+                               'bound to vpp'
+                               % (vpp_int.name, vpp_int.pci_dev))
+
+        # Generate content of startup script for VPP
+        for address in vpp_int.addresses:
+            vpp_start_cli += 'set interface state %s up\n' % vpp_name
+            vpp_start_cli += 'set interface ip address %s %s/%s\n' \
+                             % (vpp_name, address.ip, address.prefixlen)
+
+        logger.info('Updating mapping for vpp interface %s:'
+                    'pci_dev: %s mac address: %s uio driver: %s'
+                    % (vpp_int.name, vpp_int.pci_dev, vpp_int.hwaddr,
+                       vpp_int.uio_driver))
+        _update_dpdk_map(vpp_int.name, vpp_int.pci_dev, vpp_int.hwaddr,
+                         vpp_int.uio_driver)
+        # Enable VPP service to make the VPP interface configuration
+        # persistent.
+        processutils.execute('systemctl', 'enable', 'vpp')
+    if diff(_VPP_EXEC_FILE, vpp_start_cli):
+        write_config(_VPP_EXEC_FILE, vpp_start_cli)
+        restart_vpp(vpp_interfaces)

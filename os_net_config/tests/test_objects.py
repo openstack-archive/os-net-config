@@ -988,3 +988,19 @@ class TestOvsDpdkBond(base.TestCase):
         self.assertEqual("vfio-pci", dpdk_port1.driver)
         iface2 = dpdk_port1.members[0]
         self.assertEqual("eth2", iface2.name)
+
+
+class TestVppInterface(base.TestCase):
+    def test_vpp_interface_from_json(self):
+        data = """{
+"type": "vpp_interface",
+"name": "em1",
+"uio_driver": "uio_pci_generic",
+"options": "vlan-strip-offload off"
+}
+"""
+
+        vpp_interface = objects.object_from_json(json.loads(data))
+        self.assertEqual("em1", vpp_interface.name)
+        self.assertEqual("uio_pci_generic", vpp_interface.uio_driver)
+        self.assertEqual("vlan-strip-offload off", vpp_interface.options)

@@ -1,0 +1,18 @@
+network_config:
+  -
+    type: vpp_interface
+    name: nic2
+    addresses:
+      -
+        ip_netmask: 192.0.2.1/24
+    # DPDK poll-mode driver name. Defaults to 'vfio-pci', other possible value
+    # is 'uio_pci_generic'. It is also possible to specify other driver names
+    # such as 'igb_uio', however, it is assumed that any required kernel
+    # modules for those drivers are already loaded when os-net-config is
+    # invoked.
+    uio_driver: uio_pci_generic
+    # Interface options such as vlan stripping and tx/rx transmit queues
+    # specification. Reference for those configurations can
+    # be found at https://wiki.fd.io/view/VPP/Command-line_Arguments
+    # Example: 'vlan-strip-offload on num-rx-queues 3'
+    #options: "vlan-strip-offload off"
