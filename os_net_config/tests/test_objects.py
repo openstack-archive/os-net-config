@@ -144,6 +144,46 @@ class TestInterface(base.TestCase):
         interface1 = objects.object_from_json(json.loads(data))
         self.assertEqual("--foobar", interface1.dhclient_args)
 
+    def test_from_json_nm_controlled_false(self):
+        data = """{
+"type": "interface",
+"name": "em1",
+"nm_controlled": false
+}
+"""
+        interface1 = objects.object_from_json(json.loads(data))
+        self.assertFalse(interface1.nm_controlled)
+
+    def test_from_json_nm_controlled_true(self):
+        data = """{
+"type": "interface",
+"name": "em1",
+"nm_controlled": true
+}
+"""
+        interface1 = objects.object_from_json(json.loads(data))
+        self.assertTrue(interface1.nm_controlled)
+
+    def test_from_json_nm_controlled_false_boolstr(self):
+        data = """{
+"type": "interface",
+"name": "em1",
+"nm_controlled": "no"
+}
+"""
+        interface1 = objects.object_from_json(json.loads(data))
+        self.assertFalse(interface1.nm_controlled)
+
+    def test_from_json_nm_controlled_true_boolstr(self):
+        data = """{
+"type": "interface",
+"name": "em1",
+"nm_controlled": "yes"
+}
+"""
+        interface1 = objects.object_from_json(json.loads(data))
+        self.assertTrue(interface1.nm_controlled)
+
     def test_from_json_dns_servers(self):
         data = """{
 "type": "interface",

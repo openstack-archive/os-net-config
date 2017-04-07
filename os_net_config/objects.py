@@ -247,7 +247,8 @@ class _BaseOpts(object):
         mtu = json.get('mtu', None)
         dhclient_args = json.get('dhclient_args')
         dns_servers = json.get('dns_servers')
-        nm_controlled = json.get('nm_controlled')
+        nm_controlled = strutils.bool_from_string(str(json.get('nm_controlled',
+                                                      False)))
         primary = strutils.bool_from_string(str(json.get('primary', False)))
         addresses = []
         routes = []
