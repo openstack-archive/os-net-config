@@ -20,7 +20,13 @@
       "type": "interface",
       "name": "em2",
       "use_dhcp": true,
-      "defroute": no
+      "defroute": false
+    },
+    {
+      "type": "interface",
+      "name": "em3",
+      "use_dhcp": true,
+      "hotplug": true
     }
   ]
 }
