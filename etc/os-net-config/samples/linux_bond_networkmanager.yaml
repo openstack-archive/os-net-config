@@ -1,0 +1,18 @@
+# To use NetworkManager to manage an interface, set nm_controlled=true.
+# Note that some interface types may not be supported by NetworkManager.
+network_config:
+  -
+    type: linux_bond
+    name: bond1
+    nm_controlled: true
+    use_dhcp: true
+    bonding_options: "mode=active-backup"
+    members:
+      -
+        type: interface
+        name: em1
+        nm_controlled: true
+      -
+        type: interface
+        name: em2
+        nm_controlled: true
