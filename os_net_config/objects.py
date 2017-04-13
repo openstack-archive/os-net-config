@@ -87,37 +87,49 @@ def _mapped_nics(nic_mapping=None):
     if _MAPPED_NICS:
         return _MAPPED_NICS
     _MAPPED_NICS = {}
-    active_nics = utils.ordered_active_nics()
-    for nic_alias, nic_mapped in mapping.items():
-        if nic_mapped not in active_nics:
-            # The mapping is either invalid, or specifies a mac
-            is_mapping_valid = False
-            for active in active_nics:
-                try:
-                    active_mac = utils.interface_mac(active)
-                except IOError:
-                    continue
-                if nic_mapped == active_mac:
-                    logger.debug("%s matches device %s" % (nic_mapped, active))
-                    nic_mapped = active
-                    is_mapping_valid = True
-                    break
 
-            if not is_mapping_valid:
-                # The mapping can't specify a non-active or non-existent nic
-                logger.warning('interface %s is not an active nic (%s)'
-                               % (nic_mapped, ', '.join(active_nics)))
+    if mapping:
+        # If mapping file provided, nics need not be active
+        available_nics = utils.ordered_available_nics()
+        for nic_alias, nic_mapped in mapping.items():
+
+            if netaddr.valid_mac(nic_mapped):
+                # If 'nic' is actually a mac address, retrieve actual nic name
+                for nic in available_nics:
+                    try:
+                        mac = utils.interface_mac(nic)
+                    except IOError:
+                        continue
+                    if nic_mapped == mac:
+                        logger.debug("%s matches device %s" %
+                                     (nic_mapped, nic))
+                        nic_mapped = nic
+                        break
+                else:
+                    # The mac could not be found on this system
+                    logger.error('mac %s not found in available nics (%s)'
+                                 % (nic_mapped, ', '.join(available_nics)))
+                    continue
+
+            elif nic_mapped not in available_nics:
+                # nic doesn't exist on this system
+                logger.error('nic %s not found in available nics (%s)'
+                             % (nic_mapped, ', '.join(available_nics)))
                 continue
 
-        # Duplicate mappings are not allowed
-        if nic_mapped in _MAPPED_NICS.values():
-            msg = ('interface %s already mapped, '
-                   'check mapping file for duplicates'
-                   % nic_mapped)
-            raise InvalidConfigException(msg)
+            # Duplicate mappings are not allowed
+            if nic_mapped in _MAPPED_NICS.values():
+                msg = ('interface %s already mapped, '
+                       'check mapping file for duplicates'
+                       % nic_mapped)
+                raise InvalidConfigException(msg)
 
-        _MAPPED_NICS[nic_alias] = nic_mapped
-        logger.info("%s mapped to: %s" % (nic_alias, nic_mapped))
+            _MAPPED_NICS[nic_alias] = nic_mapped
+            logger.info("%s in mapping file mapped to: %s"
+                        % (nic_alias, nic_mapped))
+
+    # nics not in mapping file must be active in order to be mapped
+    active_nics = utils.ordered_active_nics()
 
     # Add default numbered mappings, but do not overwrite existing entries
     for nic_mapped in set(active_nics).difference(set(_MAPPED_NICS.values())):

@@ -100,20 +100,30 @@ def interface_mac(name):
 
 
 def _is_active_nic(interface_name):
+    return _is_available_nic(interface_name, True)
+
+
+def _is_available_nic(interface_name, check_active=True):
     try:
         if interface_name == 'lo':
             return False
 
         device_dir = _SYS_CLASS_NET + '/%s/device' % interface_name
         has_device_dir = os.path.isdir(device_dir)
+        if not has_device_dir:
+            return False
 
         operstate = None
         with open(_SYS_CLASS_NET + '/%s/operstate' % interface_name, 'r') as f:
             operstate = f.read().rstrip().lower()
+        if check_active and operstate != 'up':
+            return False
 
         address = None
         with open(_SYS_CLASS_NET + '/%s/address' % interface_name, 'r') as f:
             address = f.read().rstrip()
+        if not address:
+            return False
 
         # If SR-IOV Virtual Functions (VF) are enabled in an interface, there
         # will be additional nics created for each VF. It has to be ignored in
@@ -122,12 +132,12 @@ def _is_active_nic(interface_name):
         # ignored.
         vf_path_check = _SYS_CLASS_NET + '/%s/device/physfn' % interface_name
         is_sriov_vf = os.path.isdir(vf_path_check)
-
-        if (has_device_dir and operstate == 'up' and address and
-                not is_sriov_vf):
-            return True
-        else:
+        if is_sriov_vf:
             return False
+
+        # nic is available
+        return True
+
     except IOError:
         return False
 
@@ -144,13 +154,21 @@ def _is_embedded_nic(nic):
     return False
 
 
+def ordered_available_nics():
+    return _ordered_nics(False)
+
+
 def ordered_active_nics():
+    return _ordered_nics(True)
+
+
+def _ordered_nics(check_active):
     embedded_nics = []
     nics = []
     logger.debug("Finding active nics")
     for name in glob.iglob(_SYS_CLASS_NET + '/*'):
         nic = name[(len(_SYS_CLASS_NET) + 1):]
-        if _is_active_nic(nic):
+        if _is_available_nic(nic, check_active):
             if _is_embedded_nic(nic):
                 logger.debug("%s is an embedded active nic" % nic)
                 embedded_nics.append(nic)

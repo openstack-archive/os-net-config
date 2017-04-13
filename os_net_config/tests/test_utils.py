@@ -84,9 +84,9 @@ class TestUtils(base.TestCase):
         tmpdir = tempfile.mkdtemp()
         self.stubs.Set(utils, '_SYS_CLASS_NET', tmpdir)
 
-        def test_is_active_nic(interface_name):
+        def test_is_available_nic(interface_name, check_active):
             return True
-        self.stubs.Set(utils, '_is_active_nic', test_is_active_nic)
+        self.stubs.Set(utils, '_is_available_nic', test_is_available_nic)
 
         for nic in ['a1', 'em1', 'em2', 'eth2', 'z1',
                     'enp8s0', 'enp10s0', 'enp1s0f0']:
@@ -214,9 +214,9 @@ class TestUtils(base.TestCase):
         tmpdir = tempfile.mkdtemp()
         self.stubs.Set(utils, '_SYS_CLASS_NET', tmpdir)
 
-        def test_is_active_nic(interface_name):
+        def test_is_available_nic(interface_name, check_active):
             return True
-        self.stubs.Set(utils, '_is_active_nic', test_is_active_nic)
+        self.stubs.Set(utils, '_is_available_nic', test_is_available_nic)
 
         for nic in ['a1', 'em1', 'em2', 'eth2', 'z1',
                     'enp8s0', 'enp10s0', 'enp1s0f0']:
