@@ -299,6 +299,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             data += "DEVICETYPE=ovs\n"
             data += "TYPE=OVSDPDKPort\n"
             data += "OVS_BRIDGE=%s\n" % base_opt.bridge_name
+            if base_opt.mtu:
+                ovs_extra.append("set Interface $DEVICE mtu_request=$MTU")
         elif isinstance(base_opt, objects.OvsDpdkBond):
             ovs_extra.extend(base_opt.ovs_extra)
             # Referring to bug:1643026, the below commenting of the interfaces,

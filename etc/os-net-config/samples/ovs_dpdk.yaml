@@ -14,6 +14,8 @@ network_config:
         name: dpdk0
         # driver is optional argument, default driver is 'vfio-pci'
         driver: igb_uio
+        # MTU is optional, used for jumbo frames
+        mtu: 8192
         members:
             - type: interface
               name: nic2

@@ -885,7 +885,8 @@ DNS2=5.6.7.8
         self.stubbed_mapped_nics = nic_mapping
 
         interface = objects.Interface(name='nic3')
-        dpdk_port = objects.OvsDpdkPort(name='dpdk0', members=[interface])
+        dpdk_port = objects.OvsDpdkPort(name='dpdk0', members=[interface],
+                                        mtu=9000)
         bridge = objects.OvsUserBridge('br-link', members=[dpdk_port])
 
         def test_bind_dpdk_interfaces(ifname, driver, noop):
@@ -914,6 +915,8 @@ PEERDNS=no
 DEVICETYPE=ovs
 TYPE=OVSDPDKPort
 OVS_BRIDGE=br-link
+MTU=9000
+OVS_EXTRA="set Interface $DEVICE mtu_request=$MTU"
 """
         self.assertEqual(br_link_config,
                          self.provider.bridge_data['br-link'])

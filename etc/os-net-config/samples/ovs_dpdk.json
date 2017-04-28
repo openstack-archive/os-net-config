@@ -7,6 +7,7 @@
                     "type": "ovs_dpdk_port",
                     "name": "dpdk0",
                     "driver": "igb_uio",
+                    "mtu": 8192,
                     "members": [
                         {
                             "type": "interface",
