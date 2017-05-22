@@ -16,6 +16,12 @@ network_config:
         driver: igb_uio
         # MTU is optional, used for jumbo frames
         mtu: 8192
+        # rx_queue is optional, used for multi-queue option. It configures the
+        # maximum number of queues for a physical interface. If not defined,
+        # the physical interface will have single queue. The number of queues
+        # should be less than the PMD cores as each queue will have one PMD
+        # thread (CPU) associated with it.
+        rx_queue: 4
         members:
             - type: interface
               name: nic2
