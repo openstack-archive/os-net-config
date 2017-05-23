@@ -1051,4 +1051,11 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             for vlan in restart_vlans:
                 self.ifup(vlan)
 
+            if self.errors:
+                message = 'Failure(s) occurred when applying configuration'
+                logger.error(message)
+                for e in self.errors:
+                    logger.error('stdout: %s, stderr: %s', e.stdout, e.stderr)
+                raise os_net_config.ConfigurationError(message)
+
         return update_files
