@@ -30,6 +30,10 @@ class NotImplemented(Exception):
     pass
 
 
+class ConfigurationError(Exception):
+    pass
+
+
 class NetConfig(object):
     """Common network config methods class."""
 
@@ -37,6 +41,7 @@ class NetConfig(object):
         self.noop = noop
         self.log_prefix = "NOOP: " if noop else ""
         self.root_dir = root_dir
+        self.errors = []
 
     def add_object(self, obj):
         """Convenience method to add any type of object to the network config.
@@ -249,8 +254,20 @@ class NetConfig(object):
         self.execute(msg, '/sbin/ifdown', interface, check_exit_code=False)
 
     def ifup(self, interface, iftype='interface'):
+        """Run 'ifup' on the specified interface
+
+        If a failure occurs when bringing up the interface it will be saved
+        to self.errors for later handling.  This allows callers to continue
+        trying to bring up interfaces even if one fails.
+
+        :param interface: The name of the interface to be started.
+        :param iftype: The type of the interface.
+        """
         msg = 'running ifup on %s: %s' % (iftype, interface)
-        self.execute(msg, '/sbin/ifup', interface)
+        try:
+            self.execute(msg, '/sbin/ifup', interface)
+        except processutils.ProcessExecutionError as e:
+            self.errors.append(e)
 
     def ifrename(self, oldname, newname):
         msg = 'renaming %s to %s: ' % (oldname, newname)

@@ -241,6 +241,14 @@ class ENINetConfig(os_net_config.NetConfig):
 
                 for interface in self.interfaces.keys():
                     self.ifup(interface)
+
+                if self.errors:
+                    message = 'Failure(s) occurred when applying configuration'
+                    logger.error(message)
+                    for e in self.errors:
+                        logger.error('stdout: %s, stderr: %s', e.stdout,
+                                     e.stderr)
+                    raise os_net_config.ConfigurationError(message)
         else:
             logger.info('No interface changes are required.')
 
