@@ -316,6 +316,12 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             if base_opt.members:
                 members = [member.name for member in base_opt.members]
                 data += ("BOND_IFACES=\"%s\"\n" % " ".join(members))
+                # MTU configuration given for the OvsDpdkbond shall be applied
+                # to each of the members of the OvsDpdkbond
+                if base_opt.mtu:
+                    for member in base_opt.members:
+                        ovs_extra.append("set Interface %s mtu_request=$MTU" %
+                                         member.name)
             if base_opt.ovs_options:
                 data += "OVS_OPTIONS=\"%s\"\n" % base_opt.ovs_options
             ovs_extra.extend(base_opt.ovs_extra)

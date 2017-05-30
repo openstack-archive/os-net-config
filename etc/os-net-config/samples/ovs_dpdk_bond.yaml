@@ -13,6 +13,8 @@ network_config:
       -
         type: ovs_dpdk_bond
         name: dpdkbond0
+        # MTU is optional, e.g. for jumbo frames
+        mtu: 9000
         members:
             -
               type: ovs_dpdk_port
