@@ -79,6 +79,32 @@ def _get_required_field(json, name, object_name):
     return field
 
 
+def _update_members(json, nic_mapping, persist_mapping):
+    """Update object's members fields and pass mapping info to each member.
+
+    :param json: dictionary containing object values
+    :param nic_mapping: mapping of abstractions to actual nic names
+    :param persist_mapping: bool indicating mapping file should be permanent
+    :returns members: updated members
+    """
+    members = []
+
+    members_json = json.get('members')
+    if members_json:
+        if isinstance(members_json, list):
+            for member in members_json:
+                # If this member already has a nic mapping, don't overwrite it
+                if not member.get('nic_mapping'):
+                    member.update({'nic_mapping': nic_mapping})
+                member.update({'persist_mapping': persist_mapping})
+                members.append(object_from_json(member))
+        else:
+            msg = 'Members must be a list.'
+            raise InvalidConfigException(msg)
+
+    return members
+
+
 def _mapped_nics(nic_mapping=None):
     mapping = nic_mapping or {}
     global _MAPPED_NICS
@@ -461,17 +487,8 @@ class OvsBridge(_BaseOpts):
         ovs_options = json.get('ovs_options')
         ovs_extra = json.get('ovs_extra')
         fail_mode = json.get('ovs_fail_mode', DEFAULT_OVS_BRIDGE_FAIL_MODE)
-        members = []
 
-        # members
-        members_json = json.get('members')
-        if members_json:
-            if isinstance(members_json, list):
-                for member in members_json:
-                    members.append(object_from_json(member))
-            else:
-                msg = 'Members must be a list.'
-                raise InvalidConfigException(msg)
+        members = _update_members(json, nic_mapping, persist_mapping)
 
         return OvsBridge(name, use_dhcp=use_dhcp, use_dhcpv6=use_dhcpv6,
                          addresses=addresses, routes=routes, mtu=mtu,
@@ -527,17 +544,8 @@ class OvsUserBridge(_BaseOpts):
         ovs_options = json.get('ovs_options')
         ovs_extra = json.get('ovs_extra')
         fail_mode = json.get('ovs_fail_mode', DEFAULT_OVS_BRIDGE_FAIL_MODE)
-        members = []
 
-        # members
-        members_json = json.get('members')
-        if members_json:
-            if isinstance(members_json, list):
-                for member in members_json:
-                    members.append(object_from_json(member))
-            else:
-                msg = 'Members must be a list.'
-                raise InvalidConfigException(msg)
+        members = _update_members(json, nic_mapping, persist_mapping)
 
         return OvsUserBridge(name, use_dhcp=use_dhcp, use_dhcpv6=use_dhcpv6,
                              addresses=addresses, routes=routes, mtu=mtu,
@@ -585,17 +593,8 @@ class LinuxBridge(_BaseOpts):
          persist_mapping, defroute, dhclient_args,
          dns_servers, nm_controlled) = _BaseOpts.base_opts_from_json(
              json, include_primary=False)
-        members = []
 
-        # members
-        members_json = json.get('members')
-        if members_json:
-            if isinstance(members_json, list):
-                for member in members_json:
-                    members.append(object_from_json(member))
-            else:
-                msg = 'Members must be a list.'
-                raise InvalidConfigException(msg)
+        members = _update_members(json, nic_mapping, persist_mapping)
 
         return LinuxBridge(name, use_dhcp=use_dhcp, use_dhcpv6=use_dhcpv6,
                            addresses=addresses, routes=routes, mtu=mtu,
@@ -648,17 +647,8 @@ class IvsBridge(_BaseOpts):
          persist_mapping, defroute, dhclient_args,
          dns_servers, nm_controlled) = _BaseOpts.base_opts_from_json(
              json, include_primary=False)
-        members = []
 
-        # members
-        members_json = json.get('members')
-        if members_json:
-            if isinstance(members_json, list):
-                for member in members_json:
-                    members.append(object_from_json(member))
-            else:
-                msg = 'Members must be a list.'
-                raise InvalidConfigException(msg)
+        members = _update_members(json, nic_mapping, persist_mapping)
 
         return IvsBridge(name, use_dhcp=use_dhcp, use_dhcpv6=use_dhcpv6,
                          addresses=addresses, routes=routes, mtu=mtu,
@@ -708,16 +698,7 @@ class NfvswitchBridge(_BaseOpts):
          dns_servers, nm_controlled) = _BaseOpts.base_opts_from_json(
              json, include_primary=False)
 
-        # members
-        members = []
-        members_json = json.get('members')
-        if members_json:
-            if isinstance(members_json, list):
-                for member in members_json:
-                    members.append(object_from_json(member))
-            else:
-                msg = 'Members must be a list.'
-                raise InvalidConfigException(msg)
+        members = _update_members(json, nic_mapping, persist_mapping)
 
         options = json.get('options')
         if not options:
@@ -771,17 +752,8 @@ class LinuxTeam(_BaseOpts):
          dns_servers, nm_controlled) = _BaseOpts.base_opts_from_json(
              json, include_primary=False)
         bonding_options = json.get('bonding_options')
-        members = []
 
-        # members
-        members_json = json.get('members')
-        if members_json:
-            if isinstance(members_json, list):
-                for member in members_json:
-                    members.append(object_from_json(member))
-            else:
-                msg = 'Members must be a list.'
-                raise InvalidConfigException(msg)
+        members = _update_members(json, nic_mapping, persist_mapping)
 
         return LinuxTeam(name, use_dhcp=use_dhcp, use_dhcpv6=use_dhcpv6,
                          addresses=addresses, routes=routes, mtu=mtu,
@@ -830,17 +802,8 @@ class LinuxBond(_BaseOpts):
          dns_servers, nm_controlled) = _BaseOpts.base_opts_from_json(
              json, include_primary=False)
         bonding_options = json.get('bonding_options')
-        members = []
 
-        # members
-        members_json = json.get('members')
-        if members_json:
-            if isinstance(members_json, list):
-                for member in members_json:
-                    members.append(object_from_json(member))
-            else:
-                msg = 'Members must be a list.'
-                raise InvalidConfigException(msg)
+        members = _update_members(json, nic_mapping, persist_mapping)
 
         return LinuxBond(name, use_dhcp=use_dhcp, use_dhcpv6=use_dhcpv6,
                          addresses=addresses, routes=routes, mtu=mtu,
@@ -893,17 +856,8 @@ class OvsBond(_BaseOpts):
              json, include_primary=False)
         ovs_options = json.get('ovs_options')
         ovs_extra = json.get('ovs_extra', [])
-        members = []
 
-        # members
-        members_json = json.get('members')
-        if members_json:
-            if isinstance(members_json, list):
-                for member in members_json:
-                    members.append(object_from_json(member))
-            else:
-                msg = 'Members must be a list.'
-                raise InvalidConfigException(msg)
+        members = _update_members(json, nic_mapping, persist_mapping)
 
         return OvsBond(name, use_dhcp=use_dhcp, use_dhcpv6=use_dhcpv6,
                        addresses=addresses, routes=routes, mtu=mtu,
@@ -1028,6 +982,10 @@ class OvsDpdkPort(_BaseOpts):
     def from_json(json):
         name = _get_required_field(json, 'name', 'OvsDpdkPort')
         # driver name by default will be 'vfio-pci' if not specified
+        (use_dhcp, use_dhcpv6, addresses, routes, mtu, primary, nic_mapping,
+         persist_mapping, defroute, dhclient_args,
+         dns_servers, nm_controlled) = _BaseOpts.base_opts_from_json(json)
+
         driver = json.get('driver')
         if not driver:
             driver = 'vfio-pci'
@@ -1038,7 +996,11 @@ class OvsDpdkPort(_BaseOpts):
         if members_json:
             if isinstance(members_json, list):
                 if len(members_json) == 1:
-                    iface = object_from_json(members_json[0])
+                    member = members_json[0]
+                    if not member.get('nic_mapping'):
+                        member.update({'nic_mapping': nic_mapping})
+                    member.update({'persist_mapping': persist_mapping})
+                    iface = object_from_json(member)
                     if isinstance(iface, Interface):
                         # TODO(skramaja): Add checks for IP and route not to
                         # be set in the interface part of DPDK Port
@@ -1059,9 +1021,15 @@ class OvsDpdkPort(_BaseOpts):
         ovs_options = json.get('ovs_options', [])
         ovs_options = ['options:%s' % opt for opt in ovs_options]
         ovs_extra = json.get('ovs_extra', [])
-        opts = _BaseOpts.base_opts_from_json(json)
-        return OvsDpdkPort(name, *opts, members=members, driver=driver,
-                           ovs_options=ovs_options, ovs_extra=ovs_extra)
+        return OvsDpdkPort(name, use_dhcp=use_dhcp, use_dhcpv6=use_dhcpv6,
+                           addresses=addresses, routes=routes, mtu=mtu,
+                           primary=primary, nic_mapping=nic_mapping,
+                           persist_mapping=persist_mapping, defroute=defroute,
+                           dhclient_args=dhclient_args,
+                           dns_servers=dns_servers,
+                           nm_controlled=nm_controlled, members=members,
+                           driver=driver, ovs_options=ovs_options,
+                           ovs_extra=ovs_extra)
 
 
 class OvsDpdkBond(_BaseOpts):
@@ -1111,6 +1079,9 @@ class OvsDpdkBond(_BaseOpts):
         if members_json:
             if isinstance(members_json, list):
                 for member in members_json:
+                    if not member.get('nic_mapping'):
+                        member.update({'nic_mapping': nic_mapping})
+                    member.update({'persist_mapping': persist_mapping})
                     obj = object_from_json(member)
                     if isinstance(obj, OvsDpdkPort):
                         members.append(obj)
