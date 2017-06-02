@@ -621,6 +621,17 @@ class TestBond(base.TestCase):
         interface2 = bridge.members[1]
         self.assertEqual("em2", interface2.name)
 
+    def _stub_active_nics(self, nics):
+        def dummy_ordered_active_nics():
+            return nics
+        self.stubs.Set(utils, 'ordered_active_nics', dummy_ordered_active_nics)
+
+    def _stub_available_nics(self, nics):
+        def dummy_ordered_available_nics():
+            return nics
+        self.stubs.Set(utils, 'ordered_available_nics',
+                       dummy_ordered_available_nics)
+
 
 class TestLinuxTeam(base.TestCase):
 
@@ -1006,6 +1017,102 @@ class TestNicMapping(base.TestCase):
         expected = {}
         # This only emits a warning, so it should still work
         self.assertEqual(expected, objects._mapped_nics())
+
+    # Test that mapping file is passed to interface members from parent object
+    def _test_mapped_nics_with_parent(self, type, name):
+        self._stub_available_nics(['foo', 'bar'])
+        mapping = {"nic1": "foo", "nic2": "bar"}
+
+        data = """{
+        "members": [{"type": "interface", "name": "nic1"},
+                    {"type": "interface", "name": "nic2"}]
+        }
+        """
+        json_output = json.loads(data)
+        json_output.update({'type': type})
+        json_output.update({'name': name})
+        json_output.update({'nic_mapping': mapping})
+        obj = objects.object_from_json(json_output)
+
+        self.assertEqual("foo", obj.members[0].name)
+        self.assertEqual("bar", obj.members[1].name)
+
+    def test_mapped_nics_ovs_bond(self):
+        self._test_mapped_nics_with_parent("ovs_bond", "bond1")
+
+    def test_mapped_nics_linux_bond(self):
+        self._test_mapped_nics_with_parent("linux_bond", "bond1")
+
+    def test_mapped_nics_ovs_bridge(self):
+        self._test_mapped_nics_with_parent("ovs_bridge", "br-foo")
+
+    def test_mapped_nics_ovs_user_bridge(self):
+        self._test_mapped_nics_with_parent("ovs_user_bridge", "br-foo")
+
+    def test_mapped_nics_linux_bridge(self):
+        self._test_mapped_nics_with_parent("linux_bridge", "br-foo")
+
+    def test_mapped_nics_ivs_bridge(self):
+        self._test_mapped_nics_with_parent("ivs_bridge", "br-foo")
+
+    def test_mapped_nics_linux_team(self):
+        self._test_mapped_nics_with_parent("team", "team-foo")
+
+    def test_mapped_nics_bridge_and_bond(self):
+        self._stub_available_nics(['foo', 'bar'])
+        mapping = {"nic1": "foo", "nic2": "bar"}
+
+        data = """{
+"type": "ovs_bridge",
+"name": "br-foo",
+"members": [
+    {
+        "type": "ovs_bond",
+        "name": "bond0",
+        "members": [{"type": "interface", "name": "nic1"},
+                    {"type": "interface", "name": "nic2"}]
+    }
+]
+}
+"""
+        json_output = json.loads(data)
+        json_output.update({'nic_mapping': mapping})
+        obj = objects.object_from_json(json_output)
+
+        interface1 = obj.members[0].members[0]
+        interface2 = obj.members[0].members[1]
+        self.assertEqual("foo", interface1.name)
+        self.assertEqual("bar", interface2.name)
+
+    def test_mapped_nics_ovs_dpdk_bond(self):
+        self._stub_available_nics(['foo', 'bar'])
+        mapping = {"nic2": "foo", "nic3": "bar"}
+
+        data = """{
+"type": "ovs_dpdk_bond",
+"name": "dpdkbond0",
+"members": [
+    {
+        "type": "ovs_dpdk_port",
+        "name": "dpdk0",
+        "members": [{"type": "interface", "name": "nic2"}]
+    },
+    {
+        "type": "ovs_dpdk_port",
+        "name": "dpdk1",
+        "members": [{"type": "interface", "name": "nic3"}]
+    }
+]
+}
+"""
+        json_output = json.loads(data)
+        json_output.update({'nic_mapping': mapping})
+        dpdk_port = objects.object_from_json(json_output)
+        interface1 = dpdk_port.members[0].members[0]
+        interface2 = dpdk_port.members[1].members[0]
+
+        self.assertEqual("foo", interface1.name)
+        self.assertEqual("bar", interface2.name)
 
 
 class TestOvsDpdkBond(base.TestCase):
