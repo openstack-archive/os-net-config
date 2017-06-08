@@ -301,6 +301,10 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             data += "OVS_BRIDGE=%s\n" % base_opt.bridge_name
             if base_opt.mtu:
                 ovs_extra.append("set Interface $DEVICE mtu_request=$MTU")
+            if base_opt.rx_queue:
+                data += "RX_QUEUE=%i\n" % base_opt.rx_queue
+                ovs_extra.append("set Interface $DEVICE " +
+                                 "options:n_rxq=$RX_QUEUE")
         elif isinstance(base_opt, objects.OvsDpdkBond):
             ovs_extra.extend(base_opt.ovs_extra)
             # Referring to bug:1643026, the below commenting of the interfaces,

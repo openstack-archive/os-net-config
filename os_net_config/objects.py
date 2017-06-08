@@ -1025,7 +1025,8 @@ class OvsDpdkPort(_BaseOpts):
                  routes=None, mtu=None, primary=False, nic_mapping=None,
                  persist_mapping=False, defroute=True, dhclient_args=None,
                  dns_servers=None, nm_controlled=False, members=None,
-                 driver='vfio-pci', ovs_options=None, ovs_extra=None):
+                 driver='vfio-pci', ovs_options=None, ovs_extra=None,
+                 rx_queue=None):
 
         super(OvsDpdkPort, self).__init__(name, use_dhcp, use_dhcpv6,
                                           addresses, routes, mtu, primary,
@@ -1036,6 +1037,7 @@ class OvsDpdkPort(_BaseOpts):
         self.ovs_options = ovs_options or []
         self.ovs_extra = format_ovs_extra(self, ovs_extra)
         self.driver = driver
+        self.rx_queue = rx_queue
 
     @staticmethod
     def from_json(json):
@@ -1069,6 +1071,7 @@ class OvsDpdkPort(_BaseOpts):
             msg = 'DPDK Port should have one member as Interface'
             raise InvalidConfigException(msg)
 
+        rx_queue = json.get('rx_queue', None)
         ovs_options = json.get('ovs_options', [])
         ovs_options = ['options:%s' % opt for opt in ovs_options]
         ovs_extra = json.get('ovs_extra', [])
@@ -1076,7 +1079,8 @@ class OvsDpdkPort(_BaseOpts):
             ovs_extra = [ovs_extra]
         opts = _BaseOpts.base_opts_from_json(json)
         return OvsDpdkPort(name, *opts, members=members, driver=driver,
-                           ovs_options=ovs_options, ovs_extra=ovs_extra)
+                           ovs_options=ovs_options, ovs_extra=ovs_extra,
+                           rx_queue=rx_queue)
 
 
 class OvsDpdkBond(_BaseOpts):
