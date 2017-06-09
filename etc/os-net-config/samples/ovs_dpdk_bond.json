@@ -7,6 +7,7 @@
                     "type" : "ovs_dpdk_bond",
                     "name" : "dpdkbond0",
                     "mtu"  : 9000,
+                    "rx_queue": 4,
                     "members": [
                         {
                             "type" : "ovs_dpdk_port",

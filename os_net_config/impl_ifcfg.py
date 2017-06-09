@@ -326,6 +326,11 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                     for member in base_opt.members:
                         ovs_extra.append("set Interface %s mtu_request=$MTU" %
                                          member.name)
+                if base_opt.rx_queue:
+                    data += "RX_QUEUE=%i\n" % base_opt.rx_queue
+                    for member in base_opt.members:
+                        ovs_extra.append("set Interface %s options:n_rxq="
+                                         "$RX_QUEUE" % member.name)
             if base_opt.ovs_options:
                 data += "OVS_OPTIONS=\"%s\"\n" % base_opt.ovs_options
             ovs_extra.extend(base_opt.ovs_extra)

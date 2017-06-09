@@ -1057,7 +1057,7 @@ class OvsDpdkBond(_BaseOpts):
                  routes=None, mtu=None, primary=False, members=None,
                  ovs_options=None, ovs_extra=None, nic_mapping=None,
                  persist_mapping=False, defroute=True, dhclient_args=None,
-                 dns_servers=None, nm_controlled=False):
+                 dns_servers=None, nm_controlled=False, rx_queue=None):
         super(OvsDpdkBond, self).__init__(name, use_dhcp, use_dhcpv6,
                                           addresses, routes, mtu, primary,
                                           nic_mapping, persist_mapping,
@@ -1066,6 +1066,7 @@ class OvsDpdkBond(_BaseOpts):
         self.members = members or []
         self.ovs_options = ovs_options
         self.ovs_extra = format_ovs_extra(self, ovs_extra)
+        self.rx_queue = rx_queue
 
         for member in self.members:
             if member.primary:
@@ -1088,6 +1089,7 @@ class OvsDpdkBond(_BaseOpts):
          persist_mapping, defroute, dhclient_args,
          dns_servers, nm_controlled) = _BaseOpts.base_opts_from_json(
              json, include_primary=False)
+        rx_queue = json.get('rx_queue', None)
         ovs_options = json.get('ovs_options')
         ovs_extra = json.get('ovs_extra', [])
         if not isinstance(ovs_extra, list):
@@ -1119,7 +1121,7 @@ class OvsDpdkBond(_BaseOpts):
                            persist_mapping=persist_mapping,
                            defroute=defroute, dhclient_args=dhclient_args,
                            dns_servers=dns_servers,
-                           nm_controlled=nm_controlled)
+                           nm_controlled=nm_controlled, rx_queue=rx_queue)
 
 
 class VppInterface(_BaseOpts):
