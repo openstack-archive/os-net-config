@@ -963,7 +963,10 @@ class IfcfgNetConfig(os_net_config.NetConfig):
 
             # If dhclient is running and dhcp not set, stop dhclient
             for interface in stop_dhclient_interfaces:
-                stop_dhclient_process(interface)
+                logger.debug("Calling stop_dhclient_interfaces() for %s" %
+                             interface)
+                if not self.noop:
+                    stop_dhclient_process(interface)
 
             for interface in restart_interfaces:
                 self.ifup(interface)
