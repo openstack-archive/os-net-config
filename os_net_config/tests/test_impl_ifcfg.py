@@ -19,6 +19,7 @@ import tempfile
 
 from oslo_concurrency import processutils
 
+import os_net_config
 from os_net_config import impl_ifcfg
 from os_net_config import NetConfig
 from os_net_config import objects
@@ -1389,3 +1390,33 @@ class TestIfcfgNetConfigApply(base.TestCase):
         self.provider.add_interface(interface)
         self.provider.apply()
         self.assertNotIn('Restart openvswitch', execute_strings)
+
+    def _failed_execute(*args, **kwargs):
+        if kwargs.get('check_exit_code', True):
+            raise processutils.ProcessExecutionError('Test stderr',
+                                                     'Test stdout',
+                                                     str(kwargs))
+
+    def test_interface_failure(self):
+        self.stubs.Set(processutils, 'execute', self._failed_execute)
+        v4_addr = objects.Address('192.168.1.2/24')
+        interface = objects.Interface('em1', addresses=[v4_addr])
+        self.provider.add_interface(interface)
+
+        self.assertRaises(os_net_config.ConfigurationError,
+                          self.provider.apply)
+        self.assertEqual(1, len(self.provider.errors))
+
+    def test_interface_failure_multiple(self):
+        self.stubs.Set(processutils, 'execute', self._failed_execute)
+        v4_addr = objects.Address('192.168.1.2/24')
+        interface = objects.Interface('em1', addresses=[v4_addr])
+        v4_addr2 = objects.Address('192.168.2.2/24')
+        interface2 = objects.Interface('em2', addresses=[v4_addr2])
+        self.provider.add_interface(interface)
+        self.provider.add_interface(interface2)
+
+        self.assertRaises(os_net_config.ConfigurationError,
+                          self.provider.apply)
+        # Even though the first one failed, we should have attempted both
+        self.assertEqual(2, len(self.provider.errors))
