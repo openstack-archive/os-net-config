@@ -299,6 +299,14 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             data += "DEVICETYPE=ovs\n"
             data += "TYPE=OVSDPDKPort\n"
             data += "OVS_BRIDGE=%s\n" % base_opt.bridge_name
+            # Validation of DPDK port having only one interface is done prior
+            # to this. So accesing the interface name statically.
+            # Also pci_address would be valid here, since
+            # bind_dpdk_interfaces() is invoked before this.
+            pci_address = utils.get_stored_pci_address(
+                base_opt.members[0].name, self.noop)
+            ovs_extra.append("set Interface $DEVICE options:dpdk-devargs="
+                             "%s" % pci_address)
             if base_opt.mtu:
                 ovs_extra.append("set Interface $DEVICE mtu_request=$MTU")
             if base_opt.rx_queue:
@@ -318,6 +326,16 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             data += "TYPE=OVSDPDKBond\n"
             data += "OVS_BRIDGE=%s\n" % base_opt.bridge_name
             if base_opt.members:
+                for bond_member in base_opt.members:
+                    # Validation of DPDK port having only one interface is done
+                    # prior to this. So accesing the interface name statically.
+                    # Also pci_address would be valid here, since
+                    # bind_dpdk_interfaces () is invoked before this.
+                    pci_address = utils.get_stored_pci_address(
+                        bond_member.members[0].name, self.noop)
+                    ovs_extra.append("set Interface %s options:"
+                                     "dpdk-devargs=%s"
+                                     % (bond_member.name, pci_address))
                 members = [member.name for member in base_opt.members]
                 data += ("BOND_IFACES=\"%s\"\n" % " ".join(members))
                 # MTU configuration given for the OvsDpdkbond shall be applied
