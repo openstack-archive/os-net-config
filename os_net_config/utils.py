@@ -230,6 +230,14 @@ def bind_dpdk_interfaces(ifname, driver, noop):
             except processutils.ProcessExecutionError:
                 msg = "Failed to bind interface %s with dpdk" % ifname
                 raise OvsDpdkBindException(msg)
+        else:
+            # Check if the pci address is already fetched and stored.
+            # If the pci address could not be fetched from dpdk_mapping.yaml
+            # raise OvsDpdkBindException, since the interface is neither
+            # available nor bound with dpdk.
+            if not get_stored_pci_address(ifname, noop):
+                msg = "Interface %s cannot be found" % ifname
+                raise OvsDpdkBindException(msg)
     else:
         logger.info('Interface %(name)s bound to DPDK driver %(driver)s '
                     'using driverctl command' %
@@ -256,14 +264,24 @@ def _get_pci_address(ifname, noop):
                     'ethtool' % ifname)
 
 
+def get_stored_pci_address(ifname, noop):
+    if not noop:
+        dpdk_map = _get_dpdk_map()
+        for dpdk_nic in dpdk_map:
+            if dpdk_nic['name'] == ifname:
+                return dpdk_nic['pci_address']
+    else:
+        logger.info('Fetch the PCI address of the interface %s using '
+                    'ethtool' % ifname)
+
+
 # Once the interface is bound to a DPDK driver, all the references to the
 # interface including '/sys' and '/proc', will be removed. And there is no
 # way to identify the nic name after it is bound. So, the DPDK bound nic info
 # is stored persistently in a file and is used to for nic numbering on
 # subsequent runs of os-net-config.
 def _update_dpdk_map(ifname, pci_address, mac_address, driver):
-    contents = get_file_data(_DPDK_MAPPING_FILE)
-    dpdk_map = yaml.load(contents) if contents else []
+    dpdk_map = _get_dpdk_map()
     for item in dpdk_map:
         if item['pci_address'] == pci_address:
             item['name'] = ifname
@@ -279,6 +297,12 @@ def _update_dpdk_map(ifname, pci_address, mac_address, driver):
         dpdk_map.append(new_item)
 
     write_yaml_config(_DPDK_MAPPING_FILE, dpdk_map)
+
+
+def _get_dpdk_map():
+    contents = get_file_data(_DPDK_MAPPING_FILE)
+    dpdk_map = yaml.load(contents) if contents else []
+    return dpdk_map
 
 
 def _get_dpdk_mac_address(name):

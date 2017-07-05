@@ -410,6 +410,14 @@ class TestIfcfgNetConfig(base.TestCase):
     def get_route6_config(self, name='em1'):
         return self.provider.route6_data.get(name, '')
 
+    def stub_get_stored_pci_address(self, ifname, noop):
+        if 'eth0' in ifname:
+            return "0000:00:07.0"
+        if 'eth1' in ifname:
+            return "0000:00:08.0"
+        if 'eth2' in ifname:
+            return "0000:00:09.0"
+
     def test_add_base_interface(self):
         interface = objects.Interface('em1')
         self.provider.add_interface(interface)
@@ -881,6 +889,8 @@ DNS2=5.6.7.8
             self.assertEqual(driver, 'vfio-pci')
         self.stubs.Set(utils, 'bind_dpdk_interfaces',
                        test_bind_dpdk_interfaces)
+        self.stubs.Set(utils, 'get_stored_pci_address',
+                       self.stub_get_stored_pci_address)
 
         self.provider.add_ovs_dpdk_port(dpdk_port)
         self.provider.add_ovs_user_bridge(bridge)
@@ -902,6 +912,7 @@ PEERDNS=no
 DEVICETYPE=ovs
 TYPE=OVSDPDKPort
 OVS_BRIDGE=br-link
+OVS_EXTRA="set Interface $DEVICE options:dpdk-devargs=0000:00:09.0"
 """
         self.assertEqual(br_link_config,
                          self.provider.bridge_data['br-link'])
@@ -923,6 +934,8 @@ OVS_BRIDGE=br-link
             self.assertEqual(driver, 'vfio-pci')
         self.stubs.Set(utils, 'bind_dpdk_interfaces',
                        test_bind_dpdk_interfaces)
+        self.stubs.Set(utils, 'get_stored_pci_address',
+                       self.stub_get_stored_pci_address)
 
         self.provider.add_ovs_dpdk_bond(bond)
         self.provider.add_ovs_user_bridge(bridge)
@@ -937,6 +950,8 @@ DEVICETYPE=ovs
 TYPE=OVSDPDKBond
 OVS_BRIDGE=br-link
 BOND_IFACES="dpdk0 dpdk1"
+OVS_EXTRA="set Interface dpdk0 options:dpdk-devargs=0000:00:08.0 \
+-- set Interface dpdk1 options:dpdk-devargs=0000:00:09.0"
 """
         self.assertEqual(dpdk_bond_config,
                          self.get_interface_config('dpdkbond0'))
