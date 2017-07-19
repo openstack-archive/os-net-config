@@ -32,7 +32,8 @@
       "type": "interface",
       "name": "em3",
       "use_dhcp": true,
-      "hotplug": true
+      "hotplug": true,
+      "onboot": false
     }
   ]
 }

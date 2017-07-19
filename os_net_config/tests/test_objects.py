@@ -184,6 +184,46 @@ class TestInterface(base.TestCase):
         interface1 = objects.object_from_json(json.loads(data))
         self.assertTrue(interface1.nm_controlled)
 
+    def test_from_json_onboot_false(self):
+        data = """{
+"type": "interface",
+"name": "em1",
+"onboot": false
+}
+"""
+        interface1 = objects.object_from_json(json.loads(data))
+        self.assertFalse(interface1.onboot)
+
+    def test_from_json_onboot_true(self):
+        data = """{
+"type": "interface",
+"name": "em1",
+"onboot": true
+}
+"""
+        interface1 = objects.object_from_json(json.loads(data))
+        self.assertTrue(interface1.onboot)
+
+    def test_from_json_onboot_false_boolstr(self):
+        data = """{
+"type": "interface",
+"name": "em1",
+"onboot": "no"
+}
+"""
+        interface1 = objects.object_from_json(json.loads(data))
+        self.assertFalse(interface1.onboot)
+
+    def test_from_json_onboot_true_boolstr(self):
+        data = """{
+"type": "interface",
+"name": "em1",
+"onboot": "yes"
+}
+"""
+        interface1 = objects.object_from_json(json.loads(data))
+        self.assertTrue(interface1.onboot)
+
     def test_from_json_dns_servers(self):
         data = """{
 "type": "interface",

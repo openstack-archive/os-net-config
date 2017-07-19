@@ -26,3 +26,4 @@ network_config:
     name: em3
     use_dhcp: true
     hotplug: true
+    onboot: false # if not set default is true
