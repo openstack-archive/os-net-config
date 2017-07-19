@@ -201,6 +201,7 @@ class TestDeviceTypes(base.TestCase):
             "mtu": 1501,
             "ethtool_opts": "speed 1000 duplex full",
             "hotplug": True,
+            "onboot": True,
             "routes": [{
                 "next_hop": "192.0.2.1",
                 "ip_netmask": "192.0.2.1/24",
