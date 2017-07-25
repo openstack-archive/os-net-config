@@ -20,7 +20,8 @@
       "type": "interface",
       "name": "em2",
       "use_dhcp": true,
-      "defroute": false
+      "defroute": false,
+      "ethtool_opts": "speed 1000 duplex full"
     },
     {
       "type": "interface",
