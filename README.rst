@@ -18,7 +18,6 @@ https://review.openstack.org/#/c/97859/.
 The intention is for this code to be moved under the tripleo project in due course.
 
 * Free software: Apache license
-* Documentation: http://docs.openstack.org/developer/os-net-config
 * Source: http://git.openstack.org/cgit/openstack/os-net-config
 * Bugs: http://bugs.launchpad.net/os-net-config
 
