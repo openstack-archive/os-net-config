@@ -48,6 +48,10 @@ class VppException(ValueError):
     pass
 
 
+class ContrailVrouterException(ValueError):
+    pass
+
+
 def write_config(filename, data):
     with open(filename, 'w') as f:
         f.write(str(data))
@@ -293,6 +297,15 @@ def get_stored_pci_address(ifname, noop):
     else:
         logger.info('Fetch the PCI address of the interface %s using '
                     'ethtool' % ifname)
+
+
+def translate_ifname_to_pci_address(ifname, noop):
+    pci_address = get_stored_pci_address(ifname, noop)
+    if pci_address is None and not noop:
+        pci_address = get_pci_address(ifname, noop=False)
+        mac_address = interface_mac(ifname)
+        _update_dpdk_map(ifname, pci_address, mac_address, driver=None)
+    return pci_address
 
 
 # Once the interface is bound to a DPDK driver, all the references to the

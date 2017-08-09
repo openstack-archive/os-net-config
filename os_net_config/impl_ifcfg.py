@@ -684,6 +684,53 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                     % (vpp_interface.name, vpp_interface.pci_dev))
         self.vpp_interface_data[vpp_interface.name] = vpp_interface
 
+    def add_contrail_vrouter(self, contrail_vrouter):
+        """Add a ContraiVrouter object to the net config object
+
+        :param contrail_vrouter:
+           The ContrailVrouter object to add
+        """
+        logger.info('adding contrail_vrouter interface: %s'
+                    % contrail_vrouter.name)
+        # Contrail vrouter  will have theeeee only member (of type Interface)
+        ifname = contrail_vrouter.members[0].name
+        data = self._add_common(contrail_vrouter)
+        data += "DEVICETYPE=vhost\n"
+        data += "TYPE=kernel_mode\n"
+        data += "BIND_INT=%s\n" % ifname
+        logger.debug('contrail data: %s' % data)
+        self.interface_data[contrail_vrouter.name] = data
+        if contrail_vrouter.routes:
+            self._add_routes(contrail_vrouter.name,
+                             contrail_vrouter.routes)
+
+    def add_contrail_vrouter_dpdk(self, contrail_vrouter_dpdk):
+        """Add a ContraiVrouterDpdk object to the net config object
+
+        :param contrail_vrouter_dpdk:
+           The ContrailVrouterDpdk object to add
+        """
+        logger.info('adding contrail vrouter dpdk interface: %s'
+                    % contrail_vrouter_dpdk.name)
+        pci_string = ",".join(
+            utils.translate_ifname_to_pci_address(bind_int.name, self.noop)
+            for bind_int in contrail_vrouter_dpdk.members)
+        data = self._add_common(contrail_vrouter_dpdk)
+        data += "DEVICETYPE=vhost\n"
+        data += "TYPE=dpdk\n"
+        data += "BIND_INT=%s\n" % pci_string
+        if len(contrail_vrouter_dpdk.members) > 1:
+            data += "BOND_MODE=%s\n" % contrail_vrouter_dpdk.bond_mode
+            data += "BOND_POLICY=%s\n" % contrail_vrouter_dpdk.bond_policy
+        data += "CPU_LIST=%s\n" % contrail_vrouter_dpdk.cpu_list
+        if contrail_vrouter_dpdk.vlan_id:
+            data += "VLAN_ID=%s\n" % contrail_vrouter_dpdk.vlan_id
+        logger.debug('contrail dpdk data: %s' % data)
+        self.interface_data[contrail_vrouter_dpdk.name] = data
+        if contrail_vrouter_dpdk.routes:
+            self._add_routes(contrail_vrouter_dpdk.name,
+                             contrail_vrouter_dpdk.routes)
+
     def generate_ivs_config(self, ivs_uplinks, ivs_interfaces):
         """Generate configuration content for ivs."""
 

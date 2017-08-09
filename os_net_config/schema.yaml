@@ -669,6 +669,103 @@ definitions:
           - name
         additionalProperties: False
 
+    contrail_vrouter:
+        type: object
+        properties:
+            type:
+                enum: ["contrail_vrouter"]
+            name:
+                $ref: "#/definitions/string_or_param"
+            members:
+                type: array
+                items:
+                  - $ref: "#/definitions/interface"
+                minItems: 1
+                maxItems: 1
+            # common options:
+            use_dhcp:
+                $ref: "#/definitions/bool_or_param"
+            use_dhcp6:
+                $ref: "#/definitions/bool_or_param"
+            addresses:
+                $ref: "#/definitions/list_of_address"
+            routes:
+                $ref: "#/definitions/list_of_route"
+            mtu:
+                $ref: "#/definitions/int_or_param"
+            nic_mapping:
+                $ref: "#/definitions/nic_mapping"
+            persist_mapping:
+                $ref: "#/definitions/bool_or_param"
+            defroute:
+                $ref: "#/definitions/bool_or_param"
+            dhclient_args:
+                $ref: "#/definitions/string_or_param"
+            dns_servers:
+                $ref: "#/definitions/list_of_ip_address_string_or_param"
+            nm_controlled:
+                $ref: "#/definitions/bool_or_param"
+        required:
+          - type
+          - name
+          - members
+        additionalProperties: False
+
+    contrail_vrouter_dpdk:
+        type: object
+        properties:
+            type:
+                enum: ["contrail_vrouter_dpdk"]
+            name:
+                $ref: "#/definitions/string_or_param"
+            members:
+                type: array
+                items:
+                  - $ref: "#/definitions/interface"
+                minItems: 1
+            bond_mode:
+                oneOf:
+                  - $ref: "#/definitions/string_or_param"
+                  - $ref: "#/definitions/int_or_param"
+            bond_policy:
+                oneOf:
+                  - $ref: "#/definitions/string_or_param"
+                  - $ref: "#/definitions/int_or_param"
+            coremask:
+                $ref: "#/definitions/string_or_param"
+            vlan_id:
+                oneOf:
+                  - $ref: "#/definitions/string_or_param"
+                  - $ref: "#/definitions/int_or_param"
+            # common options:
+            use_dhcp:
+                $ref: "#/definitions/bool_or_param"
+            use_dhcp6:
+                $ref: "#/definitions/bool_or_param"
+            addresses:
+                $ref: "#/definitions/list_of_address"
+            routes:
+                $ref: "#/definitions/list_of_route"
+            mtu:
+                $ref: "#/definitions/int_or_param"
+            nic_mapping:
+                $ref: "#/definitions/nic_mapping"
+            persist_mapping:
+                $ref: "#/definitions/bool_or_param"
+            defroute:
+                $ref: "#/definitions/bool_or_param"
+            dhclient_args:
+                $ref: "#/definitions/string_or_param"
+            dns_servers:
+                $ref: "#/definitions/list_of_ip_address_string_or_param"
+            nm_controlled:
+                $ref: "#/definitions/bool_or_param"
+        required:
+          - type
+          - name
+          - members
+        additionalProperties: False
+
     linux_bridge:
         type: object
         properties:
@@ -1036,4 +1133,6 @@ items:
       - $ref: "#/definitions/nfvswitch_internal"
       - $ref: "#/definitions/ib_interface"
       - $ref: "#/definitions/vpp_interface"
+      - $ref: "#/definitions/contrail_vrouter"
+      - $ref: "#/definitions/contrail_vrouter_dpdk"
 minItems: 1

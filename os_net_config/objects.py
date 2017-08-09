@@ -76,6 +76,10 @@ def object_from_json(json):
         return OvsDpdkBond.from_json(json)
     elif obj_type == "vpp_interface":
         return VppInterface.from_json(json)
+    elif obj_type == "contrail_vrouter":
+        return ContrailVrouter.from_json(json)
+    elif obj_type == "contrail_vrouter_dpdk":
+        return ContrailVrouterDpdk.from_json(json)
 
 
 def _get_required_field(json, name, object_name):
@@ -1219,3 +1223,92 @@ class VppInterface(_BaseOpts):
         opts = _BaseOpts.base_opts_from_json(json)
         return VppInterface(name, *opts, uio_driver=uio_driver,
                             options=options)
+
+
+class ContrailVrouter(_BaseOpts):
+    """Base class for Contrail Interface.
+
+    Contrail Vrouter is the interface transporting traffic for the Contrail
+    SDN Controller.
+
+    The following parameters can be specified in addition to base Interface:
+      - members: List of sole interface to use by vhost0
+    """
+    def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
+                 routes=None, mtu=None, primary=False, nic_mapping=None,
+                 persist_mapping=False, defroute=True, dhclient_args=None,
+                 dns_servers=None, nm_controlled=False, onboot=True,
+                 members=None):
+        addresses = addresses or []
+
+        super(ContrailVrouter, self).__init__(name, use_dhcp, use_dhcpv6,
+                                              addresses, routes, mtu,
+                                              primary, nic_mapping,
+                                              persist_mapping, defroute,
+                                              dhclient_args, dns_servers,
+                                              nm_controlled, onboot)
+        self.members = members or []
+
+    @staticmethod
+    def from_json(json):
+        name = _get_required_field(json, 'name', 'ContrailVrouter')
+
+        (_use_dhcp, _use_dhcpv6, _addresses, _routes, _mtu, _primary,
+         nic_mapping, persist_mapping, _defroute, _dhclient_args, _dns_servers,
+         _nm_controlled, _onboot) = opts = _BaseOpts.base_opts_from_json(json)
+        members = _update_members(json, nic_mapping, persist_mapping)
+
+        return ContrailVrouter(name, *opts, members=members)
+
+
+class ContrailVrouterDpdk(_BaseOpts):
+    """Base class for Contrail DPDK Interface.
+
+    Contrail Vrouter is the interface transporting traffic for the Contrail
+    SDN Controller.
+
+    The following parameters can be specified in addition to base Interface:
+      - members: List of interfaces to use by vhost0
+      - bond_mode: Bonding mode
+      - bond_policy: Bonding transmit hash policy
+      - cpu_list: CPU set string eg "1-4,6,7-15:2"
+      - vlan_id:
+    """
+    def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
+                 routes=None, mtu=None, primary=False, nic_mapping=None,
+                 persist_mapping=False, defroute=True, dhclient_args=None,
+                 dns_servers=None, nm_controlled=False, onboot=True,
+                 members=None, bond_mode=None, bond_policy=None,
+                 cpu_list='0-31', vlan_id=None):
+        addresses = addresses or []
+
+        super(ContrailVrouterDpdk, self).__init__(name, use_dhcp, use_dhcpv6,
+                                                  addresses, routes, mtu,
+                                                  primary, nic_mapping,
+                                                  persist_mapping, defroute,
+                                                  dhclient_args, dns_servers,
+                                                  nm_controlled, onboot)
+
+        self.members = members or []
+        self.bond_mode = bond_mode
+        self.bond_policy = bond_policy
+        self.cpu_list = cpu_list
+        self.vlan_id = vlan_id
+
+    @staticmethod
+    def from_json(json):
+        name = _get_required_field(json, 'name', 'ContrailVrouterDpdk')
+        bond_mode = json.get('bond_mode', '')
+        bond_policy = json.get('bond_policy', '')
+        cpu_list = json.get('cpu_list', '0-31')
+        vlan_id = json.get('vlan_id', '')
+
+        (_use_dhcp, _use_dhcpv6, _addresses, _routes, _mtu, _primary,
+         nic_mapping, persist_mapping, _defroute, _dhclient_args, _dns_servers,
+         _nm_controlled, _onboot) = opts = _BaseOpts.base_opts_from_json(json)
+        members = _update_members(json, nic_mapping, persist_mapping)
+
+        return ContrailVrouterDpdk(name, *opts, members=members,
+                                   bond_mode=bond_mode,
+                                   bond_policy=bond_policy,
+                                   cpu_list=cpu_list, vlan_id=vlan_id)

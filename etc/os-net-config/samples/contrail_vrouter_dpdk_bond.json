@@ -1,0 +1,20 @@
+{ "network_config": [
+    {
+        "type": "contrail_vrouter_dpdk",
+        "name": "vhost0",
+        "members": [
+            {
+                "type": "interface",
+                "name": "em3"
+            },
+            {
+                "type": "interface",
+                "name": "em1"
+            }
+        ],
+        "bond_mode": "2",
+        "bond_policy": "802.3ad",
+        "mtu": 1500
+    }
+  ]
+}
