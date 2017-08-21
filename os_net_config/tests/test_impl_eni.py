@@ -73,8 +73,9 @@ iface br0 inet dhcp
     pre-up ip addr flush dev eth0
 """
 
-_OVS_BRIDGE_DHCP_STANDALONE = _OVS_BRIDGE_DHCP + \
-    "    ovs_extra set bridge br0 fail_mode=standalone\n"
+_OVS_BRIDGE_DHCP_STANDALONE = _OVS_BRIDGE_DHCP + (
+    "    ovs_extra set bridge br0 fail_mode=standalone "
+    "-- del-controller br0\n")
 
 _OVS_BRIDGE_DHCP_SECURE = _OVS_BRIDGE_DHCP + \
     "    ovs_extra set bridge br0 fail_mode=secure\n"

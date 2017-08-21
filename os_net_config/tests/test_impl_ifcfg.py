@@ -184,8 +184,9 @@ NM_CONTROLLED=yes
 PEERDNS=no
 """
 
-_OVS_BRIDGE_DHCP_STANDALONE = _OVS_BRIDGE_DHCP + \
-    "OVS_EXTRA=\"set bridge br-ctlplane fail_mode=standalone\"\n"
+_OVS_BRIDGE_DHCP_STANDALONE = _OVS_BRIDGE_DHCP + (
+    "OVS_EXTRA=\"set bridge br-ctlplane fail_mode=standalone "
+    "-- del-controller br-ctlplane\"\n")
 
 _OVS_BRIDGE_DHCP_SECURE = _OVS_BRIDGE_DHCP + \
     "OVS_EXTRA=\"set bridge br-ctlplane fail_mode=secure\"\n"

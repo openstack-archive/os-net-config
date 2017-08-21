@@ -384,10 +384,11 @@ class TestBridge(base.TestCase):
 }
 """
         bridge = objects.object_from_json(json.loads(data))
-        self.assertTrue(2 == len(bridge.ovs_extra))
-        self.assertEqual("bar", bridge.ovs_extra[0])
-        self.assertEqual("set bridge br-foo fail_mode=standalone",
-                         bridge.ovs_extra[1])
+        self.assertTrue(3 == len(bridge.ovs_extra))
+        self.assertItemsEqual(["bar",
+                               "set bridge br-foo fail_mode=standalone",
+                               "del-controller br-foo"],
+                              bridge.ovs_extra)
 
     def test_from_json_ovs_extra_string(self):
         data = """{
@@ -398,10 +399,10 @@ class TestBridge(base.TestCase):
 }
 """
         bridge = objects.object_from_json(json.loads(data))
-        self.assertTrue(2 == len(bridge.ovs_extra))
-        self.assertEqual("bar", bridge.ovs_extra[0])
-        self.assertEqual("set bridge br-foo fail_mode=standalone",
-                         bridge.ovs_extra[1])
+        self.assertItemsEqual(["bar",
+                               "set bridge br-foo fail_mode=standalone",
+                               "del-controller br-foo"],
+                              bridge.ovs_extra)
 
 
 class TestLinuxBridge(base.TestCase):
@@ -810,7 +811,8 @@ class TestOvsTunnel(base.TestCase):
         bridge = objects.object_from_json(json.loads(data))
         self.assertEqual("br-foo", bridge.name)
         self.assertEqual(["set bridge br-foo something",
-                          "set bridge br-foo fail_mode=standalone"],
+                          "set bridge br-foo fail_mode=standalone",
+                          "del-controller br-foo"],
                          bridge.ovs_extra)
         tun0 = bridge.members[0]
         self.assertEqual("tun0", tun0.name)

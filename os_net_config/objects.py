@@ -30,7 +30,8 @@ logger = logging.getLogger(__name__)
 
 _MAPPED_NICS = None
 
-DEFAULT_OVS_BRIDGE_FAIL_MODE = 'standalone'
+STANDALONE_FAIL_MODE = 'standalone'
+DEFAULT_OVS_BRIDGE_FAIL_MODE = STANDALONE_FAIL_MODE
 
 
 class InvalidConfigException(ValueError):
@@ -182,6 +183,13 @@ def format_ovs_extra(obj, templates):
     """Map OVS object properties into a string to be used for ovs_extra."""
 
     return [t.format(name=obj.name) for t in templates or []]
+
+
+def _add_fail_mode(fail_mode):
+    ovs_extra = ['set bridge {name} fail_mode=%s' % fail_mode]
+    if fail_mode == STANDALONE_FAIL_MODE:
+        ovs_extra.append('del-controller {name}')
+    return ovs_extra
 
 
 class Route(object):
@@ -475,7 +483,7 @@ class OvsBridge(_BaseOpts):
         self.ovs_options = ovs_options
         ovs_extra = ovs_extra or []
         if fail_mode:
-            ovs_extra.append('set bridge {name} fail_mode=%s' % fail_mode)
+            ovs_extra.extend(_add_fail_mode(fail_mode))
         self.ovs_extra = format_ovs_extra(self, ovs_extra)
         for member in self.members:
             member.bridge_name = name
@@ -534,7 +542,7 @@ class OvsUserBridge(_BaseOpts):
         self.ovs_options = ovs_options
         ovs_extra = ovs_extra or []
         if fail_mode:
-            ovs_extra.append('set bridge {name} fail_mode=%s' % fail_mode)
+            ovs_extra.extend(_add_fail_mode(fail_mode))
         self.ovs_extra = format_ovs_extra(self, ovs_extra)
         for member in self.members:
             member.bridge_name = name
