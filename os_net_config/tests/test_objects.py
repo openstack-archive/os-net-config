@@ -238,7 +238,7 @@ class TestInterface(base.TestCase):
     def test_from_json_dhcp_nic1(self):
         def dummy_mapped_nics(nic_mapping=None):
             return {"nic1": "em3"}
-        self.stubs.Set(objects, '_mapped_nics', dummy_mapped_nics)
+        self.stubs.Set(objects, 'mapped_nics', dummy_mapped_nics)
 
         data = '{"type": "interface", "name": "nic1", "use_dhcp": true}'
         interface = objects.object_from_json(json.loads(data))
@@ -290,7 +290,7 @@ class TestVlan(base.TestCase):
     def test_from_json_dhcp_nic1(self):
         def dummy_mapped_nics(nic_mapping=None):
             return {"nic1": "em4"}
-        self.stubs.Set(objects, '_mapped_nics', dummy_mapped_nics)
+        self.stubs.Set(objects, 'mapped_nics', dummy_mapped_nics)
 
         data = '{"type": "vlan", "device": "nic1", "vlan_id": 16,' \
                '"use_dhcp": true}'
@@ -324,7 +324,7 @@ class TestBridge(base.TestCase):
     def test_from_json_dhcp_with_nic1(self):
         def dummy_mapped_nics(nic_mapping=None):
             return {"nic1": "em5"}
-        self.stubs.Set(objects, '_mapped_nics', dummy_mapped_nics)
+        self.stubs.Set(objects, 'mapped_nics', dummy_mapped_nics)
 
         data = """{
 "type": "ovs_bridge",
@@ -429,7 +429,7 @@ class TestLinuxBridge(base.TestCase):
     def test_from_json_dhcp_with_nic1(self):
         def dummy_mapped_nics(nic_mapping=None):
             return {"nic1": "em5"}
-        self.stubs.Set(objects, '_mapped_nics', dummy_mapped_nics)
+        self.stubs.Set(objects, 'mapped_nics', dummy_mapped_nics)
 
         data = """{
 "type": "linux_bridge",
@@ -636,7 +636,7 @@ class TestBond(base.TestCase):
 
         def dummy_mapped_nics(nic_mapping=None):
             return {"nic1": "em1", "nic2": "em2"}
-        self.stubs.Set(objects, '_mapped_nics', dummy_mapped_nics)
+        self.stubs.Set(objects, 'mapped_nics', dummy_mapped_nics)
 
         data = """{
 "type": "ovs_bond",
@@ -727,7 +727,7 @@ class TestLinuxBond(base.TestCase):
 
         def dummy_mapped_nics(nic_mapping=None):
             return {"nic1": "em1", "nic2": "em2"}
-        self.stubs.Set(objects, '_mapped_nics', dummy_mapped_nics)
+        self.stubs.Set(objects, 'mapped_nics', dummy_mapped_nics)
 
         data = """{
 "type": "ovs_bond",
@@ -915,7 +915,7 @@ class TestIbInterface(base.TestCase):
     def test_from_json_dhcp_nic1(self):
         def dummy_mapped_nics(nic_mapping=None):
             return {"nic1": "ib0"}
-        self.stubs.Set(objects, '_mapped_nics', dummy_mapped_nics)
+        self.stubs.Set(objects, 'mapped_nics', dummy_mapped_nics)
 
         data = '{"type": "ib_interface", "name": "nic1", "use_dhcp": true}'
         ib_interface = objects.object_from_json(json.loads(data))
@@ -975,28 +975,28 @@ class TestNicMapping(base.TestCase):
     def test_mapped_nics_default(self):
         self._stub_active_nics(['em1', 'em2'])
         expected = {'nic1': 'em1', 'nic2': 'em2'}
-        self.assertEqual(expected, objects._mapped_nics())
+        self.assertEqual(expected, objects.mapped_nics())
 
     def test_mapped_nics_mapped(self):
         self._stub_active_nics(['em1', 'em2'])
         self._stub_available_nics(['em1', 'em2'])
         mapping = {'nic1': 'em2', 'nic2': 'em1'}
         expected = {'nic1': 'em2', 'nic2': 'em1'}
-        self.assertEqual(expected, objects._mapped_nics(nic_mapping=mapping))
+        self.assertEqual(expected, objects.mapped_nics(nic_mapping=mapping))
 
     def test_mapped_nics_mapped_partial(self):
         self._stub_active_nics(['em1', 'em2', 'em3', 'em4'])
         self._stub_available_nics(['em1', 'em2', 'em3', 'em4'])
         mapping = {'nic1': 'em2', 'nic2': 'em1'}
         expected = {'nic1': 'em2', 'nic2': 'em1', 'nic3': 'em3', 'nic4': 'em4'}
-        self.assertEqual(expected, objects._mapped_nics(nic_mapping=mapping))
+        self.assertEqual(expected, objects.mapped_nics(nic_mapping=mapping))
 
     def test_mapped_nics_mapped_partial_reordered(self):
         self._stub_active_nics(['em1', 'em2', 'em3', 'em4'])
         self._stub_available_nics(['em1', 'em2', 'em3', 'em4'])
         mapping = {'nic1': 'em1', 'nic2': 'em3'}
         expected = {'nic1': 'em1', 'nic2': 'em3', 'nic4': 'em4'}
-        self.assertEqual(expected, objects._mapped_nics(nic_mapping=mapping))
+        self.assertEqual(expected, objects.mapped_nics(nic_mapping=mapping))
 
     def test_mapped_nics_mapped_unnumbered(self):
         self._stub_active_nics(['em1', 'em2', 'em3', 'em4'])
@@ -1004,21 +1004,21 @@ class TestNicMapping(base.TestCase):
         mapping = {'John': 'em1', 'Paul': 'em2', 'George': 'em3'}
         expected = {'John': 'em1', 'Paul': 'em2', 'George': 'em3',
                     'nic4': 'em4'}
-        self.assertEqual(expected, objects._mapped_nics(nic_mapping=mapping))
+        self.assertEqual(expected, objects.mapped_nics(nic_mapping=mapping))
 
     def test_mapped_nics_map_error_notactive(self):
         self._stub_active_nics(['em2'])
         self._stub_available_nics(['em1', 'em2', 'em3'])
         mapping = {'nic2': 'em1'}
         expected = {'nic1': 'em2', 'nic2': 'em1'}
-        self.assertEqual(expected, objects._mapped_nics(nic_mapping=mapping))
+        self.assertEqual(expected, objects.mapped_nics(nic_mapping=mapping))
 
     def test_mapped_nics_map_error_duplicate(self):
         self._stub_active_nics(['em1', 'em2'])
         self._stub_available_nics(['em1', 'em2'])
         mapping = {'nic1': 'em1', 'nic2': 'em1'}
         err = self.assertRaises(objects.InvalidConfigException,
-                                objects._mapped_nics, nic_mapping=mapping)
+                                objects.mapped_nics, nic_mapping=mapping)
         expected = 'em1 already mapped, check mapping file for duplicates'
         self.assertIn(expected, six.text_type(err))
 
@@ -1027,7 +1027,7 @@ class TestNicMapping(base.TestCase):
         self._stub_available_nics(['em1', 'em2'])
         mapping = {'nic1': 'em1', 'nic2': 'foo'}
         expected = {'nic1': 'em1'}
-        self.assertEqual(expected, objects._mapped_nics(nic_mapping=mapping))
+        self.assertEqual(expected, objects.mapped_nics(nic_mapping=mapping))
 
     def test_mapped_nics_map_mac(self):
         def dummy_interface_mac(name):
@@ -1039,7 +1039,7 @@ class TestNicMapping(base.TestCase):
         self._stub_available_nics(['em1', 'em2'])
         mapping = {'nic1': '12:34:56:de:f0:12', 'nic2': '12:34:56:78:9a:bc'}
         expected = {'nic1': 'em2', 'nic2': 'em1'}
-        self.assertEqual(expected, objects._mapped_nics(nic_mapping=mapping))
+        self.assertEqual(expected, objects.mapped_nics(nic_mapping=mapping))
 
     def test_mapped_nics_map_invalid_mac(self):
         def dummy_interface_mac(name):
@@ -1052,13 +1052,43 @@ class TestNicMapping(base.TestCase):
         self._stub_available_nics(['em1', 'em2'])
         mapping = {'nic1': '12:34:56:de:f0:12', 'nic2': 'aa:bb:cc:dd:ee:ff'}
         expected = {'nic1': 'em2'}
-        self.assertEqual(expected, objects._mapped_nics(nic_mapping=mapping))
+        self.assertEqual(expected, objects.mapped_nics(nic_mapping=mapping))
 
     def test_mapped_nics_no_active(self):
         self._stub_active_nics([])
         expected = {}
         # This only emits a warning, so it should still work
-        self.assertEqual(expected, objects._mapped_nics())
+        self.assertEqual(expected, objects.mapped_nics())
+
+    def test_mapped_nics_mapping_overlap_real_nic_name(self):
+        def dummy_is_active_nic(nic):
+            if nic == 'em1':
+                return True
+            elif nic == 'nic1':
+                return False
+
+        self.stubs.Set(utils, 'is_active_nic', dummy_is_active_nic)
+        self._stub_available_nics(['em1', 'em2'])
+        mapping = {'nic1': 'em1', 'em1': 'em2'}
+        err = self.assertRaises(objects.InvalidConfigException,
+                                objects.mapped_nics, nic_mapping=mapping)
+        expected = 'cannot map em2 to alias em1, alias overlaps'
+        self.assertIn(expected, six.text_type(err))
+
+    def test_mapped_nics_mapping_inactive_name_as_alias(self):
+        def dummy_is_active_nic(nic):
+                return False
+
+        def dummy_is_real_nic(nic):
+                return True
+
+        self.stubs.Set(utils, 'is_active_nic', dummy_is_active_nic)
+        self.stubs.Set(utils, 'is_real_nic', dummy_is_real_nic)
+        self._stub_active_nics([])
+        self._stub_available_nics(['em1', 'em2'])
+        mapping = {'em2': 'em1', 'nic1': 'em2'}
+        expected = {'em2': 'em1', 'nic1': 'em2'}
+        self.assertEqual(expected, objects.mapped_nics(nic_mapping=mapping))
 
     # Test that mapping file is passed to interface members from parent object
     def _test_mapped_nics_with_parent(self, type, name):

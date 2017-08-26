@@ -1,0 +1,5 @@
+interface_mapping:
+    nic1: em1
+    nic2: em2
+    nic3: em4
+    nic4: em3

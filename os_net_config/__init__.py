@@ -273,7 +273,7 @@ class NetConfig(object):
         msg = 'renaming %s to %s: ' % (oldname, newname)
         # ifdown isn't enough when renaming, we need the link down
         for name in (oldname, newname):
-            if utils._is_active_nic(name):
+            if utils.is_active_nic(name):
                 self.execute(msg, '/sbin/ip',
                              'link', 'set', 'dev', name, 'down')
                 self.execute(msg, '/sbin/ip',
