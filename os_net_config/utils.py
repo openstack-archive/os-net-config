@@ -355,11 +355,12 @@ def restart_vpp(vpp_interfaces):
     processutils.execute('systemctl', 'restart', 'vpp')
 
 
-def _get_vpp_interface_name(pci_addr, tries=1, timeout=5):
-    """Get VPP interface name from a given PCI address
+def _get_vpp_interface(pci_addr, tries=1, timeout=5):
+    """Get VPP interface information from a given PCI address
 
-    From a running VPP instance, attempt to find the interface name from
-    a given PCI address of a NIC.
+    From a running VPP instance, attempt to find the interface name and index
+    from a given PCI address of a NIC. The index is used to identify VPP bond
+    interface associated with the VPP interface.
 
     :param pci_addr: PCI address to lookup, in the form of DDDD:BB:SS.F, where
                      - DDDD = Domain
@@ -377,7 +378,8 @@ def _get_vpp_interface_name(pci_addr, tries=1, timeout=5):
         try:
             timestamp = time.time()
             processutils.execute('systemctl', 'is-active', 'vpp')
-            out, err = processutils.execute('vppctl', 'show', 'interface')
+            out, err = processutils.execute('vppctl', 'show', 'interface',
+                                            check_exit_code=False)
             logger.debug("vppctl show interface\n%s\n%s\n" % (out, err))
             m = re.search(r':([0-9a-fA-F]{2}):([0-9a-fA-F]{2}).([0-9a-fA-F])',
                           pci_addr)
@@ -388,10 +390,12 @@ def _get_vpp_interface_name(pci_addr, tries=1, timeout=5):
             else:
                 raise VppException('Invalid PCI address format: %s' % pci_addr)
 
-            m = re.search(r'^(\w+%s)\s+' % formatted_pci, out, re.MULTILINE)
+            m = re.search(r'^(\w+%s)\s+(\d+)' % formatted_pci, out,
+                          re.MULTILINE)
             if m:
-                logger.debug('VPP interface found: %s' % m.group(1))
-                return m.group(1)
+                logger.debug('VPP interface found: %s, index: %s' %
+                             (m.group(1), m.group(2)))
+                return {'name': m.group(1), 'index': m.group(2)}
         except processutils.ProcessExecutionError:
             pass
 
@@ -402,7 +406,36 @@ def _get_vpp_interface_name(pci_addr, tries=1, timeout=5):
         return None
 
 
-def generate_vpp_config(vpp_config_path, vpp_interfaces):
+def _get_vpp_bond(member_ids):
+    """Get VPP bond information from a given list of VPP interface indices
+
+    :param member_ids: list of VPP interfaces indices for the bond
+    :return: VPP bond name and index. None if an interface is not found.
+    """
+    if not member_ids:
+        return None
+
+    member_ids.sort()
+    member_ids_str = ' '.join(member_ids)
+
+    out, err = processutils.execute('vppctl', 'show',
+                                    'hardware-interfaces', 'bond', 'brief',
+                                    check_exit_code=False)
+    logger.debug('vppctl show hardware-interfaces bond brief\n%s' % out)
+    m = re.search(r'^\s*(BondEthernet\d+)\s+(\d+)\s+.+Slave-Idx:\s+%s\s*$' %
+                  member_ids_str,
+                  out,
+                  re.MULTILINE)
+    if m:
+        logger.debug('Bond found: %s, index: %s' % (m.group(1), m.group(2)))
+        return {'name': m.group(1), 'index': m.group(2)}
+    else:
+        logger.debug('Bond with member indices "%s" not found in VPP'
+                     % member_ids_str)
+        return None
+
+
+def generate_vpp_config(vpp_config_path, vpp_interfaces, vpp_bonds):
     """Generate configuration content for VPP
 
     Generate interface related configuration content for VPP. Current
@@ -419,6 +452,7 @@ def generate_vpp_config(vpp_config_path, vpp_interfaces):
 
     :param vpp_config_path: VPP Configuration file path
     :param vpp_interfaces: List of VPP interface objects
+    :param vpp_bonds: List of VPP bond objects
     :return: updated VPP config content.
     """
 
@@ -473,8 +507,32 @@ def generate_vpp_config(vpp_config_path, vpp_interfaces):
                                   data,
                                   flags=re.MULTILINE)
         else:
-            logger.debug('pci address not found for interface %s, may have'
-                         'already been bound to vpp' % vpp_interface.name)
+            raise VppException('Interface %s has no PCI address and is not'
+                               ' found in mapping file' % vpp_interface.name)
+
+    # Add bond config to 'dpdk' section
+    for vpp_bond in vpp_bonds:
+        slave_str = ''
+        for member in vpp_bond.members:
+            slave_str += ",slave=%s" % member.pci_dev
+        if vpp_bond.bonding_options:
+            options_str = ',' + vpp_bond.bonding_options.strip(' ,')
+        else:
+            options_str = ''
+
+        if slave_str:
+            m = re.search(r'^\s*vdev\s+%s.*$' % vpp_bond.name,
+                          data, re.MULTILINE)
+            if m:
+                data = re.sub(m.group(0), r'  vdev %s%s%s'
+                              % (vpp_bond.name, slave_str, options_str),
+                              data)
+            else:
+                data = re.sub(r'(^\s*dpdk\s*\{)',
+                              r'\1\n  vdev %s%s%s'
+                              % (vpp_bond.name, slave_str, options_str),
+                              data,
+                              flags=re.MULTILINE)
 
     # Add start up script for VPP to config. This script will be executed by
     # VPP on service start.
@@ -497,36 +555,29 @@ def generate_vpp_config(vpp_config_path, vpp_interfaces):
     return data
 
 
-def update_vpp_mapping(vpp_interfaces):
+def update_vpp_mapping(vpp_interfaces, vpp_bonds):
     """Verify VPP interface binding and update mapping file
 
     VppException will be raised if interfaces are not properly bound.
 
     :param vpp_interfaces: List of VPP interface objects
+    :param vpp_bonds: List of VPP bond objects
     """
-    vpp_start_cli = ""
+    cli_list = []
 
     for vpp_int in vpp_interfaces:
-        if not vpp_int.pci_dev:
-            dpdk_map = _get_dpdk_map()
-            for dpdk_int in dpdk_map:
-                if dpdk_int['name'] == vpp_int.name:
-                    vpp_int.pci_dev = dpdk_int['pci_address']
-                    break
-            else:
-                raise VppException('Interface %s has no PCI address and is not'
-                                   ' found in mapping file' % vpp_int.name)
-
         # Try to get VPP interface name. In case VPP service is down
         # for some reason, we will restart VPP and try again. Currently
         # only trying one more time, can turn into a retry_counter if needed
         # in the future.
         for i in range(2):
-            vpp_name = _get_vpp_interface_name(vpp_int.pci_dev,
-                                               tries=12, timeout=5)
-            if not vpp_name:
+            int_info = _get_vpp_interface(vpp_int.pci_dev,
+                                          tries=12, timeout=5)
+            if not int_info:
                 restart_vpp(vpp_interfaces)
             else:
+                vpp_int.vpp_name = int_info['name']
+                vpp_int.vpp_idx = int_info['index']
                 break
         else:
             raise VppException('Interface %s with pci address %s not '
@@ -534,10 +585,13 @@ def update_vpp_mapping(vpp_interfaces):
                                % (vpp_int.name, vpp_int.pci_dev))
 
         # Generate content of startup script for VPP
-        for address in vpp_int.addresses:
-            vpp_start_cli += 'set interface state %s up\n' % vpp_name
-            vpp_start_cli += 'set interface ip address %s %s/%s\n' \
-                             % (vpp_name, address.ip, address.prefixlen)
+        if not vpp_bonds:
+            cli_list.append('set interface state %s up'
+                            % int_info['name'])
+            for address in vpp_int.addresses:
+                cli_list.append('set interface ip address %s %s/%s\n'
+                                % (int_info['name'], address.ip,
+                                   address.prefixlen))
 
         logger.info('Updating mapping for vpp interface %s:'
                     'pci_dev: %s mac address: %s uio driver: %s'
@@ -545,9 +599,30 @@ def update_vpp_mapping(vpp_interfaces):
                        vpp_int.uio_driver))
         _update_dpdk_map(vpp_int.name, vpp_int.pci_dev, vpp_int.hwaddr,
                          vpp_int.uio_driver)
-        # Enable VPP service to make the VPP interface configuration
-        # persistent.
-        processutils.execute('systemctl', 'enable', 'vpp')
+
+    for vpp_bond in vpp_bonds:
+        bond_ids = [member.vpp_idx for member in vpp_bond.members]
+        bond_info = _get_vpp_bond(bond_ids)
+        if bond_info:
+            cli_list.append('set interface state %s up'
+                            % bond_info['name'])
+            for address in vpp_bond.addresses:
+                cli_list.append('set interface ip address %s %s/%s'
+                                % (bond_info['name'], address.ip,
+                                   address.prefixlen))
+        else:
+            raise VppException('Bond %s not found in VPP.' % vpp_bond.name)
+
+    vpp_start_cli = get_file_data(_VPP_EXEC_FILE)
+    for cli_line in cli_list:
+        if not re.search(r'^\s*%s\s*$' % cli_line,
+                         vpp_start_cli, re.MULTILINE):
+            vpp_start_cli += cli_line + '\n'
+
     if diff(_VPP_EXEC_FILE, vpp_start_cli):
         write_config(_VPP_EXEC_FILE, vpp_start_cli)
         restart_vpp(vpp_interfaces)
+
+    # Enable VPP service to make the VPP interface configuration
+    # persistent.
+    processutils.execute('systemctl', 'enable', 'vpp')

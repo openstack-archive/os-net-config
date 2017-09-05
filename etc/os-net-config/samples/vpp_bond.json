@@ -1,0 +1,23 @@
+{ "network_config": [
+    {
+        "type": "vpp_bond",
+        "name": "net_bonding0",
+        "addresses": [
+          {
+            "ip_netmask": "192.0.2.1/24"
+          }
+        ],
+        "bonding_options": "mode=2,xmit_policy=l34",
+        "members": [
+          {
+            "type": "vpp_interface",
+            "name": "eth1"
+          },
+          {
+            "type": "vpp_interface",
+            "name": "eth2"
+          }
+        ]
+    }
+  ]
+}
