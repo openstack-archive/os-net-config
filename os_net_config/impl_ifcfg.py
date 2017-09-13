@@ -401,10 +401,10 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             data += "DHCLIENTARGS=%s\n" % base_opt.dhclient_args
         if base_opt.dns_servers:
             data += "DNS1=%s\n" % base_opt.dns_servers[0]
-            if len(base_opt.dns_servers) == 2:
+            if len(base_opt.dns_servers) >= 2:
                 data += "DNS2=%s\n" % base_opt.dns_servers[1]
-            elif len(base_opt.dns_servers) > 2:
-                logger.warning('ifcfg format supports a max of 2 dns servers.')
+                if len(base_opt.dns_servers) > 2:
+                    logger.warning('ifcfg format supports max 2 resolvers.')
         return data
 
     def _add_routes(self, interface_name, routes=[]):
