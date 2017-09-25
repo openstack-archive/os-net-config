@@ -1279,7 +1279,7 @@ class ContrailVrouterDpdk(_BaseOpts):
                  persist_mapping=False, defroute=True, dhclient_args=None,
                  dns_servers=None, nm_controlled=False, onboot=True,
                  members=None, bond_mode=None, bond_policy=None,
-                 cpu_list='0-31', vlan_id=None):
+                 driver=None, cpu_list='0-31', vlan_id=None):
         addresses = addresses or []
 
         super(ContrailVrouterDpdk, self).__init__(name, use_dhcp, use_dhcpv6,
@@ -1292,6 +1292,7 @@ class ContrailVrouterDpdk(_BaseOpts):
         self.members = members or []
         self.bond_mode = bond_mode
         self.bond_policy = bond_policy
+        self.driver = driver or 'uio_pci_generic'
         self.cpu_list = cpu_list
         self.vlan_id = vlan_id
 
@@ -1300,6 +1301,7 @@ class ContrailVrouterDpdk(_BaseOpts):
         name = _get_required_field(json, 'name', 'ContrailVrouterDpdk')
         bond_mode = json.get('bond_mode', '')
         bond_policy = json.get('bond_policy', '')
+        driver = json.get('driver', 'uio_pci_generic')
         cpu_list = json.get('cpu_list', '0-31')
         vlan_id = json.get('vlan_id', '')
 
@@ -1310,5 +1312,5 @@ class ContrailVrouterDpdk(_BaseOpts):
 
         return ContrailVrouterDpdk(name, *opts, members=members,
                                    bond_mode=bond_mode,
-                                   bond_policy=bond_policy,
+                                   bond_policy=bond_policy, driver=driver,
                                    cpu_list=cpu_list, vlan_id=vlan_id)

@@ -7,3 +7,4 @@ network_config:
         type: interface
         name: em3
     mtu: 1500
+    driver: vfio #default driver is uio_pci_generic

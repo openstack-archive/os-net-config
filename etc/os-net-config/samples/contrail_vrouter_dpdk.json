@@ -8,7 +8,8 @@
                 "name": "em3"
             }
         ],
-        "mtu": 1500
+        "mtu": 1500,
+        "driver": "vfio"
     }
   ]
 }

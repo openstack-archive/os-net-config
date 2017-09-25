@@ -722,6 +722,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         if len(contrail_vrouter_dpdk.members) > 1:
             data += "BOND_MODE=%s\n" % contrail_vrouter_dpdk.bond_mode
             data += "BOND_POLICY=%s\n" % contrail_vrouter_dpdk.bond_policy
+        data += "DRIVER=%s\n" % contrail_vrouter_dpdk.driver
         data += "CPU_LIST=%s\n" % contrail_vrouter_dpdk.cpu_list
         if contrail_vrouter_dpdk.vlan_id:
             data += "VLAN_ID=%s\n" % contrail_vrouter_dpdk.vlan_id

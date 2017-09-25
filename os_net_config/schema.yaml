@@ -731,6 +731,8 @@ definitions:
                 oneOf:
                   - $ref: "#/definitions/string_or_param"
                   - $ref: "#/definitions/int_or_param"
+            driver:
+                $ref: "#/definitions/string_or_param"
             coremask:
                 $ref: "#/definitions/string_or_param"
             vlan_id:
