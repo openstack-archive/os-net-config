@@ -14,6 +14,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import mock
 import os
 import os.path
 import random
@@ -354,6 +355,12 @@ class TestUtils(base.TestCase):
         self.assertRaises(utils.VppException,
                           utils._get_vpp_interface_name, '0000:09.0')
 
+    @mock.patch('os_net_config.utils.processutils.execute',
+                return_value=('', None))
+    def test_get_vpp_interface_name_multiple_iterations(self, mock_execute):
+        self.assertIsNone(utils._get_vpp_interface_name('0000:00:09.0', 2, 1))
+        self.assertEqual(4, mock_execute.call_count)
+
     def test_generate_vpp_config(self):
         tmpdir = tempfile.mkdtemp()
         config_path = os.path.join(tmpdir, 'startup.conf')
@@ -406,7 +413,7 @@ dpdk {
             return None, None
         self.stubs.Set(processutils, 'execute', test_execute)
 
-        def test_get_vpp_interface_name(pci_dev):
+        def test_get_vpp_interface_name(pci_dev, tries, timeout):
             return 'GigabitEthernet0/9/0'
 
         self.stubs.Set(utils, '_get_vpp_interface_name',
