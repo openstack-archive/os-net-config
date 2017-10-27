@@ -60,7 +60,7 @@ definitions:
           - type: array
             items:
                 $ref: "#/definitions/ip_address_string_or_param"
-            minItems: 1
+            minItems: 0
           - $ref: "#/definitions/param"
 
     ipv4_cidr_string:
