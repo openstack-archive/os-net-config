@@ -669,6 +669,54 @@ definitions:
           - name
         additionalProperties: False
 
+    vpp_bond:
+        type: object
+        properties:
+            type:
+                enum: ["vpp_bond"]
+            name:
+                $ref: "#/definitions/string_or_param"
+            uio_driver:
+                $ref: "#/definitions/string_or_param"
+            options:
+                $ref: "#/definitions/string_or_param"
+            # common options:
+            use_dhcp:
+                $ref: "#/definitions/bool_or_param"
+            use_dhcp6:
+                $ref: "#/definitions/bool_or_param"
+            addresses:
+                $ref: "#/definitions/list_of_address"
+            routes:
+                $ref: "#/definitions/list_of_route"
+            mtu:
+                $ref: "#/definitions/int_or_param"
+            nic_mapping:
+                $ref: "#/definitions/nic_mapping"
+            persist_mapping:
+                $ref: "#/definitions/bool_or_param"
+            defroute:
+                $ref: "#/definitions/bool_or_param"
+            dhclient_args:
+                $ref: "#/definitions/string_or_param"
+            dns_servers:
+                $ref: "#/definitions/list_of_ip_address_string_or_param"
+            nm_controlled:
+                $ref: "#/definitions/bool_or_param"
+            onboot:
+                $ref: "#/definitions/bool_or_param"
+            members:
+                type: array
+                items:
+                    oneOf:
+                      - $ref: "#/definitions/vpp_interface"
+            bonding_options:
+                $ref: "#/definitions/string_or_param"
+        required:
+          - type
+          - name
+        additionalProperties: False
+
     contrail_vrouter:
         type: object
         properties:
@@ -1135,6 +1183,7 @@ items:
       - $ref: "#/definitions/nfvswitch_internal"
       - $ref: "#/definitions/ib_interface"
       - $ref: "#/definitions/vpp_interface"
+      - $ref: "#/definitions/vpp_bond"
       - $ref: "#/definitions/contrail_vrouter"
       - $ref: "#/definitions/contrail_vrouter_dpdk"
 minItems: 1

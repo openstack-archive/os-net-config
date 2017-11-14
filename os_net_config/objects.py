@@ -76,6 +76,8 @@ def object_from_json(json):
         return OvsDpdkBond.from_json(json)
     elif obj_type == "vpp_interface":
         return VppInterface.from_json(json)
+    elif obj_type == "vpp_bond":
+        return VppBond.from_json(json)
     elif obj_type == "contrail_vrouter":
         return ContrailVrouter.from_json(json)
     elif obj_type == "contrail_vrouter_dpdk":
@@ -1223,6 +1225,61 @@ class VppInterface(_BaseOpts):
         opts = _BaseOpts.base_opts_from_json(json)
         return VppInterface(name, *opts, uio_driver=uio_driver,
                             options=options)
+
+
+class VppBond(_BaseOpts):
+    """Base class for VPP Bond."""
+    def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
+                 routes=None, mtu=None, primary=False, nic_mapping=None,
+                 persist_mapping=False, defroute=True, dhclient_args=None,
+                 dns_servers=None, nm_controlled=False, onboot=True,
+                 members=None, bonding_options=None):
+        addresses = addresses or []
+        members = members or []
+
+        super(VppBond, self).__init__(name, use_dhcp, use_dhcpv6,
+                                      addresses, routes, mtu, primary,
+                                      nic_mapping, persist_mapping,
+                                      defroute, dhclient_args,
+                                      dns_servers, nm_controlled, onboot)
+        self.members = members
+        self.bonding_options = bonding_options
+
+    @staticmethod
+    def from_json(json):
+        name = _get_required_field(json, 'name', 'VppBond')
+        bonding_options = json.get('bonding_options', '')
+
+        (use_dhcp, use_dhcpv6, addresses, routes, mtu, nic_mapping,
+         persist_mapping, defroute, dhclient_args,
+         dns_servers, nm_controlled, onboot) = _BaseOpts.base_opts_from_json(
+             json, include_primary=False)
+
+        members = []
+        members_json = json.get('members', None)
+        if members_json:
+            if isinstance(members_json, list):
+                for member in members_json:
+                    if not member.get('nic_mapping'):
+                        member.update({'nic_mapping': nic_mapping})
+                    member.update({'persist_mapping': persist_mapping})
+                    obj = object_from_json(member)
+                    if isinstance(obj, VppInterface):
+                        members.append(obj)
+                    else:
+                        msg = 'Members must be of type vpp_interface'
+                        raise InvalidConfigException(msg)
+            else:
+                msg = 'Members must be a list.'
+                raise InvalidConfigException(msg)
+
+        return VppBond(name, use_dhcp=use_dhcp, use_dhcpv6=use_dhcpv6,
+                       addresses=addresses, routes=routes, mtu=mtu,
+                       members=members, nic_mapping=nic_mapping,
+                       persist_mapping=persist_mapping,
+                       defroute=defroute, dhclient_args=dhclient_args,
+                       dns_servers=dns_servers, nm_controlled=nm_controlled,
+                       onboot=onboot, bonding_options=bonding_options)
 
 
 class ContrailVrouter(_BaseOpts):

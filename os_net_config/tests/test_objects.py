@@ -1256,3 +1256,55 @@ class TestVppInterface(base.TestCase):
         self.assertEqual("em1", vpp_interface.name)
         self.assertEqual("uio_pci_generic", vpp_interface.uio_driver)
         self.assertEqual("vlan-strip-offload off", vpp_interface.options)
+
+
+class TestVppBond(base.TestCase):
+    def test_vpp_interface_from_json(self):
+        data = """{
+"type": "vpp_bond",
+"name": "net_bonding0",
+"members": [
+    {
+        "type": "vpp_interface",
+        "name": "eth1"
+    },
+    {
+        "type": "vpp_interface",
+        "name": "eth2"
+    }
+],
+"bonding_options": "mode=2,xmit_policy=l34"
+}
+"""
+
+        vpp_bond = objects.object_from_json(json.loads(data))
+        self.assertEqual("net_bonding0", vpp_bond.name)
+        self.assertEqual("mode=2,xmit_policy=l34", vpp_bond.bonding_options)
+        vpp_int1 = vpp_bond.members[0]
+        self.assertEqual("eth1", vpp_int1.name)
+        vpp_int2 = vpp_bond.members[1]
+        self.assertEqual("eth2", vpp_int2.name)
+
+    def test_invalid_vpp_interface_from_json(self):
+        data = """{
+"type": "vpp_bond",
+"name": "net_bonding0",
+"members": [
+    {
+        "type": "vpp_interface",
+        "name": "eth1"
+    },
+    {
+        "type": "interface",
+        "name": "eth2"
+    }
+],
+"bonding_options": "mode=2,xmit_policy=l34"
+}
+"""
+
+        err = self.assertRaises(objects.InvalidConfigException,
+                                objects.object_from_json,
+                                json.loads(data))
+        expected = 'Members must be of type vpp_interface'
+        self.assertIn(expected, six.text_type(err))
