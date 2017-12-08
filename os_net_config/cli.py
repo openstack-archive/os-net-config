@@ -137,8 +137,6 @@ def main(argv=sys.argv):
     opts = parse_opts(argv)
     configure_logger(opts.verbose, opts.debug)
     logger.info('Using config file at: %s' % opts.config_file)
-    if opts.mapping_file:
-        logger.info('Using mapping file at: %s' % opts.mapping_file)
     iface_array = []
 
     provider = None
@@ -170,6 +168,7 @@ def main(argv=sys.argv):
     # This allows you to override the default network naming abstraction
     # mappings by specifying a specific nicN->name or nicN->MAC mapping
     if os.path.exists(opts.mapping_file):
+        logger.info('Using mapping file at: %s' % opts.mapping_file)
         with open(opts.mapping_file) as cf:
             iface_map = yaml.load(cf.read())
             iface_mapping = iface_map.get("interface_mapping")
@@ -177,6 +176,7 @@ def main(argv=sys.argv):
             persist_mapping = opts.persist_mapping
             logger.debug('persist_mapping: %s' % persist_mapping)
     else:
+        logger.info('Not using any mapping file.')
         iface_mapping = None
         persist_mapping = False
 
