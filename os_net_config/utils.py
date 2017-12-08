@@ -182,18 +182,18 @@ def ordered_active_nics():
 def _ordered_nics(check_active):
     embedded_nics = []
     nics = []
-    logger.debug("Finding active nics")
+    logger.info("Finding active nics")
     for name in glob.iglob(_SYS_CLASS_NET + '/*'):
         nic = name[(len(_SYS_CLASS_NET) + 1):]
         if _is_available_nic(nic, check_active):
             if _is_embedded_nic(nic):
-                logger.debug("%s is an embedded active nic" % nic)
+                logger.info("%s is an embedded active nic" % nic)
                 embedded_nics.append(nic)
             else:
-                logger.debug("%s is an active nic" % nic)
+                logger.info("%s is an active nic" % nic)
                 nics.append(nic)
         else:
-            logger.debug("%s is not an active nic" % nic)
+            logger.info("%s is not an active nic" % nic)
 
     # Adding nics which are bound to DPDK as it will not be found in '/sys'
     # after it is bound to DPDK driver.
@@ -203,21 +203,21 @@ def _ordered_nics(check_active):
         for item in dpdk_map:
             nic = item['name']
             if _is_embedded_nic(nic):
-                logger.debug("%s is an embedded DPDK bound nic" % nic)
+                logger.info("%s is an embedded DPDK bound nic" % nic)
                 embedded_nics.append(nic)
             else:
-                logger.debug("%s is an DPDK bound nic" % nic)
+                logger.info("%s is an DPDK bound nic" % nic)
                 nics.append(nic)
     else:
-        logger.debug("No DPDK mapping available in path (%s)" %
-                     _DPDK_MAPPING_FILE)
+        logger.info("No DPDK mapping available in path (%s)" %
+                    _DPDK_MAPPING_FILE)
 
     # NOTE: we could just natural sort all active devices,
     # but this ensures em, eno, and eth are ordered first
     # (more backwards compatible)
     active_nics = (sorted(embedded_nics, key=_natural_sort_key) +
                    sorted(nics, key=_natural_sort_key))
-    logger.debug("Active nics are %s" % active_nics)
+    logger.info("Active nics are %s" % active_nics)
     return active_nics
 
 
@@ -393,8 +393,8 @@ def _get_vpp_interface(pci_addr, tries=1, timeout=5):
             m = re.search(r'^(\w+%s)\s+(\d+)' % formatted_pci, out,
                           re.MULTILINE)
             if m:
-                logger.debug('VPP interface found: %s, index: %s' %
-                             (m.group(1), m.group(2)))
+                logger.info('VPP interface found: %s, index: %s' %
+                            (m.group(1), m.group(2)))
                 return {'name': m.group(1), 'index': m.group(2)}
         except processutils.ProcessExecutionError:
             pass
@@ -427,11 +427,11 @@ def _get_vpp_bond(member_ids):
                   out,
                   re.MULTILINE)
     if m:
-        logger.debug('Bond found: %s, index: %s' % (m.group(1), m.group(2)))
+        logger.info('Bond found: %s, index: %s' % (m.group(1), m.group(2)))
         return {'name': m.group(1), 'index': m.group(2)}
     else:
-        logger.debug('Bond with member indices "%s" not found in VPP'
-                     % member_ids_str)
+        logger.info('Bond with member indices "%s" not found in VPP'
+                    % member_ids_str)
         return None
 
 
