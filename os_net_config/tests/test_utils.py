@@ -81,11 +81,14 @@ class TestUtils(base.TestCase):
         super(TestUtils, self).setUp()
         rand = str(int(random.random() * 100000))
         utils._DPDK_MAPPING_FILE = '/tmp/dpdk_mapping_' + rand + '.yaml'
+        utils._SRIOV_PF_CONFIG_FILE = '/tmp/sriov_pf_' + rand + '.yaml'
 
     def tearDown(self):
         super(TestUtils, self).tearDown()
         if os.path.isfile(utils._DPDK_MAPPING_FILE):
             os.remove(utils._DPDK_MAPPING_FILE)
+        if os.path.isfile(utils._SRIOV_PF_CONFIG_FILE):
+            os.remove(utils._SRIOV_PF_CONFIG_FILE)
 
     def test_ordered_active_nics(self):
 
@@ -111,6 +114,56 @@ class TestUtils(base.TestCase):
         self.assertEqual('enp10s0', nics[6])
         self.assertEqual('z1', nics[7])
 
+        shutil.rmtree(tmpdir)
+
+    def test_update_sriov_pf_map_new(self):
+        utils.update_sriov_pf_map('eth1', 10, False)
+        contents = utils.get_file_data(utils._SRIOV_PF_CONFIG_FILE)
+        sriov_pf_map = yaml.load(contents) if contents else []
+        self.assertEqual(1, len(sriov_pf_map))
+        test_sriov_pf_map = [{'name': 'eth1', 'numvfs': 10}]
+        self.assertListEqual(test_sriov_pf_map, sriov_pf_map)
+
+    def test_update_sriov_pf_map_exist(self):
+        pf_initial = [{'name': 'eth1', 'numvfs': 10}]
+        utils.write_yaml_config(utils._SRIOV_PF_CONFIG_FILE, pf_initial)
+
+        utils.update_sriov_pf_map('eth1', 20, False)
+        pf_final = [{'name': 'eth1', 'numvfs': 20}]
+        contents = utils.get_file_data(utils._SRIOV_PF_CONFIG_FILE)
+
+        pf_map = yaml.load(contents) if contents else []
+        self.assertEqual(1, len(pf_map))
+        self.assertListEqual(pf_final, pf_map)
+
+    def test_get_vf_devname_net_dir_not_found(self):
+        tmpdir = tempfile.mkdtemp()
+        self.stubs.Set(utils, '_SYS_CLASS_NET', tmpdir)
+
+        self.assertRaises(utils.SriovVfNotFoundException,
+                          utils.get_vf_devname, "eth1", 1, False)
+        shutil.rmtree(tmpdir)
+
+    def test_get_vf_devname_vf_dir_not_found(self):
+        tmpdir = tempfile.mkdtemp()
+        self.stubs.Set(utils, '_SYS_CLASS_NET', tmpdir)
+
+        vf_path = os.path.join(utils._SYS_CLASS_NET, 'eth1/device/virtfn1/net')
+        os.makedirs(vf_path)
+
+        self.assertRaises(utils.SriovVfNotFoundException,
+                          utils.get_vf_devname, "eth1", 1, False)
+        shutil.rmtree(tmpdir)
+
+    def test_get_vf_devname_vf_dir_found(self):
+        tmpdir = tempfile.mkdtemp()
+        self.stubs.Set(utils, '_SYS_CLASS_NET', tmpdir)
+
+        vf_path = os.path.join(utils._SYS_CLASS_NET,
+                               'eth1/device/virtfn1/net/eth1_1')
+        os.makedirs(vf_path)
+
+        self.assertEqual(utils.get_vf_devname("eth1", 1, False), "eth1_1")
         shutil.rmtree(tmpdir)
 
     def test_get_pci_address_success(self):

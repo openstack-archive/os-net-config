@@ -29,7 +29,6 @@ from os_net_config import utils
 logger = logging.getLogger(__name__)
 
 _MAPPED_NICS = None
-
 STANDALONE_FAIL_MODE = 'standalone'
 DEFAULT_OVS_BRIDGE_FAIL_MODE = STANDALONE_FAIL_MODE
 
@@ -82,6 +81,10 @@ def object_from_json(json):
         return ContrailVrouter.from_json(json)
     elif obj_type == "contrail_vrouter_dpdk":
         return ContrailVrouterDpdk.from_json(json)
+    elif obj_type == "sriov_pf":
+        return SriovPF.from_json(json)
+    elif obj_type == "sriov_vf":
+        return SriovVF.from_json(json)
 
 
 def _get_required_field(json, name, object_name):
@@ -407,7 +410,6 @@ class Vlan(_BaseOpts):
                                    persist_mapping, defroute, dhclient_args,
                                    dns_servers, nm_controlled, onboot)
         self.vlan_id = int(vlan_id)
-
         mapped_nic_names = mapped_nics(nic_mapping)
         if device in mapped_nic_names:
             self.device = mapped_nic_names[device]
@@ -1095,6 +1097,72 @@ class OvsDpdkPort(_BaseOpts):
                            members=members, driver=driver,
                            ovs_options=ovs_options,
                            ovs_extra=ovs_extra, rx_queue=rx_queue)
+
+
+class SriovVF(_BaseOpts):
+    """Base class for SR-IOV VF."""
+
+    def __init__(self, device, vfid, use_dhcp=False, use_dhcpv6=False,
+                 addresses=None, routes=None, mtu=None, primary=False,
+                 nic_mapping=None, persist_mapping=False, defroute=True,
+                 dhclient_args=None, dns_servers=None, nm_controlled=False,
+                 onboot=True):
+        addresses = addresses or []
+        routes = routes or []
+        dns_servers = dns_servers or []
+        mapped_nic_names = mapped_nics(nic_mapping)
+        if device in mapped_nic_names:
+            device = mapped_nic_names[device]
+        # Empty strings are set for the name field.
+        # The provider shall identify the VF name from the PF device name
+        # (device) and the VF id.
+        super(SriovVF, self).__init__("", use_dhcp, use_dhcpv6, addresses,
+                                      routes, mtu, primary, nic_mapping,
+                                      persist_mapping, defroute,
+                                      dhclient_args, dns_servers,
+                                      nm_controlled, onboot)
+        self.vfid = vfid
+        self.device = device
+
+    @staticmethod
+    def from_json(json):
+        # Get the VF id
+        vfid = _get_required_field(json, 'vfid', 'SriovVF')
+        # Get the PF device name
+        device = _get_required_field(json, 'device', 'SriovVF')
+        opts = _BaseOpts.base_opts_from_json(json)
+        return SriovVF(device, vfid, *opts)
+
+
+class SriovPF(_BaseOpts):
+    """Base class for SR-IOV PF."""
+
+    def __init__(self, name, numvfs, use_dhcp=False, use_dhcpv6=False,
+                 addresses=None, routes=None, mtu=None, primary=False,
+                 nic_mapping=None, persist_mapping=False, defroute=True,
+                 dhclient_args=None, dns_servers=None, nm_controlled=False,
+                 onboot=True, members=None):
+        addresses = addresses or []
+        routes = routes or []
+        dns_servers = dns_servers or []
+        super(SriovPF, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
+                                      routes, mtu, primary, nic_mapping,
+                                      persist_mapping, defroute,
+                                      dhclient_args, dns_servers,
+                                      nm_controlled, onboot)
+        self.numvfs = numvfs
+        mapped_nic_names = mapped_nics(nic_mapping)
+        if name in mapped_nic_names:
+            self.name = mapped_nic_names[name]
+        else:
+            self.name = name
+
+    @staticmethod
+    def from_json(json):
+        name = _get_required_field(json, 'name', 'SriovPF')
+        numvfs = _get_required_field(json, 'numvfs', 'SriovPF')
+        opts = _BaseOpts.base_opts_from_json(json)
+        return SriovPF(name, numvfs, *opts)
 
 
 class OvsDpdkBond(_BaseOpts):

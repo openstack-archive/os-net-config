@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    sriov_pf and sriov_vf object types are added to allow configuration and
+    usage of the SR-IOV PF and VF devices in the host machine. The sriov_config
+    service file shall be used to reconfigure the SR-IOV devices after reboots.
+    VLAN suport for SR-IOV VF device is not available in this patch.

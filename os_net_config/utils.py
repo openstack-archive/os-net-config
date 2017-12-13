@@ -21,8 +21,8 @@ import re
 import time
 import yaml
 
+from os_net_config import sriov_config
 from oslo_concurrency import processutils
-
 
 logger = logging.getLogger(__name__)
 _SYS_CLASS_NET = '/sys/class/net'
@@ -35,6 +35,29 @@ _SYS_CLASS_NET = '/sys/class/net'
 #     mac_address: 01:02:03:04:05:06
 #     driver: vfio-pci
 _DPDK_MAPPING_FILE = '/var/lib/os-net-config/dpdk_mapping.yaml'
+
+# File to contain the list of SR-IOV nics and the numvfs
+# Format of the file shall be
+#
+# - name: eth1
+#   numvfs: 5
+_SRIOV_PF_CONFIG_FILE = '/var/lib/os-net-config/sriov_pf.yaml'
+
+# sriov_numvfs service shall be configured so that the numvfs for each of the
+# SR-IOV PF device shall be configured during reboot as well
+_SRIOV_CONFIG_SERVICE_FILE = "/etc/systemd/system/sriov_config.service"
+_SRIOV_CONFIG_DEVICE_CONTENT = """[Unit]
+Description=SR-IOV numvfs configuration
+After=systemd-udev-settle.service
+Before=openvswitch.service
+
+[Service]
+Type=oneshot
+ExecStart=os-net-config-sriov
+
+[Install]
+WantedBy=multi-user.target
+"""
 
 # VPP startup operational configuration file. The content of this file will
 # be executed when VPP starts as if typed from CLI.
@@ -50,6 +73,10 @@ class VppException(ValueError):
 
 
 class ContrailVrouterException(ValueError):
+    pass
+
+
+class SriovVfNotFoundException(ValueError):
     pass
 
 
@@ -345,6 +372,64 @@ def _get_dpdk_mac_address(name):
     for item in dpdk_map:
         if item['name'] == name:
             return item['mac_address']
+
+
+def update_sriov_pf_map(ifname, numvfs, noop):
+    if not noop:
+        sriov_map = _get_sriov_pf_map()
+        for item in sriov_map:
+            if item['name'] == ifname:
+                item['numvfs'] = numvfs
+                break
+        else:
+            new_item = {}
+            new_item['name'] = ifname
+            new_item['numvfs'] = numvfs
+            sriov_map.append(new_item)
+
+        write_yaml_config(_SRIOV_PF_CONFIG_FILE, sriov_map)
+
+
+def _get_sriov_pf_map():
+    contents = get_file_data(_SRIOV_PF_CONFIG_FILE)
+    sriov_map = yaml.load(contents) if contents else []
+    return sriov_map
+
+
+def _configure_sriov_config_service():
+    """Generate the sriov_config.service
+
+     sriov_config service shall configure the numvfs for the SriovPF nics
+     during reboot of the nodes.
+    """
+    with open(_SRIOV_CONFIG_SERVICE_FILE, 'w') as f:
+        f.write(_SRIOV_CONFIG_DEVICE_CONTENT)
+    processutils.execute('systemctl', 'enable', 'sriov_config')
+
+
+def configure_sriov_pfs():
+    logger.info("Configuring PFs now")
+    sriov_config.main()
+    _configure_sriov_config_service()
+
+
+def get_vf_devname(pf_name, vfid, noop):
+    if noop:
+        logger.info("NOOP: returning VF name as %s_%d" % (pf_name, vfid))
+        return "%s_%d" % (pf_name, vfid)
+    vf_path = os.path.join(_SYS_CLASS_NET, pf_name, "device/virtfn%d/net"
+                           % vfid)
+    if os.path.isdir(vf_path):
+        vf_nic = os.listdir(vf_path)
+    else:
+        msg = "NIC %s with VF id: %d could not be found" % (pf_name, vfid)
+        raise SriovVfNotFoundException(msg)
+    if len(vf_nic) != 1:
+        msg = "VF name could not be identified in %s" % vf_path
+        raise SriovVfNotFoundException(msg)
+    # The VF's actual device name shall be the only directory seen in the path
+    # /sys/class/net/<pf_name>/device/virtfn<vfid>/net
+    return vf_nic[0]
 
 
 def restart_vpp(vpp_interfaces):

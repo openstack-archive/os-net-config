@@ -1,0 +1,20 @@
+{
+    "network_config": [
+        {
+            "type": "sriov_pf",
+            "name": "p2p1",
+            "numvfs": 10,
+            "use_dhcp": false
+        },
+        {
+          "type": "sriov_vf",
+          "device": "p2p1",
+          "vfid": 5,
+          "addresses": [
+            {
+              "ip_netmask": "192.0.2.1/24"
+            }
+          ]
+        }
+    ]
+}

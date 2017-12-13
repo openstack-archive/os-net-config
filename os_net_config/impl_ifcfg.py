@@ -163,9 +163,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 data += "VLAN=yes\n"
                 if base_opt.device:
                     data += "PHYSDEV=%s\n" % base_opt.device
-                else:
-                    if base_opt.linux_bond_name:
-                        data += "PHYSDEV=%s\n" % base_opt.linux_bond_name
+                elif base_opt.linux_bond_name:
+                    data += "PHYSDEV=%s\n" % base_opt.linux_bond_name
         elif isinstance(base_opt, objects.IvsInterface):
             data += "TYPE=IVSIntPort\n"
         elif isinstance(base_opt, objects.NfvswitchInternal):
@@ -669,6 +668,37 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         self.interface_data[ovs_dpdk_bond.name] = data
         if ovs_dpdk_bond.routes:
             self._add_routes(ovs_dpdk_bond.name, ovs_dpdk_bond.routes)
+
+    def add_sriov_pf(self, sriov_pf):
+        """Add a SriovPF object to the net config object
+
+        :param sriov_pf: The SriovPF object to add
+        """
+        logger.info('adding sriov pf: %s' % sriov_pf.name)
+        data = self._add_common(sriov_pf)
+        logger.debug('sriov pf data: %s' % data)
+        utils.update_sriov_pf_map(sriov_pf.name, sriov_pf.numvfs, self.noop)
+        self.interface_data[sriov_pf.name] = data
+
+    def add_sriov_vf(self, sriov_vf):
+        """Add a SriovVF object to the net config object
+
+        :param sriov_vf: The SriovVF object to add
+        """
+        # Retrieve the VF's name, using its PF device name and VF id.
+        # Note: The VF's name could be read only after setting the numvfs of
+        # the corresponding parent PF device. Untill this point the name field
+        # for VFs will be a empty string. An exception SriovVfNotFoundException
+        # shall be raised when the VF could not be found
+        sriov_vf.name = utils.get_vf_devname(sriov_vf.device, sriov_vf.vfid,
+                                             self.noop)
+        logger.info('adding sriov vf: %s for pf: %s, vfid: %d'
+                    % (sriov_vf.name, sriov_vf.device, sriov_vf.vfid))
+        data = self._add_common(sriov_vf)
+        logger.debug('sriov vf data: %s' % data)
+        self.interface_data[sriov_vf.name] = data
+        if sriov_vf.routes:
+            self._add_routes(sriov_vf.name, sriov_vf.routes)
 
     def add_vpp_interface(self, vpp_interface):
         """Add a VppInterface object to the net config object

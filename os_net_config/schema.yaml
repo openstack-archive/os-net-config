@@ -232,6 +232,94 @@ definitions:
           - name
         additionalProperties: False
 
+    sriov_pf:
+        type: object
+        properties:
+            type:
+                enum: ["sriov_pf"]
+            name:
+                $ref: "#/definitions/string_or_param"
+            primary:
+                $ref: "#/definitions/bool_or_param"
+            numvfs:
+                $ref: "#/definitions/int_or_param"
+            hotplug:
+                $ref: "#/definitions/bool_or_param"
+            # common options:
+            use_dhcp:
+                $ref: "#/definitions/bool_or_param"
+            use_dhcp6:
+                $ref: "#/definitions/bool_or_param"
+            addresses:
+                $ref: "#/definitions/list_of_address"
+            routes:
+                $ref: "#/definitions/list_of_route"
+            mtu:
+                $ref: "#/definitions/int_or_param"
+            nic_mapping:
+                $ref: "#/definitions/nic_mapping"
+            persist_mapping:
+                $ref: "#/definitions/bool_or_param"
+            defroute:
+                $ref: "#/definitions/bool_or_param"
+            dhclient_args:
+                $ref: "#/definitions/string_or_param"
+            dns_servers:
+                $ref: "#/definitions/list_of_ip_address_string_or_param"
+            nm_controlled:
+                $ref: "#/definitions/bool_or_param"
+            onboot:
+                $ref: "#/definitions/bool_or_param"
+        required:
+          - type
+          - name
+          - numvfs
+        additionalProperties: False
+
+    sriov_vf:
+        type: object
+        properties:
+            type:
+                enum: ["sriov_vf"]
+            primary:
+                $ref: "#/definitions/bool_or_param"
+            device:
+                $ref: "#/definitions/string_or_param"
+            vfid:
+                $ref: "#/definitions/int_or_param"
+            hotplug:
+                $ref: "#/definitions/bool_or_param"
+            # common options:
+            use_dhcp:
+                $ref: "#/definitions/bool_or_param"
+            use_dhcp6:
+                $ref: "#/definitions/bool_or_param"
+            addresses:
+                $ref: "#/definitions/list_of_address"
+            routes:
+                $ref: "#/definitions/list_of_route"
+            mtu:
+                $ref: "#/definitions/int_or_param"
+            nic_mapping:
+                $ref: "#/definitions/nic_mapping"
+            persist_mapping:
+                $ref: "#/definitions/bool_or_param"
+            defroute:
+                $ref: "#/definitions/bool_or_param"
+            dhclient_args:
+                $ref: "#/definitions/string_or_param"
+            dns_servers:
+                $ref: "#/definitions/list_of_ip_address_string_or_param"
+            nm_controlled:
+                $ref: "#/definitions/bool_or_param"
+            onboot:
+                $ref: "#/definitions/bool_or_param"
+        required:
+          - type
+          - device
+          - vfid
+        additionalProperties: False
+
     vlan:
         type: object
         properties:
@@ -394,6 +482,7 @@ definitions:
                 items:
                     oneOf:
                       - $ref: "#/definitions/interface"
+                      - $ref: "#/definitions/sriov_vf"
                       - $ref: "#/definitions/vlan"
                 minItems: 1
             ovs_options:
@@ -1166,6 +1255,8 @@ type: array
 items:
     oneOf:
       - $ref: "#/definitions/interface"
+      - $ref: "#/definitions/sriov_pf"
+      - $ref: "#/definitions/sriov_vf"
       - $ref: "#/definitions/vlan"
       - $ref: "#/definitions/ovs_bridge"
       - $ref: "#/definitions/ovs_user_bridge"

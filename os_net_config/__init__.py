@@ -100,6 +100,10 @@ class NetConfig(object):
             self.add_ovs_dpdk_port(obj)
         elif isinstance(obj, objects.OvsDpdkBond):
             self.add_ovs_dpdk_bond(obj)
+        elif isinstance(obj, objects.SriovPF):
+            self.add_sriov_pf(obj)
+        elif isinstance(obj, objects.SriovVF):
+            self.add_sriov_vf(obj)
         elif isinstance(obj, objects.VppInterface):
             self.add_vpp_interface(obj)
         elif isinstance(obj, objects.VppBond):
@@ -215,6 +219,20 @@ class NetConfig(object):
         :param ovs_dpdk_bond: The OvsDpdkBond object to add.
         """
         raise NotImplementedError("add_ovs_dpdk_bond is not implemented.")
+
+    def add_sriov_pf(self, sriov_pf):
+        """Add a SriovPF object to the net config object.
+
+        :param sriov_pf: The SriovPF object to add.
+        """
+        raise NotImplementedError("add_sriov_pf is not implemented.")
+
+    def add_sriov_vf(self, sriov_vf):
+        """Add a SriovVF object to the net config object.
+
+        :param sriov_vf: The SriovVF object to add.
+        """
+        raise NotImplementedError("add_sriov_vf is not implemented.")
 
     def add_vpp_interface(self, vpp_interface):
         """Add a VppInterface object to the net config object.

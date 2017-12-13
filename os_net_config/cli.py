@@ -25,9 +25,9 @@ from os_net_config import impl_eni
 from os_net_config import impl_ifcfg
 from os_net_config import impl_iproute
 from os_net_config import objects
+from os_net_config import utils
 from os_net_config import validator
 from os_net_config import version
-
 
 logger = logging.getLogger(__name__)
 
@@ -138,6 +138,7 @@ def main(argv=sys.argv):
     configure_logger(opts.verbose, opts.debug)
     logger.info('Using config file at: %s' % opts.config_file)
     iface_array = []
+    configure_sriov = False
 
     provider = None
     if opts.provider:
@@ -245,9 +246,26 @@ def main(argv=sys.argv):
         else:
             logger.warning('\n'.join(validation_errors))
 
+    # Look for the presence of SriovPF types in the first parse of the json
+    # if SriovPFs exists then PF devices needs to be configured so that the VF
+    # devices are created.
+    # In the second parse, all other objects shall be added
     for iface_json in iface_array:
         obj = objects.object_from_json(iface_json)
-        provider.add_object(obj)
+        if isinstance(obj, objects.SriovPF):
+            configure_sriov = True
+            provider.add_object(obj)
+
+    if configure_sriov and not opts.noop:
+        utils.configure_sriov_pfs()
+
+    for iface_json in iface_array:
+        # All objects other than the sriov_pf will be added here.
+        # The VFs are expected to be available now and an exception
+        # SriovVfNotFoundException shall be raised if not available.
+        obj = objects.object_from_json(iface_json)
+        if not isinstance(obj, objects.SriovPF):
+            provider.add_object(obj)
     files_changed = provider.apply(cleanup=opts.cleanup,
                                    activate=not opts.no_activate)
     if opts.noop:

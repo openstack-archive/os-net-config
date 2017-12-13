@@ -1,0 +1,29 @@
+
+
+network_config:
+  # sriov_pf type shall be used to configure the PF's of NICs.
+  # The numvfs configured for the PF's shall be set on the sriov_numvfs of the
+  # sysfs for the corresponding NIC and the persistence of the same across reboots
+  # shall be handled
+  -
+    type: sriov_pf
+    # nic name or nic number of the NIC that needs to be configured for SRIOV
+    name: p2p1
+    # number of VFs required on the particular NIC
+    numvfs: 10
+    # Dont set the IP address on the PF
+    use_dhcp: false
+
+  # sriov_vf type shall be used to configure the VF's of NICs.
+  # It requires the PF devices to be configured via sriov_pf types
+  # "name" parameter is not required for VF's. It'll be derived from the VF id
+  # and the PF device name.
+  - type: sriov_vf
+    # The PF device needs to be configured via the sriov_pf type
+    # the PF device could be a nic number (ex: nic5) or nic name (ex: ens20f0)
+    device: p2p1
+    # The VF id shall be the VF number between 0 to (numvfs-1), where numvfs
+    # is the member of the sriov_pf type
+    vfid: 5
+    addresses:
+    - ip_netmask: 192.0.2.1/24
