@@ -1,6 +1,7 @@
 ---
 fixes:
-  - Getting the ordered, active, and available nics has been traditionally one
+  - |
+    Getting the ordered, active, and available nics has been traditionally one
     of the parts of os-net-config that can cause issues due to either user
     error or bugs. There are helpful log messages to log what is going on in
     the logic, but it's all hidden behind the DEBUG log level.  These messages
