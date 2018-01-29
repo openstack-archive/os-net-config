@@ -2,4 +2,7 @@
 os-net-config Release Notes
 ===========================
 
-.. release-notes::
+.. toctree::
+   :maxdepth: 1
+
+   unreleased
