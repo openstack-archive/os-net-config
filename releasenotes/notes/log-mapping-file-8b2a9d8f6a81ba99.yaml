@@ -1,6 +1,7 @@
 ---
 fixes:
-  - os-net-config always logs the message "Using mapping file at:
+  - |
+    os-net-config always logs the message "Using mapping file at:
     /etc/os-net-config/mapping.yaml" even if the file does not exist, in which
     case it's not actually being used at all. Move the log message to only be
     shown if the mapping file actually exists and is used. In the case where no
