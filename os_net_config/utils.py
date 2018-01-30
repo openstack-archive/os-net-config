@@ -336,6 +336,40 @@ def translate_ifname_to_pci_address(ifname, noop):
     return pci_address
 
 
+def get_vendor_id(ifname):
+    try:
+        with open('%s/%s/device/vendor' % (_SYS_CLASS_NET, ifname),
+                  'r') as f:
+            out = f.read().strip()
+        return out
+    except IOError:
+        return
+
+
+def get_device_id(ifname):
+    try:
+        with open('%s/%s/device/device' % (_SYS_CLASS_NET, ifname),
+                  'r') as f:
+            out = f.read().strip()
+        return out
+    except IOError:
+        return
+
+
+def get_dpdk_devargs(ifname, noop):
+    if not noop:
+        vendor_id = get_vendor_id(ifname)
+        device_id = get_device_id(ifname)
+        if vendor_id == "0x15b3" and device_id == "0x1007":
+            # Some NICs (i.e. Mellanox ConnectX-3) have only one PCI address
+            # associated with multiple ports. Using a PCI device won’t work.
+            # Instead, we should use "class=eth,mac=<MAC>"
+            dpdk_devargs = "class=eth,mac=%s" % interface_mac(ifname)
+        else:
+            dpdk_devargs = get_stored_pci_address(ifname, noop)
+        return dpdk_devargs
+
+
 # Once the interface is bound to a DPDK driver, all the references to the
 # interface including '/sys' and '/proc', will be removed. And there is no
 # way to identify the nic name after it is bound. So, the DPDK bound nic info
