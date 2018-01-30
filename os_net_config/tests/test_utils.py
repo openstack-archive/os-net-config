@@ -209,6 +209,32 @@ class TestUtils(base.TestCase):
         pci = utils.get_stored_pci_address('eth1', False)
         self.assertEqual(None, pci)
 
+    def test_get_vendor_id_success(self):
+        mocked_open = mock.mock_open(read_data='0x15b3\n')
+        with mock.patch('os_net_config.utils.open', mocked_open, create=True):
+            vendor = utils.get_vendor_id('nic2')
+            self.assertEqual('0x15b3', vendor)
+
+    def test_get_vendor_id_exception(self):
+        mocked_open = mock.mock_open()
+        mocked_open.side_effect = IOError
+        with mock.patch('os_net_config.utils.open', mocked_open, create=True):
+            vendor = utils.get_vendor_id('nic2')
+            self.assertEqual(None, vendor)
+
+    def test_get_device_id_success(self):
+        mocked_open = mock.mock_open(read_data='0x1003\n')
+        with mock.patch('os_net_config.utils.open', mocked_open, create=True):
+            device = utils.get_device_id('nic2')
+            self.assertEqual('0x1003', device)
+
+    def test_get_device_id_exception(self):
+        mocked_open = mock.mock_open()
+        mocked_open.side_effect = IOError
+        with mock.patch('os_net_config.utils.open', mocked_open, create=True):
+            device = utils.get_device_id('nic2')
+            self.assertEqual(None, device)
+
     def test_bind_dpdk_interfaces(self):
         def test_execute(name, dummy1, dummy2=None, dummy3=None):
             if 'ethtool' in name:
