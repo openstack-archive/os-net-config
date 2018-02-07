@@ -15,11 +15,13 @@
 # under the License.
 
 import os.path
+import random
 import sys
 import yaml
 
 import os_net_config
 from os_net_config import cli
+from os_net_config import sriov_config
 from os_net_config.tests import base
 import six
 
@@ -30,6 +32,16 @@ SAMPLE_BASE = os.path.join(REALPATH, '../../', 'etc',
 
 
 class TestCli(base.TestCase):
+
+    def setUp(self):
+        super(TestCli, self).setUp()
+        rand = str(int(random.random() * 100000))
+        sriov_config._SRIOV_CONFIG_FILE = '/tmp/sriov_config_' + rand + '.yaml'
+
+    def tearDown(self):
+        super(TestCli, self).tearDown()
+        if os.path.isfile(sriov_config._SRIOV_CONFIG_FILE):
+            os.remove(sriov_config._SRIOV_CONFIG_FILE)
 
     def run_cli(self, argstr, exitcodes=(0,)):
         orig = sys.stdout
@@ -191,6 +203,10 @@ class TestCli(base.TestCase):
                                            % interface_yaml, exitcodes=(0,))
 
     def test_sriov_noop_output(self):
+        def test_get_vf_devname(device, vfid):
+            return device + '_' + str(vfid)
+        self.stub_out('os_net_config.utils.get_vf_devname',
+                      test_get_vf_devname)
         ivs_yaml = os.path.join(SAMPLE_BASE, 'sriov_pf.yaml')
         ivs_json = os.path.join(SAMPLE_BASE, 'sriov_pf.json')
         stdout_yaml, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
@@ -202,7 +218,8 @@ class TestCli(base.TestCase):
                                            '-c %s' % ivs_json)
         self.assertEqual('', stderr)
         sanity_devices = ['DEVICE=p2p1',
-                          'DEVICE=p2p1_5']
+                          'DEVICE=p2p1_5',
+                          'DEVICE=p2p1_1']
         for dev in sanity_devices:
             self.assertIn(dev, stdout_yaml)
         self.assertEqual(stdout_yaml, stdout_json)

@@ -23,6 +23,7 @@ import tempfile
 import yaml
 
 from os_net_config import objects
+from os_net_config import sriov_config
 from os_net_config.tests import base
 from os_net_config import utils
 
@@ -81,14 +82,14 @@ class TestUtils(base.TestCase):
         super(TestUtils, self).setUp()
         rand = str(int(random.random() * 100000))
         utils._DPDK_MAPPING_FILE = '/tmp/dpdk_mapping_' + rand + '.yaml'
-        utils._SRIOV_PF_CONFIG_FILE = '/tmp/sriov_pf_' + rand + '.yaml'
+        sriov_config._SRIOV_CONFIG_FILE = '/tmp/sriov_config_' + rand + '.yaml'
 
     def tearDown(self):
         super(TestUtils, self).tearDown()
         if os.path.isfile(utils._DPDK_MAPPING_FILE):
             os.remove(utils._DPDK_MAPPING_FILE)
-        if os.path.isfile(utils._SRIOV_PF_CONFIG_FILE):
-            os.remove(utils._SRIOV_PF_CONFIG_FILE)
+        if os.path.isfile(sriov_config._SRIOV_CONFIG_FILE):
+            os.remove(sriov_config._SRIOV_CONFIG_FILE)
 
     def test_ordered_active_nics(self):
 
@@ -119,30 +120,126 @@ class TestUtils(base.TestCase):
 
     def test_update_sriov_pf_map_new(self):
         utils.update_sriov_pf_map('eth1', 10, False)
-        contents = utils.get_file_data(utils._SRIOV_PF_CONFIG_FILE)
+        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
         sriov_pf_map = yaml.load(contents) if contents else []
         self.assertEqual(1, len(sriov_pf_map))
-        test_sriov_pf_map = [{'name': 'eth1', 'numvfs': 10}]
+        test_sriov_pf_map = [{'device_type': 'pf', 'name': 'eth1',
+                              'numvfs': 10}]
+        self.assertListEqual(test_sriov_pf_map, sriov_pf_map)
+
+    def test_update_sriov_pf_map_new_with_promisc(self):
+        utils.update_sriov_pf_map('eth1', 10, False, promisc='off')
+        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        sriov_pf_map = yaml.load(contents) if contents else []
+        self.assertEqual(1, len(sriov_pf_map))
+        test_sriov_pf_map = [{'device_type': 'pf', 'name': 'eth1',
+                              'numvfs': 10, 'promisc': 'off'}]
         self.assertListEqual(test_sriov_pf_map, sriov_pf_map)
 
     def test_update_sriov_pf_map_exist(self):
-        pf_initial = [{'name': 'eth1', 'numvfs': 10}]
-        utils.write_yaml_config(utils._SRIOV_PF_CONFIG_FILE, pf_initial)
+        pf_initial = [{'device_type': 'pf', 'name': 'eth1', 'numvfs': 10}]
+        utils.write_yaml_config(sriov_config._SRIOV_CONFIG_FILE, pf_initial)
 
         utils.update_sriov_pf_map('eth1', 20, False)
-        pf_final = [{'name': 'eth1', 'numvfs': 20}]
-        contents = utils.get_file_data(utils._SRIOV_PF_CONFIG_FILE)
+        pf_final = [{'device_type': 'pf', 'name': 'eth1', 'numvfs': 20}]
+        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
 
         pf_map = yaml.load(contents) if contents else []
         self.assertEqual(1, len(pf_map))
         self.assertListEqual(pf_final, pf_map)
+
+    def test_update_sriov_pf_map_exist_with_promisc(self):
+        pf_initial = [{'device_type': 'pf', 'name': 'eth1', 'numvfs': 10,
+                       'promisc': 'on'}]
+        utils.write_yaml_config(sriov_config._SRIOV_CONFIG_FILE, pf_initial)
+
+        utils.update_sriov_pf_map('eth1', 20, False)
+        pf_final = [{'device_type': 'pf', 'name': 'eth1', 'numvfs': 20,
+                     'promisc': 'on'}]
+        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+
+        pf_map = yaml.load(contents) if contents else []
+        self.assertEqual(1, len(pf_map))
+        self.assertListEqual(pf_final, pf_map)
+
+    def test_update_sriov_vf_map_minimal_new(self):
+        utils.update_sriov_vf_map('eth1', 2, 'eth1_2')
+        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        sriov_vf_map = yaml.load(contents) if contents else []
+        self.assertEqual(1, len(sriov_vf_map))
+        test_sriov_vf_map = [{'device_type': 'vf', 'name': 'eth1_2',
+                              'device': {"name": "eth1", "vfid": 2}}]
+        self.assertListEqual(test_sriov_vf_map, sriov_vf_map)
+
+    def test_update_sriov_vf_map_complete_new(self):
+        utils.update_sriov_vf_map('eth1', 2, 'eth1_2', vlan_id=10, qos=5,
+                                  spoofcheck="on", trust="on", state="enable",
+                                  macaddr="AA:BB:CC:DD:EE:FF", promisc="off")
+        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        sriov_vf_map = yaml.load(contents) if contents else []
+        self.assertEqual(1, len(sriov_vf_map))
+        test_sriov_vf_map = [{'device_type': 'vf', 'name': 'eth1_2',
+                              'device': {'name': 'eth1', 'vfid': 2},
+                              'vlan_id': 10, 'qos': 5,
+                              'spoofcheck': 'on', 'trust': 'on',
+                              'state': 'enable',
+                              'macaddr': 'AA:BB:CC:DD:EE:FF',
+                              'promisc': 'off'}]
+        self.assertListEqual(test_sriov_vf_map, sriov_vf_map)
+
+    def test_update_sriov_vf_map_exist(self):
+        vf_initial = [{'device_type': 'vf', 'name': 'eth1_2',
+                       'device': {"name": "eth1", "vfid": 2}}]
+        utils.write_yaml_config(sriov_config._SRIOV_CONFIG_FILE, vf_initial)
+
+        utils.update_sriov_vf_map('eth1', 2, 'eth1_2', vlan_id=10, qos=5,
+                                  spoofcheck="on", trust="on", state="enable",
+                                  macaddr="AA:BB:CC:DD:EE:FF", promisc="off")
+        vf_final = [{'device_type': 'vf', 'name': 'eth1_2',
+                     'device': {'name': 'eth1', 'vfid': 2},
+                     'vlan_id': 10, 'qos': 5,
+                     'spoofcheck': 'on', 'trust': 'on',
+                     'state': 'enable',
+                     'macaddr': 'AA:BB:CC:DD:EE:FF',
+                     'promisc': 'off'}]
+        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+
+        vf_map = yaml.load(contents) if contents else []
+        self.assertEqual(1, len(vf_map))
+        self.assertListEqual(vf_final, vf_map)
+
+    def test_update_sriov_vf_map_exist_complete(self):
+        vf_initial = [{'device_type': 'vf', 'name': 'eth1_2',
+                       'device': {'name': 'eth1', 'vfid': 2},
+                       'vlan_id': 10, 'qos': 5,
+                       'spoofcheck': 'on', 'trust': 'on',
+                       'state': 'enable',
+                       'macaddr': 'AA:BB:CC:DD:EE:FF',
+                       'promisc': 'off'}]
+        utils.write_yaml_config(sriov_config._SRIOV_CONFIG_FILE, vf_initial)
+
+        utils.update_sriov_vf_map('eth1', 2, 'eth1_2', vlan_id=100, qos=15,
+                                  spoofcheck="off", trust="off", state="auto",
+                                  macaddr="BB:BB:CC:DD:EE:FF", promisc="on")
+        vf_final = [{'device_type': 'vf', 'name': 'eth1_2',
+                     'device': {'name': 'eth1', 'vfid': 2},
+                     'vlan_id': 100, 'qos': 15,
+                     'spoofcheck': 'off', 'trust': 'off',
+                     'state': 'auto',
+                     'macaddr': 'BB:BB:CC:DD:EE:FF',
+                     'promisc': 'on'}]
+        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+
+        vf_map = yaml.load(contents) if contents else []
+        self.assertEqual(1, len(vf_map))
+        self.assertListEqual(vf_final, vf_map)
 
     def test_get_vf_devname_net_dir_not_found(self):
         tmpdir = tempfile.mkdtemp()
         self.stub_out('os_net_config.utils._SYS_CLASS_NET', tmpdir)
 
         self.assertRaises(utils.SriovVfNotFoundException,
-                          utils.get_vf_devname, "eth1", 1, False)
+                          utils.get_vf_devname, "eth1", 1)
         shutil.rmtree(tmpdir)
 
     def test_get_vf_devname_vf_dir_not_found(self):
@@ -153,7 +250,7 @@ class TestUtils(base.TestCase):
         os.makedirs(vf_path)
 
         self.assertRaises(utils.SriovVfNotFoundException,
-                          utils.get_vf_devname, "eth1", 1, False)
+                          utils.get_vf_devname, "eth1", 1)
         shutil.rmtree(tmpdir)
 
     def test_get_vf_devname_vf_dir_found(self):
@@ -164,7 +261,7 @@ class TestUtils(base.TestCase):
                                'eth1/device/virtfn1/net/eth1_1')
         os.makedirs(vf_path)
 
-        self.assertEqual(utils.get_vf_devname("eth1", 1, False), "eth1_1")
+        self.assertEqual(utils.get_vf_devname("eth1", 1), "eth1_1")
         shutil.rmtree(tmpdir)
 
     def test_get_pci_address_success(self):
