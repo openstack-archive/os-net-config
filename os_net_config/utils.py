@@ -35,16 +35,9 @@ _SYS_CLASS_NET = '/sys/class/net'
 #     mac_address: 01:02:03:04:05:06
 #     driver: vfio-pci
 _DPDK_MAPPING_FILE = '/var/lib/os-net-config/dpdk_mapping.yaml'
-
-# File to contain the list of SR-IOV nics and the numvfs
-# Format of the file shall be
-#
-# - name: eth1
-#   numvfs: 5
-_SRIOV_PF_CONFIG_FILE = '/var/lib/os-net-config/sriov_pf.yaml'
-
-# sriov_numvfs service shall be configured so that the numvfs for each of the
-# SR-IOV PF device shall be configured during reboot as well
+# sriov_config service shall be created and enabled so that the various
+# SR-IOV PF and VF configurations shall be done during reboot as well using
+# sriov_config.py installed in path /usr/bin/os-net-config-sriov
 _SRIOV_CONFIG_SERVICE_FILE = "/etc/systemd/system/sriov_config.service"
 _SRIOV_CONFIG_DEVICE_CONTENT = """[Unit]
 Description=SR-IOV numvfs configuration
@@ -420,26 +413,74 @@ def _get_dpdk_mac_address(name):
             return item['mac_address']
 
 
-def update_sriov_pf_map(ifname, numvfs, noop):
+def update_sriov_pf_map(ifname, numvfs, noop, promisc=None):
     if not noop:
-        sriov_map = _get_sriov_pf_map()
+        sriov_map = _get_sriov_map()
         for item in sriov_map:
-            if item['name'] == ifname:
+            if item['device_type'] == 'pf' and item['name'] == ifname:
                 item['numvfs'] = numvfs
+                if promisc is not None:
+                    item['promisc'] = promisc
                 break
         else:
             new_item = {}
+            new_item['device_type'] = 'pf'
             new_item['name'] = ifname
             new_item['numvfs'] = numvfs
+            if promisc is not None:
+                new_item['promisc'] = promisc
             sriov_map.append(new_item)
 
-        write_yaml_config(_SRIOV_PF_CONFIG_FILE, sriov_map)
+        write_yaml_config(sriov_config._SRIOV_CONFIG_FILE, sriov_map)
 
 
-def _get_sriov_pf_map():
-    contents = get_file_data(_SRIOV_PF_CONFIG_FILE)
+def _get_sriov_map():
+    contents = get_file_data(sriov_config._SRIOV_CONFIG_FILE)
     sriov_map = yaml.load(contents) if contents else []
     return sriov_map
+
+
+def _set_vf_fields(vf_name, vlan_id, qos, spoofcheck, trust, state, macaddr,
+                   promisc):
+    vf_configs = {}
+    vf_configs['name'] = vf_name
+    if vlan_id != 0:
+        vf_configs['vlan_id'] = vlan_id
+    if qos != 0:
+        vf_configs['qos'] = qos
+    if spoofcheck is not None:
+        vf_configs['spoofcheck'] = spoofcheck
+    if trust is not None:
+        vf_configs['trust'] = trust
+    if state is not None:
+        vf_configs['state'] = state
+    if macaddr is not None:
+        vf_configs['macaddr'] = macaddr
+    if promisc is not None:
+        vf_configs['promisc'] = promisc
+    return vf_configs
+
+
+def update_sriov_vf_map(pf_name, vfid, vf_name, vlan_id=0, qos=0,
+                        spoofcheck=None, trust=None, state=None, macaddr=None,
+                        promisc=None):
+    sriov_map = _get_sriov_map()
+    for item in sriov_map:
+        if (item['device_type'] == 'vf' and
+           item['device'].get('name') == pf_name and
+           item['device'].get('vfid') == vfid):
+            item.update(_set_vf_fields(vf_name, vlan_id, qos, spoofcheck,
+                                       trust, state, macaddr, promisc))
+            break
+    else:
+        new_item = {}
+        new_item['device_type'] = 'vf'
+        new_item['device'] = {"name": pf_name, "vfid": vfid}
+        new_item.update(_set_vf_fields(vf_name, vlan_id, qos, spoofcheck,
+                                       trust, state, macaddr, promisc))
+        sriov_map.append(new_item)
+
+    write_yaml_config(sriov_config._SRIOV_CONFIG_FILE, sriov_map)
 
 
 def _configure_sriov_config_service():
@@ -455,14 +496,16 @@ def _configure_sriov_config_service():
 
 def configure_sriov_pfs():
     logger.info("Configuring PFs now")
-    sriov_config.main()
+    sriov_config.configure_sriov_pf()
     _configure_sriov_config_service()
 
 
-def get_vf_devname(pf_name, vfid, noop):
-    if noop:
-        logger.info("NOOP: returning VF name as %s_%d" % (pf_name, vfid))
-        return "%s_%d" % (pf_name, vfid)
+def configure_sriov_vfs():
+    logger.info("Configuring VFs now")
+    sriov_config.configure_sriov_vf()
+
+
+def get_vf_devname(pf_name, vfid):
     vf_path = os.path.join(_SYS_CLASS_NET, pf_name, "device/virtfn%d/net"
                            % vfid)
     if os.path.isdir(vf_path):
