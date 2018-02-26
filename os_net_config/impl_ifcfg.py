@@ -1004,15 +1004,15 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             for oldname, newname in self.renamed_interfaces.items():
                 self.ifrename(oldname, newname)
 
-        # DPDK initialization is done before running os-net-config, to make
-        # the DPDK ports available when enabled. DPDK Hotplug support is
-        # supported only in OvS 2.7 version. Until then, OvS needs to be
-        # restarted after adding a DPDK port. This change will be removed on
-        # migration to OvS 2.7 where DPDK Hotplug support is available.
-        if ovs_needs_restart:
-            msg = "Restart openvswitch"
-            self.execute(msg, '/usr/bin/systemctl',
-                         'restart', 'openvswitch')
+            # DPDK initialization is done before running os-net-config, to make
+            # the DPDK ports available when enabled. DPDK Hotplug support is
+            # supported only in OvS 2.7 version. Until then, OvS needs to be
+            # restarted after adding a DPDK port. This change will be removed
+            # on migration to OvS 2.7 where DPDK Hotplug support is available.
+            if ovs_needs_restart:
+                msg = "Restart openvswitch"
+                self.execute(msg, '/usr/bin/systemctl',
+                             'restart', 'openvswitch')
 
         for location, data in update_files.items():
             self.write_config(location, data)
