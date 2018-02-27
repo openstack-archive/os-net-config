@@ -53,7 +53,7 @@ Before=openvswitch.service
 
 [Service]
 Type=oneshot
-ExecStart=os-net-config-sriov
+ExecStart=/usr/bin/os-net-config-sriov
 
 [Install]
 WantedBy=multi-user.target
