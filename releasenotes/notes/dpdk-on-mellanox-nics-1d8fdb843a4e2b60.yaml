@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Adding dpdk support in meallnox nics.
+    Dpdk now fully suuported in mellanox nics.
