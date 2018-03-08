@@ -20,10 +20,7 @@ import yaml
 
 import os_net_config
 from os_net_config import cli
-from os_net_config import impl_ifcfg
-from os_net_config import objects
 from os_net_config.tests import base
-from os_net_config import utils
 import six
 
 
@@ -187,7 +184,7 @@ class TestCli(base.TestCase):
                 # this fake implementation returns no changes
                 return {}
 
-        self.stubs.Set(impl_ifcfg, 'IfcfgNetConfig', TestImpl)
+        self.stub_out('os_net_config.impl_ifcfg.IfcfgNetConfig', TestImpl)
         stdout_yaml, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
                                            '--exit-on-validation-errors '
                                            '-c %s --detailed-exit-codes'
@@ -273,7 +270,7 @@ class TestCli(base.TestCase):
 
         def dummy_mapped_nics(nic_mapping=None):
             return nic_mapping
-        self.stubs.Set(objects, 'mapped_nics', dummy_mapped_nics)
+        self.stub_out('os_net_config.objects.mapped_nics', dummy_mapped_nics)
 
         stdout, stderr = self.run_cli('ARG0 --interfaces '
                                       '--exit-on-validation-errors '
@@ -290,7 +287,7 @@ class TestCli(base.TestCase):
 
         def dummy_mapped_nics(nic_mapping=None):
             return nic_mapping
-        self.stubs.Set(objects, 'mapped_nics', dummy_mapped_nics)
+        self.stub_out('os_net_config.objects.mapped_nics', dummy_mapped_nics)
 
         stdout, stderr = self.run_cli('ARG0 --interfaces em2 em3 '
                                       '--exit-on-validation-errors '
@@ -326,8 +323,8 @@ class TestCli(base.TestCase):
     def test_contrail_vrouter_dpdk_noop_output(self):
         cvi_yaml = os.path.join(SAMPLE_BASE, 'contrail_vrouter_dpdk.yaml')
         cvi_json = os.path.join(SAMPLE_BASE, 'contrail_vrouter_dpdk.json')
-        self.stubs.Set(utils, 'get_stored_pci_address',
-                       self.stub_get_stored_pci_address)
+        self.stub_out('os_net_config.utils.get_stored_pci_address',
+                      self.stub_get_stored_pci_address)
         stdout_yaml, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
                                            '--exit-on-validation-errors '
                                            '--debug '

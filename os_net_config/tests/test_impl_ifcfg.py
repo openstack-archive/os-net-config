@@ -21,7 +21,6 @@ from oslo_concurrency import processutils
 
 import os_net_config
 from os_net_config import impl_ifcfg
-from os_net_config import NetConfig
 from os_net_config import objects
 from os_net_config.tests import base
 from os_net_config import utils
@@ -565,7 +564,7 @@ class TestIfcfgNetConfig(base.TestCase):
         def test_interface_mac(name):
             macs = {'em1': 'a1:b2:c3:d4:e5'}
             return macs[name]
-        self.stubs.Set(utils, 'interface_mac', test_interface_mac)
+        self.stub_out('os_net_config.utils.interface_mac', test_interface_mac)
 
         nic_mapping = {'nic1': 'em1'}
         self.stubbed_mapped_nics = nic_mapping
@@ -709,7 +708,7 @@ class TestIfcfgNetConfig(base.TestCase):
     def test_network_ovs_bridge_with_dhcp_primary_interface(self):
         def test_interface_mac(name):
             return "a1:b2:c3:d4:e5"
-        self.stubs.Set(utils, 'interface_mac', test_interface_mac)
+        self.stub_out('os_net_config.utils.interface_mac', test_interface_mac)
 
         interface = objects.Interface('em1', primary=True)
         bridge = objects.OvsBridge('br-ctlplane', use_dhcp=True,
@@ -723,7 +722,7 @@ class TestIfcfgNetConfig(base.TestCase):
     def test_network_ovs_bridge_with_dhcp_primary_interface_with_extra(self):
         def test_interface_mac(name):
             return "a1:b2:c3:d4:e5"
-        self.stubs.Set(utils, 'interface_mac', test_interface_mac)
+        self.stub_out('os_net_config.utils.interface_mac', test_interface_mac)
 
         interface = objects.Interface('em1', primary=True)
         ovs_extra = "br-set-external-id br-ctlplane bridge-id br-ctlplane"
@@ -739,7 +738,7 @@ class TestIfcfgNetConfig(base.TestCase):
     def test_network_ovs_bridge_with_dhcp_primary_interface_with_format(self):
         def test_interface_mac(name):
             return "a1:b2:c3:d4:e5"
-        self.stubs.Set(utils, 'interface_mac', test_interface_mac)
+        self.stub_out('os_net_config.utils.interface_mac', test_interface_mac)
 
         interface = objects.Interface('em1', primary=True)
         ovs_extra = "br-set-external-id {name} bridge-id {name}"
@@ -824,8 +823,8 @@ class TestIfcfgNetConfig(base.TestCase):
     def test_add_contrail_vrouter_dpdk_interface(self):
         addresses = [objects.Address('10.0.0.30/24')]
         interface1 = objects.Interface('em3')
-        self.stubs.Set(utils, 'get_stored_pci_address',
-                       self.stub_get_stored_pci_address)
+        self.stub_out('os_net_config.utils.get_stored_pci_address',
+                      self.stub_get_stored_pci_address)
         cvi = objects.ContrailVrouterDpdk('vhost0', addresses=addresses,
                                           members=[interface1])
         self.provider.noop = True
@@ -838,8 +837,8 @@ class TestIfcfgNetConfig(base.TestCase):
     def test_add_contrail_vrouter_dpdk_interface_cust_driver(self):
         addresses = [objects.Address('10.0.0.30/24')]
         interface1 = objects.Interface('em3')
-        self.stubs.Set(utils, 'get_stored_pci_address',
-                       self.stub_get_stored_pci_address)
+        self.stub_out('os_net_config.utils.get_stored_pci_address',
+                      self.stub_get_stored_pci_address)
         cvi = objects.ContrailVrouterDpdk('vhost0', addresses=addresses,
                                           members=[interface1], driver='vfio')
         self.provider.noop = True
@@ -854,8 +853,8 @@ class TestIfcfgNetConfig(base.TestCase):
         self.stubbed_mapped_nics = nic_mapping
         addresses = [objects.Address('10.0.0.30/24')]
         interface1 = objects.Interface('nic1')
-        self.stubs.Set(utils, 'get_stored_pci_address',
-                       self.stub_get_stored_pci_address)
+        self.stub_out('os_net_config.utils.get_stored_pci_address',
+                      self.stub_get_stored_pci_address)
         cvi = objects.ContrailVrouterDpdk('vhost0', addresses=addresses,
                                           members=[interface1])
         self.provider.noop = True
@@ -869,8 +868,8 @@ class TestIfcfgNetConfig(base.TestCase):
         addresses = [objects.Address('10.0.0.30/24')]
         interface1 = objects.Interface('em3')
         interface2 = objects.Interface('em1')
-        self.stubs.Set(utils, 'get_stored_pci_address',
-                       self.stub_get_stored_pci_address)
+        self.stub_out('os_net_config.utils.get_stored_pci_address',
+                      self.stub_get_stored_pci_address)
         cvi = objects.ContrailVrouterDpdk('vhost0', addresses=addresses,
                                           members=[interface1, interface2],
                                           bond_mode="2",
@@ -889,8 +888,8 @@ class TestIfcfgNetConfig(base.TestCase):
         addresses = [objects.Address('10.0.0.30/24')]
         interface1 = objects.Interface('nic1')
         interface2 = objects.Interface('nic2')
-        self.stubs.Set(utils, 'get_stored_pci_address',
-                       self.stub_get_stored_pci_address)
+        self.stub_out('os_net_config.utils.get_stored_pci_address',
+                      self.stub_get_stored_pci_address)
         cvi = objects.ContrailVrouterDpdk('vhost0', addresses=addresses,
                                           members=[interface1, interface2],
                                           bond_mode="2",
@@ -1106,8 +1105,8 @@ DNS2=5.6.7.8
             self.assertEqual(device, 'eth2')
             self.assertEqual(vfid, 7)
             return 'eth2_7'
-        self.stubs.Set(utils, 'get_vf_devname',
-                       test_get_vf_devname)
+        self.stub_out('os_net_config.utils.get_vf_devname',
+                      test_get_vf_devname)
         self.provider.add_sriov_vf(vf)
         vf_config = """# This file is autogenerated by os-net-config
 DEVICE=eth2_7
@@ -1130,8 +1129,8 @@ NETMASK=255.255.255.0
         def test_update_sriov_pf_map(name, numvfs, noop):
             self.assertEqual(name, 'eth2')
             self.assertEqual(numvfs, 10)
-        self.stubs.Set(utils, 'update_sriov_pf_map',
-                       test_update_sriov_pf_map)
+        self.stub_out('os_net_config.utils.update_sriov_pf_map',
+                      test_update_sriov_pf_map)
         self.provider.add_sriov_pf(pf)
         pf_config = """# This file is autogenerated by os-net-config
 DEVICE=eth2
@@ -1154,10 +1153,10 @@ BOOTPROTO=none
         def test_bind_dpdk_interfaces(ifname, driver, noop):
             self.assertEqual(ifname, 'eth2')
             self.assertEqual(driver, 'vfio-pci')
-        self.stubs.Set(utils, 'bind_dpdk_interfaces',
-                       test_bind_dpdk_interfaces)
-        self.stubs.Set(utils, 'get_stored_pci_address',
-                       self.stub_get_stored_pci_address)
+        self.stub_out('os_net_config.utils.bind_dpdk_interfaces',
+                      test_bind_dpdk_interfaces)
+        self.stub_out('os_net_config.utils.get_stored_pci_address',
+                      self.stub_get_stored_pci_address)
 
         self.provider.add_ovs_dpdk_port(dpdk_port)
         self.provider.add_ovs_user_bridge(bridge)
@@ -1197,10 +1196,10 @@ OVS_EXTRA="set Interface $DEVICE options:dpdk-devargs=0000:00:09.0"
         def test_bind_dpdk_interfaces(ifname, driver, noop):
             self.assertEqual(ifname, 'eth2')
             self.assertEqual(driver, 'vfio-pci')
-        self.stubs.Set(utils, 'bind_dpdk_interfaces',
-                       test_bind_dpdk_interfaces)
-        self.stubs.Set(utils, 'get_stored_pci_address',
-                       self.stub_get_stored_pci_address)
+        self.stub_out('os_net_config.utils.bind_dpdk_interfaces',
+                      test_bind_dpdk_interfaces)
+        self.stub_out('os_net_config.utils.get_stored_pci_address',
+                      self.stub_get_stored_pci_address)
 
         self.provider.add_ovs_dpdk_port(dpdk_port)
         self.provider.add_ovs_user_bridge(bridge)
@@ -1246,10 +1245,10 @@ OVS_EXTRA="set Interface $DEVICE options:dpdk-devargs=0000:00:09.0 \
         def test_bind_dpdk_interfaces(ifname, driver, noop):
             self.assertIn(ifname, ['eth1', 'eth2'])
             self.assertEqual(driver, 'vfio-pci')
-        self.stubs.Set(utils, 'bind_dpdk_interfaces',
-                       test_bind_dpdk_interfaces)
-        self.stubs.Set(utils, 'get_stored_pci_address',
-                       self.stub_get_stored_pci_address)
+        self.stub_out('os_net_config.utils.bind_dpdk_interfaces',
+                      test_bind_dpdk_interfaces)
+        self.stub_out('os_net_config.utils.get_stored_pci_address',
+                      self.stub_get_stored_pci_address)
 
         self.provider.add_ovs_dpdk_bond(bond)
         self.provider.add_ovs_user_bridge(bridge)
@@ -1285,10 +1284,10 @@ OVS_EXTRA="set Interface dpdk0 options:dpdk-devargs=0000:00:08.0 \
         def test_bind_dpdk_interfaces(ifname, driver, noop):
             self.assertIn(ifname, ['eth1', 'eth2'])
             self.assertEqual(driver, 'vfio-pci')
-        self.stubs.Set(utils, 'bind_dpdk_interfaces',
-                       test_bind_dpdk_interfaces)
-        self.stubs.Set(utils, 'get_stored_pci_address',
-                       self.stub_get_stored_pci_address)
+        self.stub_out('os_net_config.utils.bind_dpdk_interfaces',
+                      test_bind_dpdk_interfaces)
+        self.stub_out('os_net_config.utils.get_stored_pci_address',
+                      self.stub_get_stored_pci_address)
 
         self.provider.add_ovs_dpdk_bond(bond)
         self.provider.add_ovs_user_bridge(bridge)
@@ -1327,10 +1326,10 @@ OVS_EXTRA="set Interface dpdk0 options:dpdk-devargs=0000:00:08.0 \
         def test_bind_dpdk_interfaces(ifname, driver, noop):
             self.assertIn(ifname, ['eth1', 'eth2'])
             self.assertEqual(driver, 'vfio-pci')
-        self.stubs.Set(utils, 'bind_dpdk_interfaces',
-                       test_bind_dpdk_interfaces)
-        self.stubs.Set(utils, 'get_stored_pci_address',
-                       self.stub_get_stored_pci_address)
+        self.stub_out('os_net_config.utils.bind_dpdk_interfaces',
+                      test_bind_dpdk_interfaces)
+        self.stub_out('os_net_config.utils.get_stored_pci_address',
+                      self.stub_get_stored_pci_address)
 
         self.provider.add_ovs_dpdk_bond(bond)
         self.provider.add_ovs_user_bridge(bridge)
@@ -1369,10 +1368,10 @@ OVS_EXTRA="set Interface dpdk0 options:dpdk-devargs=0000:00:08.0 \
         def test_bind_dpdk_interfaces(ifname, driver, noop):
             self.assertIn(ifname, ['eth1', 'eth2'])
             self.assertEqual(driver, 'vfio-pci')
-        self.stubs.Set(utils, 'bind_dpdk_interfaces',
-                       test_bind_dpdk_interfaces)
-        self.stubs.Set(utils, 'get_stored_pci_address',
-                       self.stub_get_stored_pci_address)
+        self.stub_out('os_net_config.utils.bind_dpdk_interfaces',
+                      test_bind_dpdk_interfaces)
+        self.stub_out('os_net_config.utils.get_stored_pci_address',
+                      self.stub_get_stored_pci_address)
 
         self.provider.add_ovs_dpdk_bond(bond)
         self.provider.add_ovs_user_bridge(bridge)
@@ -1416,35 +1415,40 @@ class TestIfcfgNetConfigApply(base.TestCase):
 
         def test_ifcfg_path(name):
             return self.temp_ifcfg_file.name
-        self.stubs.Set(impl_ifcfg, 'ifcfg_config_path', test_ifcfg_path)
+        self.stub_out(
+            'os_net_config.impl_ifcfg.ifcfg_config_path', test_ifcfg_path)
 
         def test_remove_ifcfg_config(name):
             ifcfg_file = self.temp_ifcfg_file.name
             if os.path.exists(ifcfg_file):
                 os.remove(ifcfg_file)
-        self.stubs.Set(impl_ifcfg, 'remove_ifcfg_config',
-                       test_remove_ifcfg_config)
+        self.stub_out('os_net_config.impl_ifcfg.remove_ifcfg_config',
+                      test_remove_ifcfg_config)
 
         def test_routes_path(name):
             return self.temp_route_file.name
-        self.stubs.Set(impl_ifcfg, 'route_config_path', test_routes_path)
+        self.stub_out(
+            'os_net_config.impl_ifcfg.route_config_path', test_routes_path)
 
         def test_routes6_path(name):
             return self.temp_route6_file.name
-        self.stubs.Set(impl_ifcfg, 'route6_config_path', test_routes6_path)
+        self.stub_out(
+            'os_net_config.impl_ifcfg.route6_config_path', test_routes6_path)
 
         def test_bridge_path(name):
             return self.temp_bridge_file.name
-        self.stubs.Set(impl_ifcfg, 'bridge_config_path', test_bridge_path)
+        self.stub_out(
+            'os_net_config.impl_ifcfg.bridge_config_path', test_bridge_path)
 
         def test_cleanup_pattern():
             return self.temp_cleanup_file.name
-        self.stubs.Set(impl_ifcfg, 'cleanup_pattern', test_cleanup_pattern)
+        self.stub_out('os_net_config.impl_ifcfg.cleanup_pattern',
+                      test_cleanup_pattern)
 
         def test_stop_dhclient_process(interface):
             self.stop_dhclient_interfaces.append(interface)
-        self.stubs.Set(impl_ifcfg, 'stop_dhclient_process',
-                       test_stop_dhclient_process)
+        self.stub_out('os_net_config.impl_ifcfg.stop_dhclient_process',
+                      test_stop_dhclient_process)
 
         def test_execute(*args, **kwargs):
             if args[0] == '/sbin/ifup':
@@ -1452,7 +1456,7 @@ class TestIfcfgNetConfigApply(base.TestCase):
             elif args[0] == '/bin/ovs-appctl':
                 self.ovs_appctl_cmds.append(' '.join(args))
             pass
-        self.stubs.Set(processutils, 'execute', test_execute)
+        self.stub_out('oslo_concurrency.processutils.execute', test_execute)
 
         self.provider = impl_ifcfg.IfcfgNetConfig()
 
@@ -1642,7 +1646,8 @@ class TestIfcfgNetConfigApply(base.TestCase):
 
         def test_cleanup_pattern():
             return '%s-*' % self.temp_cleanup_file.name
-        self.stubs.Set(impl_ifcfg, 'cleanup_pattern', test_cleanup_pattern)
+        self.stub_out('os_net_config.impl_ifcfg.cleanup_pattern',
+                      test_cleanup_pattern)
 
         self.provider.apply(cleanup=True)
         self.assertTrue(os.path.exists(tmp_lo_file))
@@ -1655,7 +1660,7 @@ class TestIfcfgNetConfigApply(base.TestCase):
 
         def test_execute(*args, **kwargs):
             execute_strings.append(args[1])
-        self.stubs.Set(NetConfig, 'execute', test_execute)
+        self.stub_out('os_net_config.NetConfig.execute', test_execute)
 
         self.provider.noop = True
         self.provider.add_ovs_dpdk_port(dpdk_port)
@@ -1668,7 +1673,7 @@ class TestIfcfgNetConfigApply(base.TestCase):
 
         def test_execute(*args, **kwargs):
             execute_strings.append(args[1])
-        self.stubs.Set(NetConfig, 'execute', test_execute)
+        self.stub_out('os_net_config.NetConfig.execute', test_execute)
 
         self.provider.noop = True
         self.provider.add_interface(interface)
@@ -1682,7 +1687,8 @@ class TestIfcfgNetConfigApply(base.TestCase):
                                                      str(kwargs))
 
     def test_interface_failure(self):
-        self.stubs.Set(processutils, 'execute', self._failed_execute)
+        self.stub_out('oslo_concurrency.processutils.execute',
+                      self._failed_execute)
         v4_addr = objects.Address('192.168.1.2/24')
         interface = objects.Interface('em1', addresses=[v4_addr])
         self.provider.add_interface(interface)
@@ -1692,7 +1698,8 @@ class TestIfcfgNetConfigApply(base.TestCase):
         self.assertEqual(1, len(self.provider.errors))
 
     def test_interface_failure_multiple(self):
-        self.stubs.Set(processutils, 'execute', self._failed_execute)
+        self.stub_out('oslo_concurrency.processutils.execute',
+                      self._failed_execute)
         v4_addr = objects.Address('192.168.1.2/24')
         interface = objects.Interface('em1', addresses=[v4_addr])
         v4_addr2 = objects.Address('192.168.2.2/24')
