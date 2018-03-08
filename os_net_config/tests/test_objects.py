@@ -19,7 +19,6 @@ import six
 
 from os_net_config import objects
 from os_net_config.tests import base
-from os_net_config import utils
 
 
 class TestRoute(base.TestCase):
@@ -238,7 +237,7 @@ class TestInterface(base.TestCase):
     def test_from_json_dhcp_nic1(self):
         def dummy_mapped_nics(nic_mapping=None):
             return {"nic1": "em3"}
-        self.stubs.Set(objects, 'mapped_nics', dummy_mapped_nics)
+        self.stub_out('os_net_config.objects.mapped_nics', dummy_mapped_nics)
 
         data = '{"type": "interface", "name": "nic1", "use_dhcp": true}'
         interface = objects.object_from_json(json.loads(data))
@@ -290,7 +289,7 @@ class TestVlan(base.TestCase):
     def test_from_json_dhcp_nic1(self):
         def dummy_mapped_nics(nic_mapping=None):
             return {"nic1": "em4"}
-        self.stubs.Set(objects, 'mapped_nics', dummy_mapped_nics)
+        self.stub_out('os_net_config.objects.mapped_nics', dummy_mapped_nics)
 
         data = '{"type": "vlan", "device": "nic1", "vlan_id": 16,' \
                '"use_dhcp": true}'
@@ -324,7 +323,7 @@ class TestBridge(base.TestCase):
     def test_from_json_dhcp_with_nic1(self):
         def dummy_mapped_nics(nic_mapping=None):
             return {"nic1": "em5"}
-        self.stubs.Set(objects, 'mapped_nics', dummy_mapped_nics)
+        self.stub_out('os_net_config.objects.mapped_nics', dummy_mapped_nics)
 
         data = """{
 "type": "ovs_bridge",
@@ -429,7 +428,7 @@ class TestLinuxBridge(base.TestCase):
     def test_from_json_dhcp_with_nic1(self):
         def dummy_mapped_nics(nic_mapping=None):
             return {"nic1": "em5"}
-        self.stubs.Set(objects, 'mapped_nics', dummy_mapped_nics)
+        self.stub_out('os_net_config.objects.mapped_nics', dummy_mapped_nics)
 
         data = """{
 "type": "linux_bridge",
@@ -636,7 +635,7 @@ class TestBond(base.TestCase):
 
         def dummy_mapped_nics(nic_mapping=None):
             return {"nic1": "em1", "nic2": "em2"}
-        self.stubs.Set(objects, 'mapped_nics', dummy_mapped_nics)
+        self.stub_out('os_net_config.objects.mapped_nics', dummy_mapped_nics)
 
         data = """{
 "type": "ovs_bond",
@@ -665,13 +664,14 @@ class TestBond(base.TestCase):
     def _stub_active_nics(self, nics):
         def dummy_ordered_active_nics():
             return nics
-        self.stubs.Set(utils, 'ordered_active_nics', dummy_ordered_active_nics)
+        self.stub_out('os_net_config.utils.ordered_active_nics',
+                      dummy_ordered_active_nics)
 
     def _stub_available_nics(self, nics):
         def dummy_ordered_available_nics():
             return nics
-        self.stubs.Set(utils, 'ordered_available_nics',
-                       dummy_ordered_available_nics)
+        self.stub_out('os_net_config.utils.ordered_available_nics',
+                      dummy_ordered_available_nics)
 
 
 class TestLinuxTeam(base.TestCase):
@@ -727,7 +727,7 @@ class TestLinuxBond(base.TestCase):
 
         def dummy_mapped_nics(nic_mapping=None):
             return {"nic1": "em1", "nic2": "em2"}
-        self.stubs.Set(objects, 'mapped_nics', dummy_mapped_nics)
+        self.stub_out('os_net_config.objects.mapped_nics', dummy_mapped_nics)
 
         data = """{
 "type": "ovs_bond",
@@ -915,7 +915,7 @@ class TestIbInterface(base.TestCase):
     def test_from_json_dhcp_nic1(self):
         def dummy_mapped_nics(nic_mapping=None):
             return {"nic1": "ib0"}
-        self.stubs.Set(objects, 'mapped_nics', dummy_mapped_nics)
+        self.stub_out('os_net_config.objects.mapped_nics', dummy_mapped_nics)
 
         data = '{"type": "ib_interface", "name": "nic1", "use_dhcp": true}'
         ib_interface = objects.object_from_json(json.loads(data))
@@ -964,13 +964,14 @@ class TestNicMapping(base.TestCase):
     def _stub_active_nics(self, nics):
         def dummy_ordered_active_nics():
             return nics
-        self.stubs.Set(utils, 'ordered_active_nics', dummy_ordered_active_nics)
+        self.stub_out('os_net_config.utils.ordered_active_nics',
+                      dummy_ordered_active_nics)
 
     def _stub_available_nics(self, nics):
         def dummy_ordered_available_nics():
             return nics
-        self.stubs.Set(utils, 'ordered_available_nics',
-                       dummy_ordered_available_nics)
+        self.stub_out('os_net_config.utils.ordered_available_nics',
+                      dummy_ordered_available_nics)
 
     def test_mapped_nics_default(self):
         self._stub_active_nics(['em1', 'em2'])
@@ -1034,7 +1035,7 @@ class TestNicMapping(base.TestCase):
             mac_map = {'em1': '12:34:56:78:9a:bc',
                        'em2': '12:34:56:de:f0:12'}
             return mac_map[name]
-        self.stubs.Set(utils, 'interface_mac', dummy_interface_mac)
+        self.stub_out('os_net_config.utils.interface_mac', dummy_interface_mac)
         self._stub_active_nics(['em1', 'em2'])
         self._stub_available_nics(['em1', 'em2'])
         mapping = {'nic1': '12:34:56:de:f0:12', 'nic2': '12:34:56:78:9a:bc'}
@@ -1047,7 +1048,7 @@ class TestNicMapping(base.TestCase):
                        'em2': '12:34:56:de:f0:12'}
             return mac_map[name]
 
-        self.stubs.Set(utils, 'interface_mac', dummy_interface_mac)
+        self.stub_out('os_net_config.utils.interface_mac', dummy_interface_mac)
         self._stub_active_nics(['em1', 'em2'])
         self._stub_available_nics(['em1', 'em2'])
         mapping = {'nic1': '12:34:56:de:f0:12', 'nic2': 'aa:bb:cc:dd:ee:ff'}
@@ -1067,7 +1068,7 @@ class TestNicMapping(base.TestCase):
             elif nic == 'nic1':
                 return False
 
-        self.stubs.Set(utils, 'is_active_nic', dummy_is_active_nic)
+        self.stub_out('os_net_config.utils.is_active_nic', dummy_is_active_nic)
         self._stub_available_nics(['em1', 'em2'])
         mapping = {'nic1': 'em1', 'em1': 'em2'}
         err = self.assertRaises(objects.InvalidConfigException,
@@ -1077,13 +1078,13 @@ class TestNicMapping(base.TestCase):
 
     def test_mapped_nics_mapping_inactive_name_as_alias(self):
         def dummy_is_active_nic(nic):
-                return False
+            return False
 
         def dummy_is_real_nic(nic):
-                return True
+            return True
 
-        self.stubs.Set(utils, 'is_active_nic', dummy_is_active_nic)
-        self.stubs.Set(utils, 'is_real_nic', dummy_is_real_nic)
+        self.stub_out('os_net_config.utils.is_active_nic', dummy_is_active_nic)
+        self.stub_out('os_net_config.utils.is_real_nic', dummy_is_real_nic)
         self._stub_active_nics([])
         self._stub_available_nics(['em1', 'em2'])
         mapping = {'em2': 'em1', 'nic1': 'em2'}
@@ -1200,7 +1201,7 @@ class TestSriovPF(base.TestCase):
     def test_from_json_numvfs_nic1(self):
         def dummy_mapped_nics(nic_mapping=None):
             return {"nic1": "em4"}
-        self.stubs.Set(objects, 'mapped_nics', dummy_mapped_nics)
+        self.stub_out('os_net_config.objects.mapped_nics', dummy_mapped_nics)
 
         data = '{"type": "sriov_pf", "name": "nic1", "numvfs": 16,' \
                '"use_dhcp": false}'
@@ -1233,7 +1234,7 @@ class TestSriovVF(base.TestCase):
     def test_from_json_vfid_nic1(self):
         def dummy_mapped_nics(nic_mapping=None):
             return {"nic1": "em4"}
-        self.stubs.Set(objects, 'mapped_nics', dummy_mapped_nics)
+        self.stub_out('os_net_config.objects.mapped_nics', dummy_mapped_nics)
 
         data = '{"type": "sriov_vf", "device": "nic1", "vfid": 16,' \
                '"use_dhcp": false}'
@@ -1252,7 +1253,8 @@ class TestOvsDpdkBond(base.TestCase):
     def _stub_active_nics(self, nics):
         def dummy_ordered_active_nics():
             return nics
-        self.stubs.Set(utils, 'ordered_active_nics', dummy_ordered_active_nics)
+        self.stub_out('os_net_config.utils.ordered_active_nics',
+                      dummy_ordered_active_nics)
 
     def test_from_json_dhcp(self):
         self._stub_active_nics(['eth0', 'eth1', 'eth2'])
@@ -1300,6 +1302,7 @@ class TestOvsDpdkBond(base.TestCase):
 
 
 class TestVppInterface(base.TestCase):
+
     def test_vpp_interface_from_json(self):
         data = """{
 "type": "vpp_interface",
@@ -1316,6 +1319,7 @@ class TestVppInterface(base.TestCase):
 
 
 class TestVppBond(base.TestCase):
+
     def test_vpp_interface_from_json(self):
         data = """{
 "type": "vpp_bond",

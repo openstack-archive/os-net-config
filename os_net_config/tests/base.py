@@ -18,10 +18,7 @@
 import os
 
 import fixtures
-import stubout
 import testtools
-
-from os_net_config import objects
 
 _TRUE_VALUES = ('True', 'true', '1', 'yes')
 
@@ -35,13 +32,13 @@ class TestCase(testtools.TestCase):
         """Run before each test method to initialize test environment."""
 
         super(TestCase, self).setUp()
-        self.stubs = stubout.StubOutForTesting()
         self.stubbed_mapped_nics = {}
 
         def dummy_mapped_nics(nic_mapping=None):
             return self.stubbed_mapped_nics
         if self.stub_mapped_nics:
-            self.stubs.Set(objects, 'mapped_nics', dummy_mapped_nics)
+            self.stub_out('os_net_config.objects.mapped_nics',
+                          dummy_mapped_nics)
 
         test_timeout = os.environ.get('OS_TEST_TIMEOUT', 0)
         try:
@@ -64,7 +61,17 @@ class TestCase(testtools.TestCase):
 
         self.log_fixture = self.useFixture(fixtures.FakeLogger())
 
+    def stub_out(self, old, new):
+        """Replace a function for the duration of the test.
+
+        Use the monkey patch fixture to replace a function for the
+        duration of a test. Useful when you want to provide fake
+        methods instead of mocks during testing.
+
+        This should be used instead of set.stubs.Set (which is based
+        on mox) going forward.
+        """
+        self.useFixture(fixtures.MonkeyPatch(old, new))
+
     def tearDown(self):
-        self.stubs.UnsetAll()
-        self.stubs.SmartUnsetAll()
         super(TestCase, self).tearDown()
