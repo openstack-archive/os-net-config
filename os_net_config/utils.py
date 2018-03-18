@@ -270,6 +270,7 @@ def bind_dpdk_interfaces(ifname, driver, noop):
                     raise OvsDpdkBindException(msg)
 
             mac_address = interface_mac(ifname)
+            vendor_id = get_vendor_id(ifname)
             try:
                 out, err = processutils.execute('driverctl', 'set-override',
                                                 pci_address, driver)
@@ -278,6 +279,17 @@ def bind_dpdk_interfaces(ifname, driver, noop):
                     raise OvsDpdkBindException(msg)
                 else:
                     _update_dpdk_map(ifname, pci_address, mac_address, driver)
+                    # Not like other nics, beacause mellanox nics keep the
+                    # interface after binding it to dpdk, so we are adding
+                    # ethtool command with 10 attempts after binding the driver
+                    # just to make sure that the interface is initialized
+                    # successfully in order not to fail in each of this cases:
+                    # - get_dpdk_devargs() in case of OvsDpdkPort and
+                    #   OvsDpdkBond.
+                    # - bind_dpdk_interface() in case of OvsDpdkBond.
+                    if vendor_id == "0x15b3":
+                        processutils.execute('ethtool', '-i', ifname,
+                                             attempts=10)
 
             except processutils.ProcessExecutionError:
                 msg = "Failed to bind interface %s with dpdk" % ifname
