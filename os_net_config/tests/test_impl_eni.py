@@ -234,7 +234,7 @@ class TestENINetConfig(base.TestCase):
 
         def test_interface_mac(name):
             return "a1:b2:c3:d4:e5"
-        self.stubs.Set(utils, 'interface_mac', test_interface_mac)
+        self.stub_out('os_net_config.utils.interface_mac', test_interface_mac)
 
         interface = objects.Interface(self.if_name, primary=True)
         bridge = objects.OvsBridge('br0', use_dhcp=True,
@@ -249,7 +249,7 @@ class TestENINetConfig(base.TestCase):
 
         def test_interface_mac(name):
             return "a1:b2:c3:d4:e5"
-        self.stubs.Set(utils, 'interface_mac', test_interface_mac)
+        self.stub_out('os_net_config.utils.interface_mac', test_interface_mac)
 
         interface = objects.Interface(self.if_name, primary=True)
         ovs_extra = "br-set-external-id br0 bridge-id br0"
@@ -266,7 +266,7 @@ class TestENINetConfig(base.TestCase):
 
         def test_interface_mac(name):
             return "a1:b2:c3:d4:e5"
-        self.stubs.Set(utils, 'interface_mac', test_interface_mac)
+        self.stub_out('os_net_config.utils.interface_mac', test_interface_mac)
 
         interface = objects.Interface(self.if_name, primary=True)
         ovs_extra = "br-set-external-id {name} bridge-id {name}"
@@ -308,14 +308,15 @@ class TestENINetConfigApply(base.TestCase):
 
         def test_config_path(prefix):
             return self.temp_config_file.name
-        self.stubs.Set(impl_eni, '_network_config_path', test_config_path)
+        self.stub_out(
+            'os_net_config.impl_eni._network_config_path', test_config_path)
 
         def test_execute(*args, **kwargs):
             if args[0] == '/sbin/ifup':
                 self.ifup_interface_names.append(args[1])
             pass
 
-        self.stubs.Set(processutils, 'execute', test_execute)
+        self.stub_out('oslo_concurrency.processutils.execute', test_execute)
 
         self.provider = impl_eni.ENINetConfig()
 
@@ -370,7 +371,8 @@ class TestENINetConfigApply(base.TestCase):
                                                      str(kwargs))
 
     def test_interface_failure(self):
-        self.stubs.Set(processutils, 'execute', self._failed_execute)
+        self.stub_out('oslo_concurrency.processutils.execute',
+                      self._failed_execute)
         v4_addr = objects.Address('192.168.1.2/24')
         interface = objects.Interface('em1', addresses=[v4_addr])
         self.provider.add_interface(interface)
@@ -380,7 +382,8 @@ class TestENINetConfigApply(base.TestCase):
         self.assertEqual(1, len(self.provider.errors))
 
     def test_interface_failure_multiple(self):
-        self.stubs.Set(processutils, 'execute', self._failed_execute)
+        self.stub_out('oslo_concurrency.processutils.execute',
+                      self._failed_execute)
         v4_addr = objects.Address('192.168.1.2/24')
         interface = objects.Interface('em1', addresses=[v4_addr])
         v4_addr2 = objects.Address('192.168.2.2/24')

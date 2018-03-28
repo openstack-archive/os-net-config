@@ -93,11 +93,12 @@ class TestUtils(base.TestCase):
     def test_ordered_active_nics(self):
 
         tmpdir = tempfile.mkdtemp()
-        self.stubs.Set(utils, '_SYS_CLASS_NET', tmpdir)
+        self.stub_out('os_net_config.utils._SYS_CLASS_NET', tmpdir)
 
         def test_is_available_nic(interface_name, check_active):
             return True
-        self.stubs.Set(utils, '_is_available_nic', test_is_available_nic)
+        self.stub_out('os_net_config.utils._is_available_nic',
+                      test_is_available_nic)
 
         for nic in ['a1', 'em1', 'em2', 'eth2', 'z1',
                     'enp8s0', 'enp10s0', 'enp1s0f0']:
@@ -138,7 +139,7 @@ class TestUtils(base.TestCase):
 
     def test_get_vf_devname_net_dir_not_found(self):
         tmpdir = tempfile.mkdtemp()
-        self.stubs.Set(utils, '_SYS_CLASS_NET', tmpdir)
+        self.stub_out('os_net_config.utils._SYS_CLASS_NET', tmpdir)
 
         self.assertRaises(utils.SriovVfNotFoundException,
                           utils.get_vf_devname, "eth1", 1, False)
@@ -146,7 +147,7 @@ class TestUtils(base.TestCase):
 
     def test_get_vf_devname_vf_dir_not_found(self):
         tmpdir = tempfile.mkdtemp()
-        self.stubs.Set(utils, '_SYS_CLASS_NET', tmpdir)
+        self.stub_out('os_net_config.utils._SYS_CLASS_NET', tmpdir)
 
         vf_path = os.path.join(utils._SYS_CLASS_NET, 'eth1/device/virtfn1/net')
         os.makedirs(vf_path)
@@ -157,7 +158,7 @@ class TestUtils(base.TestCase):
 
     def test_get_vf_devname_vf_dir_found(self):
         tmpdir = tempfile.mkdtemp()
-        self.stubs.Set(utils, '_SYS_CLASS_NET', tmpdir)
+        self.stub_out('os_net_config.utils._SYS_CLASS_NET', tmpdir)
 
         vf_path = os.path.join(utils._SYS_CLASS_NET,
                                'eth1/device/virtfn1/net/eth1_1')
@@ -171,7 +172,7 @@ class TestUtils(base.TestCase):
             if 'ethtool' in name:
                 out = _PCI_OUTPUT
                 return out, None
-        self.stubs.Set(processutils, 'execute', test_execute)
+        self.stub_out('oslo_concurrency.processutils.execute', test_execute)
         pci = utils.get_pci_address('nic2', False)
         self.assertEqual('0000:00:19.0', pci)
 
@@ -179,7 +180,7 @@ class TestUtils(base.TestCase):
         def test_execute(name, dummy1, dummy2=None, dummy3=None):
             if 'ethtool' in name:
                 raise processutils.ProcessExecutionError
-        self.stubs.Set(processutils, 'execute', test_execute)
+        self.stub_out('oslo_concurrency.processutils.execute', test_execute)
         pci = utils.get_pci_address('nic2', False)
         self.assertEqual(None, pci)
 
@@ -187,7 +188,7 @@ class TestUtils(base.TestCase):
         def test_execute(name, dummy1, dummy2=None, dummy3=None):
             if 'ethtool' in name:
                 return None, 'Error'
-        self.stubs.Set(processutils, 'execute', test_execute)
+        self.stub_out('oslo_concurrency.processutils.execute', test_execute)
         pci = utils.get_pci_address('nic2', False)
         self.assertEqual(None, pci)
 
@@ -197,7 +198,7 @@ class TestUtils(base.TestCase):
                      'mac_address': '01:02:03:04:05:06',
                      'driver': 'vfio-pci'}]
 
-        self.stubs.Set(utils, '_get_dpdk_map', test_get_dpdk_map)
+        self.stub_out('os_net_config.utils._get_dpdk_map', test_get_dpdk_map)
         pci = utils.get_stored_pci_address('eth1', False)
         self.assertEqual('0000:00:09.0', pci)
 
@@ -205,7 +206,7 @@ class TestUtils(base.TestCase):
         def test_get_dpdk_map():
             return []
 
-        self.stubs.Set(utils, '_get_dpdk_map', test_get_dpdk_map)
+        self.stub_out('os_net_config.utils._get_dpdk_map', test_get_dpdk_map)
         pci = utils.get_stored_pci_address('eth1', False)
         self.assertEqual(None, pci)
 
@@ -245,9 +246,9 @@ class TestUtils(base.TestCase):
 
         def test_get_dpdk_mac_address(name):
             return '01:02:03:04:05:06'
-        self.stubs.Set(processutils, 'execute', test_execute)
-        self.stubs.Set(utils, '_get_dpdk_mac_address',
-                       test_get_dpdk_mac_address)
+        self.stub_out('oslo_concurrency.processutils.execute', test_execute)
+        self.stub_out('os_net_config.utils._get_dpdk_mac_address',
+                      test_get_dpdk_mac_address)
         try:
             utils.bind_dpdk_interfaces('nic2', 'vfio-pci', False)
         except utils.OvsDpdkBindException:
@@ -263,9 +264,9 @@ class TestUtils(base.TestCase):
 
         def test_get_dpdk_mac_address(name):
             return '01:02:03:04:05:06'
-        self.stubs.Set(processutils, 'execute', test_execute)
-        self.stubs.Set(utils, '_get_dpdk_mac_address',
-                       test_get_dpdk_mac_address)
+        self.stub_out('oslo_concurrency.processutils.execute', test_execute)
+        self.stub_out('os_net_config.utils._get_dpdk_mac_address',
+                      test_get_dpdk_mac_address)
 
         self.assertRaises(utils.OvsDpdkBindException,
                           utils.bind_dpdk_interfaces, 'eth1', 'vfio-pci',
@@ -286,10 +287,10 @@ class TestUtils(base.TestCase):
                      'mac_address': '01:02:03:04:05:06',
                      'driver': 'vfio-pci'}]
 
-        self.stubs.Set(utils, '_get_dpdk_map', test_get_dpdk_map)
-        self.stubs.Set(processutils, 'execute', test_execute)
-        self.stubs.Set(utils, '_get_dpdk_mac_address',
-                       test_get_dpdk_mac_address)
+        self.stub_out('os_net_config.utils._get_dpdk_map', test_get_dpdk_map)
+        self.stub_out('oslo_concurrency.processutils.execute', test_execute)
+        self.stub_out('os_net_config.utils_get_dpdk_mac_address',
+                      test_get_dpdk_mac_address)
         try:
             utils.bind_dpdk_interfaces('eth1', 'vfio-pci', False)
         except utils.OvsDpdkBindException:
@@ -310,10 +311,12 @@ class TestUtils(base.TestCase):
                      'mac_address': '01:02:03:04:05:06',
                      'driver': 'vfio-pci'}]
 
-        self.stubs.Set(utils, '_get_dpdk_map', test_get_dpdk_map)
-        self.stubs.Set(processutils, 'execute', test_execute)
-        self.stubs.Set(utils, '_get_dpdk_mac_address',
-                       test_get_dpdk_mac_address)
+        self.stub_out('os_net_config.utils_get_dpdk_map',
+                      test_get_dpdk_map)
+        self.stub_out('oslo_concurrency.processutils.execute',
+                      test_execute)
+        self.stub_out('os_net_config.utils._get_dpdk_mac_address',
+                      test_get_dpdk_mac_address)
 
         self.assertRaises(utils.OvsDpdkBindException,
                           utils.bind_dpdk_interfaces, 'eth2', 'vfio-pci',
@@ -367,11 +370,12 @@ class TestUtils(base.TestCase):
     def test_ordered_active_nics_with_dpdk_mapping(self):
 
         tmpdir = tempfile.mkdtemp()
-        self.stubs.Set(utils, '_SYS_CLASS_NET', tmpdir)
+        self.stub_out('os_net_config.utils._SYS_CLASS_NET', tmpdir)
 
         def test_is_available_nic(interface_name, check_active):
             return True
-        self.stubs.Set(utils, '_is_available_nic', test_is_available_nic)
+        self.stub_out('os_net_config.utils._is_available_nic',
+                      test_is_available_nic)
 
         for nic in ['a1', 'em1', 'em2', 'eth2', 'z1',
                     'enp8s0', 'enp10s0', 'enp1s0f0']:
@@ -404,7 +408,7 @@ class TestUtils(base.TestCase):
     def test_is_active_nic_for_sriov_vf(self):
 
         tmpdir = tempfile.mkdtemp()
-        self.stubs.Set(utils, '_SYS_CLASS_NET', tmpdir)
+        self.stub_out('os_net_config.utils._SYS_CLASS_NET', tmpdir)
 
         # SR-IOV PF = ens802f0
         # SR-IOV VF = enp129s2
@@ -432,7 +436,8 @@ class TestUtils(base.TestCase):
             if 'vppctl' in name:
                 return _VPPCTL_OUTPUT, None
 
-        self.stubs.Set(processutils, 'execute', test_execute)
+        self.stub_out('oslo_concurrency.processutils.execute',
+                      test_execute)
 
         int_info = utils._get_vpp_interface('0000:00:09.0')
         self.assertIsNotNone(int_info)
@@ -456,7 +461,7 @@ class TestUtils(base.TestCase):
             if 'vppctl' in name:
                 return _VPPBOND_OUTPUT, None
 
-        self.stubs.Set(processutils, 'execute', test_execute)
+        self.stub_out('oslo_concurrency.processutils.execute', test_execute)
         bond_info = utils._get_vpp_bond(['1', '2'])
         self.assertIsNotNone(bond_info)
         self.assertEqual('BondEthernet0', bond_info['name'])
@@ -548,17 +553,17 @@ dpdk {
                      'mac_address': '01:02:03:04:05:06',
                      'driver': 'vfio-pci'}]
 
-        self.stubs.Set(utils, '_get_dpdk_map', test_get_dpdk_map)
+        self.stub_out('os_net_config.utils._get_dpdk_map', test_get_dpdk_map)
 
         def test_execute(name, *args, **kwargs):
             return None, None
-        self.stubs.Set(processutils, 'execute', test_execute)
+        self.stub_out('oslo_concurrency.processutils.execute', test_execute)
 
         def test_get_vpp_interface(pci_dev, tries, timeout):
             return {'name': 'GigabitEthernet0/9/0', 'index': '1'}
 
-        self.stubs.Set(utils, '_get_vpp_interface',
-                       test_get_vpp_interface)
+        self.stub_out('os_net_config.utils._get_vpp_interface',
+                      test_get_vpp_interface)
 
         int1 = objects.VppInterface('eth1', options="vlan-strip-offload off")
         int1.pci_dev = '0000:00:09.0'
