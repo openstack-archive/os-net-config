@@ -1,0 +1,10 @@
+network_config:
+  -
+    type: contrail_vrouter
+    name: vhost0
+    members:
+      -
+        type: vlan
+        vlan_id: 100
+        device: em3
+    mtu: 1500

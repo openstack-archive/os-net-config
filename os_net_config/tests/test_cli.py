@@ -320,6 +320,25 @@ class TestCli(base.TestCase):
             self.assertIn(dev, stdout_yaml)
         self.assertEqual(stdout_yaml, stdout_json)
 
+    def test_contrail_vrouter_vlan_noop_output(self):
+        cvi_yaml = os.path.join(SAMPLE_BASE, 'contrail_vrouter_vlan.yaml')
+        cvi_json = os.path.join(SAMPLE_BASE, 'contrail_vrouter_vlan.json')
+        stdout_yaml, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
+                                           '--exit-on-validation-errors '
+                                           '-c %s' % cvi_yaml)
+        self.assertEqual('', stderr)
+        stdout_json, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
+                                           '--exit-on-validation-errors '
+                                           '-c %s' % cvi_json)
+        self.assertEqual('', stderr)
+        sanity_devices = ['DEVICE=vhost0',
+                          'BIND_INT=vlan100',
+                          'DEVICETYPE=vhost',
+                          'TYPE=kernel_mode']
+        for dev in sanity_devices:
+            self.assertIn(dev, stdout_yaml)
+        self.assertEqual(stdout_yaml, stdout_json)
+
     def test_contrail_vrouter_dpdk_noop_output(self):
         cvi_yaml = os.path.join(SAMPLE_BASE, 'contrail_vrouter_dpdk.yaml')
         cvi_json = os.path.join(SAMPLE_BASE, 'contrail_vrouter_dpdk.json')
