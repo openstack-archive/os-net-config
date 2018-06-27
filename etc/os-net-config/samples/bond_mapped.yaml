@@ -2,7 +2,7 @@
 # for device naming, which defaults to an ordered
 # translation to biodev names based on which interfaces
 # are active on the system.
-# Optionally the default mapping may be overriden by
+# Optionally the default mapping may be overridden by
 # a mapping file via the -m option.
 network_config:
   -
