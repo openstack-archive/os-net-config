@@ -21,6 +21,11 @@ The intention is for this code to be moved under the tripleo project in due cour
 * Source: http://git.openstack.org/cgit/openstack/os-net-config
 * Bugs: http://bugs.launchpad.net/os-net-config
 
+Release Notes
+-------------
+
+* https://docs.openstack.org/releasenotes/os-net-config
+
 Features
 --------
 
@@ -117,3 +122,5 @@ host system. By default 3 providers are implemented:
 When using bin/os-net-config the provider is automatically selected based on
 the host systems perferred persistent network type (ifcfg or ENI). This can
 be customized via the --provider CLI option.
+
+
