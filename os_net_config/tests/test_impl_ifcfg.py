@@ -484,6 +484,11 @@ class TestIfcfgNetConfig(base.TestCase):
 
         self.provider = impl_ifcfg.IfcfgNetConfig()
 
+        def stub_is_ovs_installed():
+            return True
+        self.stub_out('os_net_config.utils.is_ovs_installed',
+                      stub_is_ovs_installed)
+
     def tearDown(self):
         super(TestIfcfgNetConfig, self).tearDown()
         if os.path.isfile(sriov_config._SRIOV_CONFIG_FILE):
@@ -1637,6 +1642,11 @@ class TestIfcfgNetConfigApply(base.TestCase):
                 self.ovs_appctl_cmds.append(' '.join(args))
             pass
         self.stub_out('oslo_concurrency.processutils.execute', test_execute)
+
+        def stub_is_ovs_installed():
+            return True
+        self.stub_out('os_net_config.utils.is_ovs_installed',
+                      stub_is_ovs_installed)
 
         self.provider = impl_ifcfg.IfcfgNetConfig()
 

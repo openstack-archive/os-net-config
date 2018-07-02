@@ -113,6 +113,11 @@ class TestENINetConfig(base.TestCase):
     def setUp(self):
         super(TestENINetConfig, self).setUp()
 
+        def stub_is_ovs_installed():
+            return True
+        self.stub_out('os_net_config.utils.is_ovs_installed',
+                      stub_is_ovs_installed)
+
         self.provider = impl_eni.ENINetConfig()
         self.if_name = 'eth0'
 
@@ -310,6 +315,11 @@ class TestENINetConfigApply(base.TestCase):
             return self.temp_config_file.name
         self.stub_out(
             'os_net_config.impl_eni._network_config_path', test_config_path)
+
+        def stub_is_ovs_installed():
+            return True
+        self.stub_out('os_net_config.utils.is_ovs_installed',
+                      stub_is_ovs_installed)
 
         def test_execute(*args, **kwargs):
             if args[0] == '/sbin/ifup':

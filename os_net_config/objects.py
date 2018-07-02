@@ -212,6 +212,12 @@ def _add_fail_mode(fail_mode):
     return ovs_extra
 
 
+def check_ovs_installed(name):
+    if not utils.is_ovs_installed():
+        msg = '%s cannot be created as OpenvSwitch is not installed.' % name
+        raise InvalidConfigException(msg)
+
+
 class Route(object):
     """Base class for network routes."""
 
@@ -504,6 +510,9 @@ class OvsBridge(_BaseOpts):
                  ovs_extra=None, nic_mapping=None, persist_mapping=False,
                  defroute=True, dhclient_args=None, dns_servers=None,
                  nm_controlled=False, onboot=True, fail_mode=None):
+
+        check_ovs_installed(self.__class__.__name__)
+
         addresses = addresses or []
         routes = routes or []
         members = members or []
@@ -584,6 +593,9 @@ class OvsUserBridge(_BaseOpts):
                  ovs_extra=None, nic_mapping=None, persist_mapping=False,
                  defroute=True, dhclient_args=None, dns_servers=None,
                  nm_controlled=False, onboot=True, fail_mode=None):
+
+        check_ovs_installed(self.__class__.__name__)
+
         super(OvsUserBridge, self).__init__(name, use_dhcp, use_dhcpv6,
                                             addresses, routes, mtu, False,
                                             nic_mapping, persist_mapping,
@@ -907,6 +919,9 @@ class OvsBond(_BaseOpts):
                  ovs_options=None, ovs_extra=None, nic_mapping=None,
                  persist_mapping=False, defroute=True, dhclient_args=None,
                  dns_servers=None, nm_controlled=False, onboot=True):
+
+        check_ovs_installed(self.__class__.__name__)
+
         addresses = addresses or []
         routes = routes or []
         members = members or []
@@ -963,6 +978,9 @@ class OvsTunnel(_BaseOpts):
                  persist_mapping=False, defroute=True, dhclient_args=None,
                  dns_servers=None, nm_controlled=False, onboot=True,
                  tunnel_type=None, ovs_options=None, ovs_extra=None):
+
+        check_ovs_installed(self.__class__.__name__)
+
         addresses = addresses or []
         routes = routes or []
         dns_servers = dns_servers or []
@@ -998,6 +1016,9 @@ class OvsPatchPort(_BaseOpts):
                  dns_servers=None, nm_controlled=False, onboot=True,
                  bridge_name=None, peer=None, ovs_options=None,
                  ovs_extra=None):
+
+        check_ovs_installed(self.__class__.__name__)
+
         addresses = addresses or []
         routes = routes or []
         dns_servers = dns_servers or []
@@ -1061,6 +1082,8 @@ class OvsDpdkPort(_BaseOpts):
                  dns_servers=None, nm_controlled=False, onboot=True,
                  members=None, driver='vfio-pci', ovs_options=None,
                  ovs_extra=None, rx_queue=None):
+
+        check_ovs_installed(self.__class__.__name__)
 
         super(OvsDpdkPort, self).__init__(name, use_dhcp, use_dhcpv6,
                                           addresses, routes, mtu, primary,
@@ -1273,6 +1296,9 @@ class OvsDpdkBond(_BaseOpts):
                  persist_mapping=False, defroute=True, dhclient_args=None,
                  dns_servers=None, nm_controlled=False, onboot=True,
                  rx_queue=None):
+
+        check_ovs_installed(self.__class__.__name__)
+
         super(OvsDpdkBond, self).__init__(name, use_dhcp, use_dhcpv6,
                                           addresses, routes, mtu, primary,
                                           nic_mapping, persist_mapping,

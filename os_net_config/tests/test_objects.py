@@ -329,6 +329,11 @@ class TestBridge(base.TestCase):
         rand = str(int(random.random() * 100000))
         sriov_config._SRIOV_CONFIG_FILE = '/tmp/sriov_config_' + rand + '.yaml'
 
+        def stub_is_ovs_installed():
+            return True
+        self.stub_out('os_net_config.utils.is_ovs_installed',
+                      stub_is_ovs_installed)
+
     def tearDown(self):
         super(TestBridge, self).tearDown()
         if os.path.isfile(sriov_config._SRIOV_CONFIG_FILE):
@@ -807,6 +812,14 @@ class TestNfvswitchInterface(base.TestCase):
 
 class TestBond(base.TestCase):
 
+    def setUp(self):
+        super(TestBond, self).setUp()
+
+        def stub_is_ovs_installed():
+            return True
+        self.stub_out('os_net_config.utils.is_ovs_installed',
+                      stub_is_ovs_installed)
+
     def test_from_json_dhcp(self):
         data = """{
 "type": "ovs_bond",
@@ -931,7 +944,7 @@ class TestLinuxBond(base.TestCase):
         self.stub_out('os_net_config.objects.mapped_nics', dummy_mapped_nics)
 
         data = """{
-"type": "ovs_bond",
+"type": "linux_bond",
 "name": "bond1",
 "use_dhcp": true,
 "members": [
@@ -956,6 +969,14 @@ class TestLinuxBond(base.TestCase):
 
 
 class TestOvsTunnel(base.TestCase):
+
+    def setUp(self):
+        super(TestOvsTunnel, self).setUp()
+
+        def stub_is_ovs_installed():
+            return True
+        self.stub_out('os_net_config.utils.is_ovs_installed',
+                      stub_is_ovs_installed)
 
     def test_from_json(self):
         data = """{
@@ -1029,6 +1050,14 @@ class TestOvsTunnel(base.TestCase):
 
 
 class TestOvsPatchPort(base.TestCase):
+
+    def setUp(self):
+        super(TestOvsPatchPort, self).setUp()
+
+        def stub_is_ovs_installed():
+            return True
+        self.stub_out('os_net_config.utils.is_ovs_installed',
+                      stub_is_ovs_installed)
 
     def test_from_json(self):
         data = """{
@@ -1157,6 +1186,9 @@ class TestNicMapping(base.TestCase):
 
     # We want to test the function, not the dummy..
     stub_mapped_nics = False
+
+    def stub_is_ovs_installed(self):
+        return True
 
     def tearDown(self):
         super(TestNicMapping, self).tearDown()
@@ -1312,15 +1344,21 @@ class TestNicMapping(base.TestCase):
         self.assertEqual("bar", obj.members[1].name)
 
     def test_mapped_nics_ovs_bond(self):
+        self.stub_out('os_net_config.utils.is_ovs_installed',
+                      self.stub_is_ovs_installed)
         self._test_mapped_nics_with_parent("ovs_bond", "bond1")
 
     def test_mapped_nics_linux_bond(self):
         self._test_mapped_nics_with_parent("linux_bond", "bond1")
 
     def test_mapped_nics_ovs_bridge(self):
+        self.stub_out('os_net_config.utils.is_ovs_installed',
+                      self.stub_is_ovs_installed)
         self._test_mapped_nics_with_parent("ovs_bridge", "br-foo")
 
     def test_mapped_nics_ovs_user_bridge(self):
+        self.stub_out('os_net_config.utils.is_ovs_installed',
+                      self.stub_is_ovs_installed)
         self._test_mapped_nics_with_parent("ovs_user_bridge", "br-foo")
 
     def test_mapped_nics_linux_bridge(self):
@@ -1333,6 +1371,9 @@ class TestNicMapping(base.TestCase):
         self._test_mapped_nics_with_parent("team", "team-foo")
 
     def test_mapped_nics_bridge_and_bond(self):
+        self.stub_out('os_net_config.utils.is_ovs_installed',
+                      self.stub_is_ovs_installed)
+
         self._stub_available_nics(['foo', 'bar'])
         mapping = {"nic1": "foo", "nic2": "bar"}
 
@@ -1359,6 +1400,8 @@ class TestNicMapping(base.TestCase):
         self.assertEqual("bar", interface2.name)
 
     def test_mapped_nics_ovs_dpdk_bond(self):
+        self.stub_out('os_net_config.utils.is_ovs_installed',
+                      self.stub_is_ovs_installed)
         self._stub_available_nics(['foo', 'bar'])
         mapping = {"nic2": "foo", "nic3": "bar"}
 
@@ -1569,7 +1612,12 @@ class TestOvsDpdkBond(base.TestCase):
         self.stub_out('os_net_config.utils.ordered_active_nics',
                       dummy_ordered_active_nics)
 
+    def stub_is_ovs_installed(self):
+        return True
+
     def test_from_json_dhcp(self):
+        self.stub_out('os_net_config.utils.is_ovs_installed',
+                      self.stub_is_ovs_installed)
         self._stub_active_nics(['eth0', 'eth1', 'eth2'])
         data = """{
 "type": "ovs_dpdk_bond",
@@ -1681,4 +1729,65 @@ class TestVppBond(base.TestCase):
                                 objects.object_from_json,
                                 json.loads(data))
         expected = 'Members must be of type vpp_interface'
+        self.assertIn(expected, six.text_type(err))
+
+
+class TestOvsRequiredObjects(base.TestCase):
+
+    def test_ovs_bond(self):
+        data = """{
+        "type": "ovs_bond",
+        "name": "bond1",
+        "use_dhcp": true,
+        "members": [
+            {
+            "type": "interface",
+            "name": "nic1"
+            },
+            {
+            "type": "interface",
+            "name": "nic2"
+            }
+        ]
+        }
+        """
+
+        err = self.assertRaises(objects.InvalidConfigException,
+                                objects.OvsBond.from_json,
+                                json.loads(data))
+        expected = 'OvsBond cannot be created as OpenvSwitch is not installed.'
+        self.assertIn(expected, six.text_type(err))
+
+    def test_ovs_bridge(self):
+        data = """{
+        "type": "ovs_bridge",
+        "name": "br-foo",
+        "use_dhcp": true,
+        "members": [{
+            "type": "interface",
+            "name": "em1"
+        }]
+        }
+        """
+
+        err = self.assertRaises(objects.InvalidConfigException,
+                                objects.OvsBridge.from_json,
+                                json.loads(data))
+        expected = 'OvsBridge cannot be created as OpenvSwitch is not ' \
+                   'installed.'
+        self.assertIn(expected, six.text_type(err))
+
+    def test_dpdk_port(self):
+        data = """{
+            "type": "ovs_dpdk_port",
+            "name": "dpdk0",
+            "members": [{"type": "interface", "name": "nic"}]
+            }
+            """
+
+        err = self.assertRaises(objects.InvalidConfigException,
+                                objects.OvsDpdkPort.from_json,
+                                json.loads(data))
+        expected = 'OvsDpdkPort cannot be created as OpenvSwitch is not ' \
+                   'installed.'
         self.assertIn(expected, six.text_type(err))

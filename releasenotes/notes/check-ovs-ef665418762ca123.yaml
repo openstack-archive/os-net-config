@@ -1,0 +1,5 @@
+---
+fixes:
+  - OVS is not required for os-net-config to run but some objects (OvsBond,
+    OvsBridge etc.) rely on it being installed. This adds a check to ensure
+    OVS is installed before creating objects that need it.

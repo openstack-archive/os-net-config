@@ -38,6 +38,11 @@ class TestCli(base.TestCase):
         rand = str(int(random.random() * 100000))
         sriov_config._SRIOV_CONFIG_FILE = '/tmp/sriov_config_' + rand + '.yaml'
 
+        def stub_is_ovs_installed():
+            return True
+        self.stub_out('os_net_config.utils.is_ovs_installed',
+                      stub_is_ovs_installed)
+
     def tearDown(self):
         super(TestCli, self).tearDown()
         if os.path.isfile(sriov_config._SRIOV_CONFIG_FILE):
