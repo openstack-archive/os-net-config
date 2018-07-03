@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Adds support to use ``destination`` and ``nexthop`` as keys in the
+    ``Route`` objects. ``destination`` maps to ``ip_netmask`` and ``nexthop``
+    maps to ``next_hop``. Neutron Route objects use ``destination`` and
+    ``nexthop``, supporting the same schema allow passing a neutron route
+    directly to os-net-config.

@@ -119,7 +119,8 @@ definitions:
 
     route:
         type: object
-        properties:
+        oneOf:
+        - properties:
             next_hop:
                 $ref: "#/definitions/ip_address_string_or_param"
             ip_netmask:
@@ -128,9 +129,21 @@ definitions:
                 $ref: "#/definitions/bool_or_param"
             route_options:
                 $ref: "#/definitions/string_or_param"
-        required:
-          - next_hop
-        additionalProperties: False
+          requires:
+            - next_hop
+          additionalProperties: False
+        - properties:
+            nexthop:
+                $ref: "#/definitions/ip_address_string_or_param"
+            destination:
+                $ref: "#/definitions/ip_cidr_string_or_param"
+            default:
+                $ref: "#/definitions/bool_or_param"
+            route_options:
+                $ref: "#/definitions/string_or_param"
+          requires:
+            - nexthop
+          additionalProperties: False
     list_of_route:
         type: array
         items:

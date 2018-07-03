@@ -224,8 +224,23 @@ class Route(object):
 
     @staticmethod
     def from_json(json):
-        next_hop = _get_required_field(json, 'next_hop', 'Route')
-        ip_netmask = json.get('ip_netmask', "")
+        if json.get('next_hop') and json.get('nexthop'):
+            msg = ('Invalid Route JSON object with both next_hop and nexthop '
+                   'configured. Use either next_hop or nexthop.')
+            raise InvalidConfigException(msg)
+
+        if json.get('ip_netmask') and json.get('destination'):
+            msg = ('Invalid Route JSON object with both ip_netmask and '
+                   'destination configured. Use either ip_netmask or '
+                   'destination.')
+            raise InvalidConfigException(msg)
+
+        next_hop = json.get('next_hop', json.get('nexthop'))
+        if next_hop is None:
+            msg = ('Route JSON objects require next_hop or nexthop to be '
+                   'configured.')
+            raise InvalidConfigException(msg)
+        ip_netmask = json.get('ip_netmask', json.get('destination', ""))
         route_options = json.get('route_options', "")
         default = strutils.bool_from_string(str(json.get('default', False)))
         return Route(next_hop, ip_netmask, default, route_options)
