@@ -816,7 +816,10 @@ definitions:
             members:
                 type: array
                 items:
-                  - $ref: "#/definitions/interface"
+                    oneof:
+                      - $ref: "#/definitions/interface"
+                      - $ref: "#/definitions/vlan"
+                      - $ref: "#/definitions/linux_bond"
                 minItems: 1
                 maxItems: 1
             # common options:

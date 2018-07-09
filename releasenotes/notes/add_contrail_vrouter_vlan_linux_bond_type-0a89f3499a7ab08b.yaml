@@ -1,0 +1,8 @@
+---
+issues:
+  - |
+    Currently the member interface for a contrail vrouter interface can only
+    be of type interface. Types vlan and linux_bond are needed.
+fixes:
+  - |
+    This fix adds support for member interfaces of type vlan and linux_bond
