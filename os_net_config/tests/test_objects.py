@@ -49,6 +49,24 @@ class TestRoute(base.TestCase):
         self.assertTrue(route.default)
         self.assertEqual("metric 10", route.route_options)
 
+    def test_from_json_neutron_schema(self):
+        data = '{"nexthop": "172.19.0.254", "destination": "192.168.1.0/26"}'
+        route = objects.Route.from_json(json.loads(data))
+        self.assertEqual("172.19.0.254", route.next_hop)
+        self.assertEqual("192.168.1.0/26", route.ip_netmask)
+
+        data = {'nexthop': '172.19.0.254',
+                'next_hop': '172.19.0.1',
+                'destination': '192.168.1.0/26'}
+        self.assertRaises(objects.InvalidConfigException,
+                          objects.Route.from_json, data)
+
+        data = {'nexthop': '172.19.0.254',
+                'destination': '192.168.1.0/26',
+                'ip_netmask': '172.19.0.0/24'}
+        self.assertRaises(objects.InvalidConfigException,
+                          objects.Route.from_json, data)
+
 
 class TestAddress(base.TestCase):
 
