@@ -698,7 +698,9 @@ definitions:
             members:
                 type: array
                 items:
-                  - $ref: "#/definitions/interface"
+                    oneof:
+                      - $ref: "#/definitions/interface"
+                      - $ref: "#/definitions/sriov_vf"
                 minItems: 1
                 maxItems: 1
             primary:

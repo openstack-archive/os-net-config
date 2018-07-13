@@ -219,7 +219,34 @@ class TestCli(base.TestCase):
         self.assertEqual('', stderr)
         sanity_devices = ['DEVICE=p2p1',
                           'DEVICE=p2p1_5',
-                          'DEVICE=p2p1_1']
+                          'DEVICE=p2p1_1',
+                          'DEVICE=br-vfs',
+                          'TYPE=OVSBridge']
+        for dev in sanity_devices:
+            self.assertIn(dev, stdout_yaml)
+        self.assertEqual(stdout_yaml, stdout_json)
+
+    def test_sriov_vf_with_dpdk_noop_output(self):
+        def test_get_vf_devname(device, vfid):
+            return device + '_' + str(vfid)
+        self.stub_out('os_net_config.utils.get_vf_devname',
+                      test_get_vf_devname)
+        ivs_yaml = os.path.join(SAMPLE_BASE, 'sriov_pf_ovs_dpdk.yaml')
+        ivs_json = os.path.join(SAMPLE_BASE, 'sriov_pf_ovs_dpdk.json')
+        stdout_yaml, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
+                                           '--exit-on-validation-errors '
+                                           '-c %s' % ivs_yaml)
+        self.assertEqual('', stderr)
+        stdout_json, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
+                                           '--exit-on-validation-errors '
+                                           '-c %s' % ivs_json)
+        self.assertEqual('', stderr)
+        sanity_devices = ['DEVICE=p2p1',
+                          'DEVICE=p2p1_5',
+                          'DEVICE=br-vfs',
+                          'TYPE=OVSUserBridge',
+                          'DEVICE=dpdk0',
+                          'TYPE=OVSDPDKPort']
         for dev in sanity_devices:
             self.assertIn(dev, stdout_yaml)
         self.assertEqual(stdout_yaml, stdout_json)

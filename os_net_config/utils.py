@@ -483,6 +483,15 @@ def update_sriov_vf_map(pf_name, vfid, vf_name, vlan_id=0, qos=0,
     write_yaml_config(sriov_config._SRIOV_CONFIG_FILE, sriov_map)
 
 
+def _get_vf_name_from_map(pf_name, vfid):
+    sriov_map = _get_sriov_map()
+    for item in sriov_map:
+        if (item['device_type'] == 'vf' and
+           item['device'].get('name') == pf_name and
+           item['device'].get('vfid') == vfid):
+            return item['name']
+
+
 def _configure_sriov_config_service():
     """Generate the sriov_config.service
 
@@ -511,8 +520,15 @@ def get_vf_devname(pf_name, vfid):
     if os.path.isdir(vf_path):
         vf_nic = os.listdir(vf_path)
     else:
-        msg = "NIC %s with VF id: %d could not be found" % (pf_name, vfid)
-        raise SriovVfNotFoundException(msg)
+        # if VF devices are bound with other drivers (DPDK) then the path
+        # doesn't exist. In such cases let us retrieve the vf name stored in
+        # the map
+        vf_name = _get_vf_name_from_map(pf_name, vfid)
+        if vf_name is not None:
+            return vf_name
+        else:
+            msg = "NIC %s with VF id: %d could not be found" % (pf_name, vfid)
+            raise SriovVfNotFoundException(msg)
     if len(vf_nic) != 1:
         msg = "VF name could not be identified in %s" % vf_path
         raise SriovVfNotFoundException(msg)

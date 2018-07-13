@@ -1064,7 +1064,8 @@ class OvsDpdkPort(_BaseOpts):
                         member.update({'nic_mapping': nic_mapping})
                     member.update({'persist_mapping': persist_mapping})
                     iface = object_from_json(member)
-                    if isinstance(iface, Interface):
+                    if (isinstance(iface, Interface) or
+                       isinstance(iface, SriovVF)):
                         # TODO(skramaja): Add checks for IP and route not to
                         # be set in the interface part of DPDK Port
                         members.append(iface)
