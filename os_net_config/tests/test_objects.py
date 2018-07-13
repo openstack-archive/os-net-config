@@ -1210,13 +1210,27 @@ class TestSriovPF(base.TestCase):
 
     def test_from_json_numvfs(self):
         data = '{"type": "sriov_pf", "name": "em1", "numvfs": 16,' \
-               '"use_dhcp": false}'
+               '"use_dhcp": false, "promisc": false}'
         pf = objects.object_from_json(json.loads(data))
         self.assertEqual("em1", pf.name)
         self.assertEqual(16, pf.numvfs)
+        self.assertEqual("off", pf.promisc)
         self.assertFalse(pf.use_dhcp)
 
     def test_from_json_numvfs_nic1(self):
+        def dummy_mapped_nics(nic_mapping=None):
+            return {"nic1": "em4"}
+        self.stub_out('os_net_config.objects.mapped_nics', dummy_mapped_nics)
+
+        data = '{"type": "sriov_pf", "name": "nic1", "numvfs": 16,' \
+               '"use_dhcp": false, "promisc": true}'
+        pf = objects.object_from_json(json.loads(data))
+        self.assertEqual("em4", pf.name)
+        self.assertEqual(16, pf.numvfs)
+        self.assertFalse(pf.use_dhcp)
+        self.assertEqual('on', pf.promisc)
+
+    def test_from_json_without_promisc(self):
         def dummy_mapped_nics(nic_mapping=None):
             return {"nic1": "em4"}
         self.stub_out('os_net_config.objects.mapped_nics', dummy_mapped_nics)
@@ -1227,31 +1241,129 @@ class TestSriovPF(base.TestCase):
         self.assertEqual("em4", pf.name)
         self.assertEqual(16, pf.numvfs)
         self.assertFalse(pf.use_dhcp)
+        self.assertEqual(None, pf.promisc)
 
 
 class TestSriovVF(base.TestCase):
 
+    def setUp(self):
+        super(TestSriovVF, self).setUp()
+
+    def tearDown(self):
+        super(TestSriovVF, self).tearDown()
+
     def test_from_json_vfid(self):
+        def test_get_vf_devname(device, vfid):
+            return device + '_' + str(vfid)
+        self.stub_out('os_net_config.utils.get_vf_devname',
+                      test_get_vf_devname)
         data = '{"type": "sriov_vf", "device": "em1", "vfid": 16,' \
                '"use_dhcp": false}'
         vf = objects.object_from_json(json.loads(data))
         self.assertEqual("em1", vf.device)
         self.assertEqual(16, vf.vfid)
         self.assertFalse(vf.use_dhcp)
-        self.assertEqual("", vf.name)
+        self.assertEqual("em1_16", vf.name)
 
     def test_from_json_name_ignored(self):
+        def test_get_vf_devname(device, vfid):
+            return device + '_' + str(vfid)
+        self.stub_out('os_net_config.utils.get_vf_devname',
+                      test_get_vf_devname)
         data = '{"type": "sriov_vf", "device": "em1", "vfid": 16,' \
-               '"use_dhcp": false, "name": "em1_16"}'
+               '"use_dhcp": false, "name": "em1_7"}'
         vf = objects.object_from_json(json.loads(data))
         self.assertEqual("em1", vf.device)
         self.assertEqual(16, vf.vfid)
         self.assertFalse(vf.use_dhcp)
-        self.assertEqual("", vf.name)
+        self.assertEqual("em1_16", vf.name)
+
+    def test_from_json_vfid_configs_enabled(self):
+        def test_get_vf_devname(device, vfid):
+            return device + '_' + str(vfid)
+        self.stub_out('os_net_config.utils.get_vf_devname',
+                      test_get_vf_devname)
+
+        data = '{"type": "sriov_vf", "device": "em4", "vfid": 16,' \
+               '"use_dhcp": false, "vlan_id": 100, "qos": 2, "trust": true,' \
+               '"state": "auto", "spoofcheck": true,' \
+               '"macaddr":"AA:BB:CC:DD:EE:FF", "promisc": true}'
+        vf = objects.object_from_json(json.loads(data))
+        self.assertEqual("em4", vf.device)
+        self.assertEqual(16, vf.vfid)
+        self.assertFalse(vf.use_dhcp)
+        self.assertEqual("em4_16", vf.name)
+        self.assertEqual(100, vf.vlan_id)
+        self.assertEqual(2, vf.qos)
+        self.assertEqual("on", vf.spoofcheck)
+        self.assertEqual("on", vf.trust)
+        self.assertEqual("auto", vf.state)
+        self.assertEqual("AA:BB:CC:DD:EE:FF", vf.macaddr)
+        self.assertEqual("on", vf.promisc)
+
+    def test_from_json_vfid_configs_disabled(self):
+        def test_get_vf_devname(device, vfid):
+            return device + '_' + str(vfid)
+        self.stub_out('os_net_config.utils.get_vf_devname',
+                      test_get_vf_devname)
+
+        data = '{"type": "sriov_vf", "device": "em4", "vfid": 16,' \
+               '"use_dhcp": false, "vlan_id": 0, "qos": 0, "trust": false,' \
+               '"state": "disable", "spoofcheck": false,' \
+               '"promisc": false}'
+        vf = objects.object_from_json(json.loads(data))
+        self.assertEqual("em4", vf.device)
+        self.assertEqual(16, vf.vfid)
+        self.assertFalse(vf.use_dhcp)
+        self.assertEqual("em4_16", vf.name)
+        self.assertEqual(0, vf.vlan_id)
+        self.assertEqual(0, vf.qos)
+        self.assertEqual("off", vf.spoofcheck)
+        self.assertEqual("off", vf.trust)
+        self.assertEqual("disable", vf.state)
+        self.assertEqual(None, vf.macaddr)
+        self.assertEqual("off", vf.promisc)
+
+    def test_from_json_vfid_invalid_state(self):
+        def test_get_vf_devname(device, vfid):
+            return device + '_' + str(vfid)
+        self.stub_out('os_net_config.utils.get_vf_devname',
+                      test_get_vf_devname)
+
+        data = '{"type": "sriov_vf", "device": "em4", "vfid": 16,' \
+               '"use_dhcp": false, "vlan_id": 0, "qos": 0, "trust": false,' \
+               '"state": "disabled", ' \
+               '"promisc": false}'
+        err = self.assertRaises(objects.InvalidConfigException,
+                                objects.object_from_json,
+                                json.loads(data))
+        expected = 'Expecting state to match auto/enable/disable'
+        self.assertIn(expected, six.text_type(err))
+
+    def test_from_json_vfid_invalid_qos(self):
+        def test_get_vf_devname(device, vfid):
+            return device + '_' + str(vfid)
+        self.stub_out('os_net_config.utils.get_vf_devname',
+                      test_get_vf_devname)
+
+        data = '{"type": "sriov_vf", "device": "em4", "vfid": 16,' \
+               '"use_dhcp": false, "vlan_id": 0, "qos": 10, "trust": false,' \
+               '"promisc": false}'
+        err = self.assertRaises(objects.InvalidConfigException,
+                                objects.object_from_json,
+                                json.loads(data))
+        expected = 'Vlan tag not set for QOS - VF: em4:16'
+        self.assertIn(expected, six.text_type(err))
 
     def test_from_json_vfid_nic1(self):
+        def test_get_vf_devname(device, vfid):
+            return device + '_' + str(vfid)
+        self.stub_out('os_net_config.utils.get_vf_devname',
+                      test_get_vf_devname)
+
         def dummy_mapped_nics(nic_mapping=None):
             return {"nic1": "em4"}
+
         self.stub_out('os_net_config.objects.mapped_nics', dummy_mapped_nics)
 
         data = '{"type": "sriov_vf", "device": "nic1", "vfid": 16,' \
@@ -1260,7 +1372,7 @@ class TestSriovVF(base.TestCase):
         self.assertEqual("em4", vf.device)
         self.assertEqual(16, vf.vfid)
         self.assertFalse(vf.use_dhcp)
-        self.assertEqual("", vf.name)
+        self.assertEqual("em4_16", vf.name)
 
 
 class TestOvsDpdkBond(base.TestCase):

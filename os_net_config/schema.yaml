@@ -30,7 +30,13 @@ definitions:
             type: string
             pattern: "(?i)^(t|true|on|y|yes|1|f|false|off|n|no|0)$"
           - $ref: "#/definitions/param"
-
+    sriov_vf_state_string:
+        type: string
+        pattern: "^(auto|enable|disable)$"
+    # MAC address type
+    mac_address_string:
+        type: string
+        pattern: "^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$"
     # IP address and address+prefix types
     ipv4_address_string:
         type: string
@@ -256,6 +262,8 @@ definitions:
                 $ref: "#/definitions/bool_or_param"
             numvfs:
                 $ref: "#/definitions/int_or_param"
+            promisc:
+                $ref: "#/definitions/bool_or_param"
             hotplug:
                 $ref: "#/definitions/bool_or_param"
             # common options:
@@ -300,8 +308,22 @@ definitions:
                 $ref: "#/definitions/string_or_param"
             vfid:
                 $ref: "#/definitions/int_or_param"
+            vlan_id:
+                $ref: "#/definitions/int_or_param"
+            qos:
+                $ref: "#/definitions/int_or_param"
             hotplug:
                 $ref: "#/definitions/bool_or_param"
+            spoofcheck:
+                $ref: "#/definitions/bool_or_param"
+            trust:
+                $ref: "#/definitions/bool_or_param"
+            promisc:
+                $ref: "#/definitions/bool_or_param"
+            macaddr:
+                $ref: "#/definitions/mac_address_string"
+            state:
+                $ref: "#/definitions/sriov_vf_state_string"
             # common options:
             use_dhcp:
                 $ref: "#/definitions/bool_or_param"
@@ -391,6 +413,7 @@ definitions:
                       - $ref: "#/definitions/ovs_bond"
                       - $ref: "#/definitions/ovs_tunnel"
                       - $ref: "#/definitions/ovs_patch_port"
+                      - $ref: "#/definitions/sriov_vf"
             ovs_options:
                 $ref: "#/definitions/ovs_options_string_or_param"
             ovs_extra:

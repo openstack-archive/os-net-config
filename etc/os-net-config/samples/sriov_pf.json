@@ -4,7 +4,8 @@
             "type": "sriov_pf",
             "name": "p2p1",
             "numvfs": 10,
-            "use_dhcp": false
+            "use_dhcp": false,
+            "promisc": on
         },
         {
           "type": "sriov_vf",
@@ -14,7 +15,31 @@
             {
               "ip_netmask": "192.0.2.1/24"
             }
-          ]
+          ],
+          "vlan_id": 100,
+          "qos": 2,
+          "spoofcheck": true,
+          "macaddr": "00:78:90:80:cc:30",
+          "trust": true,
+          "state": auto,
+          "promisc": false
+        },
+        {
+            "type": "ovs_bridge",
+            "name": "br-vfs",
+            "members": [
+                {
+                    "type": "sriov_vf",
+                    "vfid": 1,
+                    "trust": true,
+                    "device": "p2p1",
+                    "promisc": true,
+                    "vlan_id": 116,
+                    "qos": 2,
+                    "spoofcheck": false
+                }
+            ],
+            "use_dhcp": true
         }
     ]
 }

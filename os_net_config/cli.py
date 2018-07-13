@@ -249,9 +249,16 @@ def main(argv=sys.argv):
     # Look for the presence of SriovPF types in the first parse of the json
     # if SriovPFs exists then PF devices needs to be configured so that the VF
     # devices are created.
+    # The VFs will not be available now and an exception
+    # SriovVfNotFoundException will be raised while fetching the device name.
+    # After the first parse the SR-IOV PF devices would be configured and the
+    # VF devices would be created.
     # In the second parse, all other objects shall be added
     for iface_json in iface_array:
-        obj = objects.object_from_json(iface_json)
+        try:
+            obj = objects.object_from_json(iface_json)
+        except utils.SriovVfNotFoundException:
+            continue
         if isinstance(obj, objects.SriovPF):
             configure_sriov = True
             provider.add_object(obj)
@@ -263,11 +270,20 @@ def main(argv=sys.argv):
         # All objects other than the sriov_pf will be added here.
         # The VFs are expected to be available now and an exception
         # SriovVfNotFoundException shall be raised if not available.
-        obj = objects.object_from_json(iface_json)
+        try:
+            obj = objects.object_from_json(iface_json)
+        except utils.SriovVfNotFoundException:
+            if not opts.noop:
+                raise
         if not isinstance(obj, objects.SriovPF):
             provider.add_object(obj)
+
+    if configure_sriov and not opts.noop:
+        utils.configure_sriov_vfs()
+
     files_changed = provider.apply(cleanup=opts.cleanup,
                                    activate=not opts.no_activate)
+
     if opts.noop:
         for location, data in files_changed.items():
             print("File: %s\n" % location)

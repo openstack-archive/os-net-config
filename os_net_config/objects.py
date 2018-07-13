@@ -1121,7 +1121,8 @@ class SriovVF(_BaseOpts):
                  addresses=None, routes=None, mtu=None, primary=False,
                  nic_mapping=None, persist_mapping=False, defroute=True,
                  dhclient_args=None, dns_servers=None, nm_controlled=False,
-                 onboot=True):
+                 onboot=True, vlan_id=0, qos=0, spoofcheck=None,
+                 trust=None, state=None, macaddr=None, promisc=None):
         addresses = addresses or []
         routes = routes or []
         dns_servers = dns_servers or []
@@ -1131,13 +1132,38 @@ class SriovVF(_BaseOpts):
         # Empty strings are set for the name field.
         # The provider shall identify the VF name from the PF device name
         # (device) and the VF id.
-        super(SriovVF, self).__init__("", use_dhcp, use_dhcpv6, addresses,
+        name = utils.get_vf_devname(device, vfid)
+        super(SriovVF, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
                                       routes, mtu, primary, nic_mapping,
                                       persist_mapping, defroute,
                                       dhclient_args, dns_servers,
                                       nm_controlled, onboot)
-        self.vfid = vfid
+        self.vfid = int(vfid)
         self.device = device
+        self.vlan_id = int(vlan_id)
+        self.qos = int(qos)
+        self.spoofcheck = spoofcheck
+        self.trust = trust
+        self.state = state
+        self.macaddr = macaddr
+        self.promisc = promisc
+        utils.update_sriov_vf_map(device, self.vfid, name,
+                                  vlan_id=self.vlan_id,
+                                  qos=self.qos,
+                                  spoofcheck=spoofcheck,
+                                  trust=trust,
+                                  state=state,
+                                  macaddr=macaddr,
+                                  promisc=promisc)
+
+    @staticmethod
+    def get_on_off(config):
+        rval = None
+        if config:
+            rval = "on"
+        elif config is False:
+            rval = "off"
+        return rval
 
     @staticmethod
     def from_json(json):
@@ -1146,7 +1172,22 @@ class SriovVF(_BaseOpts):
         # Get the PF device name
         device = _get_required_field(json, 'device', 'SriovVF')
         opts = _BaseOpts.base_opts_from_json(json)
-        return SriovVF(device, vfid, *opts)
+        vlan_id = json.get('vlan_id', 0)
+        qos = json.get('qos', 0)
+        if qos != 0 and vlan_id == 0:
+            msg = "Vlan tag not set for QOS - VF: %s:%d" % (device, vfid)
+            raise InvalidConfigException(msg)
+        spoofcheck = SriovVF.get_on_off(json.get('spoofcheck'))
+        trust = SriovVF.get_on_off(json.get('trust'))
+        promisc = SriovVF.get_on_off(json.get('promisc'))
+        state = json.get('state')
+        if state not in [None, 'auto', 'enable', 'disable']:
+            msg = 'Expecting state to match auto/enable/disable'
+            raise InvalidConfigException(msg)
+        macaddr = json.get('macaddr')
+        return SriovVF(device, vfid, *opts, vlan_id=vlan_id, qos=qos,
+                       spoofcheck=spoofcheck, trust=trust, state=state,
+                       macaddr=macaddr, promisc=promisc)
 
 
 class SriovPF(_BaseOpts):
@@ -1156,7 +1197,7 @@ class SriovPF(_BaseOpts):
                  addresses=None, routes=None, mtu=None, primary=False,
                  nic_mapping=None, persist_mapping=False, defroute=True,
                  dhclient_args=None, dns_servers=None, nm_controlled=False,
-                 onboot=True, members=None):
+                 onboot=True, members=None, promisc=None):
         addresses = addresses or []
         routes = routes or []
         dns_servers = dns_servers or []
@@ -1165,19 +1206,25 @@ class SriovPF(_BaseOpts):
                                       persist_mapping, defroute,
                                       dhclient_args, dns_servers,
                                       nm_controlled, onboot)
-        self.numvfs = numvfs
+        self.numvfs = int(numvfs)
         mapped_nic_names = mapped_nics(nic_mapping)
         if name in mapped_nic_names:
             self.name = mapped_nic_names[name]
         else:
             self.name = name
+        self.promisc = promisc
 
     @staticmethod
     def from_json(json):
         name = _get_required_field(json, 'name', 'SriovPF')
         numvfs = _get_required_field(json, 'numvfs', 'SriovPF')
+        promisc = json.get('promisc', None)
+        if promisc is True:
+            promisc = "on"
+        elif promisc is False:
+            promisc = "off"
         opts = _BaseOpts.base_opts_from_json(json)
-        return SriovPF(name, numvfs, *opts)
+        return SriovPF(name, numvfs, *opts, promisc=promisc)
 
 
 class OvsDpdkBond(_BaseOpts):
