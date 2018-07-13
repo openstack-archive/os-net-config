@@ -1,0 +1,87 @@
+
+
+network_config:
+  # sriov_pf type shall be used to configure the PF's of NICs.
+  # The numvfs configured for the PF's shall be set on the sriov_numvfs of the
+  # sysfs for the corresponding NIC and the persistence of the same across reboots
+  # shall be handled
+  -
+    type: sriov_pf
+    # nic name or nic number of the NIC that needs to be configured for SRIOV
+    name: p2p1
+    # number of VFs required on the particular NIC
+    numvfs: 10
+    # Dont set the IP address on the PF
+    use_dhcp: false
+    # Allow all the traffic received. It might be needed when one of its VF
+    # is attached to a ovs bridge
+    promisc: on
+
+  # sriov_vf type shall be used to configure the VF's of NICs.
+  # It requires the PF devices to be configured via sriov_pf types
+  # "name" parameter is not required for VF's. It'll be derived from the VF id
+  # and the PF device name.
+  - type: sriov_vf
+    # The PF device needs to be configured via the sriov_pf type
+    # the PF device could be a nic number (ex: nic5) or nic name (ex: ens20f0)
+    device: p2p1
+    # The VF id shall be the VF number between 0 to (numvfs-1), where numvfs
+    # is the member of the sriov_pf type
+    vfid: 5
+    addresses:
+    - ip_netmask: 192.0.2.1/24
+    # When specified, all traffic sent from the VF will be tagged with the
+    # specified VLAN ID. Incoming traffic will be filtered for the specified
+    # VLAN ID, and will have all VLAN tags stripped before being passed to the
+    # VF. Setting this parameter to 0 disables VLAN tagging and filtering.
+    vlan_id: 100
+    # VLAN-Quality Of Service (priority) bits for the VLAN tag.
+    # When specified, all VLAN tags transmitted by the VF will include the
+    # specified priority bits in the VLAN tag. Requires vlan_id
+    # Default value is 0.
+    qos: 2
+    # MAC spoofing is a method of altering the MAC address
+    # The MAC address anti-spoofing when enabled protects from malicious MAC
+    # address spoofing. It should be disabled for 802.3ad bonds.
+    spoofcheck: on
+    # Change the MAC address of the VF.
+    macaddr: 00:78:90:80:cc:30
+    # Enabling trust (true) for VF allows enabling multicast/promiscuous mode
+    # on the VF. The default value is off.
+    trust: on
+    # Link state seen by the VF
+    # - auto: a reflection of the PF link state (default)
+    # - enable: lets the VF to communicate with other VFs on this host even
+    #           if the PF link state is down
+    # - disable: causes the HW to drop any packets sent by the VF.
+    state: auto
+    # Enabling promisc mode allows the traffic originally targeted to go to the
+    # VF and it will also receive the unmatched traffic and all the multicast
+    # traffic received in the physical port. Note that all traffic that has
+    # destination mac that does not match any of the VFs/PF MAC addresses is
+    # referred to as unmatched traffic.
+    # The default value is off. Requires the enabling of trust mode
+    promisc: off
+  # Attach a SR-IOV VF to a ovs user bridge
+  - type: ovs_user_bridge
+    name: br-vfs
+    use_dhcp: false
+    members:
+    - type: ovs_dpdk_port
+      name: dpdk0
+      members:
+      # Specify the type
+      - type: sriov_vf
+        # Required field
+        device: p5p2
+        # Required field
+        vfid: 1
+        # Optional field
+        vlan_id: 116
+        # Optional field, but requires vlan_id
+        qos: 3
+        # Set trust to 'on' when attaching to ovs_user_bridge
+        trust: on
+        # Set spoofcheck to 'off' when attaching to ovs_user_bridge
+        spoofcheck: off
+        # Note: Do not set promisc mode.
