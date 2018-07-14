@@ -15,10 +15,15 @@
 # under the License.
 
 import json
+import os
+import random
 import six
+import yaml
 
 from os_net_config import objects
+from os_net_config import sriov_config
 from os_net_config.tests import base
+from os_net_config import utils
 
 
 class TestRoute(base.TestCase):
@@ -301,6 +306,16 @@ class TestVlan(base.TestCase):
 
 class TestBridge(base.TestCase):
 
+    def setUp(self):
+        super(TestBridge, self).setUp()
+        rand = str(int(random.random() * 100000))
+        sriov_config._SRIOV_CONFIG_FILE = '/tmp/sriov_config_' + rand + '.yaml'
+
+    def tearDown(self):
+        super(TestBridge, self).tearDown()
+        if os.path.isfile(sriov_config._SRIOV_CONFIG_FILE):
+            os.remove(sriov_config._SRIOV_CONFIG_FILE)
+
     def test_from_json_dhcp(self):
         data = """{
 "type": "ovs_bridge",
@@ -319,6 +334,174 @@ class TestBridge(base.TestCase):
         self.assertEqual("em1", interface1.name)
         self.assertTrue(interface1.ovs_port)
         self.assertEqual("br-foo", interface1.bridge_name)
+
+    def test_ovs_bridge_with_vf_default(self):
+        data = """{
+"type": "ovs_bridge",
+"name": "br-foo",
+"use_dhcp": true,
+"members": [{
+    "type": "sriov_vf",
+    "device": "em1",
+    "vfid": 1,
+    "vlan_id": 111,
+    "qos": 1,
+    "spoofcheck": false
+}]
+}
+"""
+        vf_final = [{'device_type': 'vf', 'name': 'em1_1',
+                     'device': {'name': 'em1', 'vfid': 1},
+                     'vlan_id': 111, 'qos': 1,
+                     'spoofcheck': 'off', 'trust': 'on',
+                     'promisc': 'on'}]
+
+        def test_get_vf_devname(device, vfid):
+            return device + '_' + str(vfid)
+        self.stub_out('os_net_config.utils.get_vf_devname',
+                      test_get_vf_devname)
+
+        bridge = objects.object_from_json(json.loads(data))
+        self.assertEqual("br-foo", bridge.name)
+        self.assertTrue(bridge.use_dhcp)
+        interface1 = bridge.members[0]
+        self.assertEqual("em1", interface1.device)
+        self.assertTrue(interface1.ovs_port)
+        self.assertEqual("br-foo", interface1.bridge_name)
+
+        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        vf_map = yaml.load(contents) if contents else []
+        self.assertListEqual(vf_final, vf_map)
+
+    def test_ovs_bridge_with_vf_param_provided(self):
+        data = """{
+"type": "ovs_bridge",
+"name": "br-foo",
+"use_dhcp": true,
+"members": [{
+    "type": "sriov_vf",
+    "device": "em1",
+    "vfid": 1,
+    "vlan_id": 111,
+    "qos": 1,
+    "spoofcheck": false,
+    "trust": false,
+    "promisc": false
+}]
+}
+"""
+        vf_final = [{'device_type': 'vf', 'name': 'em1_1',
+                     'device': {'name': 'em1', 'vfid': 1},
+                     'vlan_id': 111, 'qos': 1,
+                     'spoofcheck': 'off', 'trust': 'off',
+                     'promisc': 'off'}]
+
+        def test_get_vf_devname(device, vfid):
+            return device + '_' + str(vfid)
+        self.stub_out('os_net_config.utils.get_vf_devname',
+                      test_get_vf_devname)
+
+        bridge = objects.object_from_json(json.loads(data))
+        self.assertEqual("br-foo", bridge.name)
+        self.assertTrue(bridge.use_dhcp)
+        interface1 = bridge.members[0]
+        self.assertEqual("em1", interface1.device)
+        self.assertTrue(interface1.ovs_port)
+        self.assertEqual("br-foo", interface1.bridge_name)
+
+        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        vf_map = yaml.load(contents) if contents else []
+        self.assertListEqual(vf_final, vf_map)
+
+    def test_ovs_user_bridge_with_vf_default(self):
+        data = """{
+"type": "ovs_user_bridge",
+"name": "br-foo",
+"use_dhcp": true,
+"members": [{
+        "type": "ovs_dpdk_port",
+        "name": "dpdk0",
+        "members": [
+            {
+                "type": "sriov_vf",
+                "device": "em1",
+                "vfid": 1,
+                "vlan_id": 111,
+                "qos": 1,
+                "spoofcheck": false
+            }
+        ]
+}]
+}
+"""
+        vf_final = [{'device_type': 'vf', 'name': 'em1_1',
+                     'device': {'name': 'em1', 'vfid': 1},
+                     'vlan_id': 111, 'qos': 1,
+                     'spoofcheck': 'off', 'trust': 'on'
+                     }]
+
+        def test_get_vf_devname(device, vfid):
+            return device + '_' + str(vfid)
+        self.stub_out('os_net_config.utils.get_vf_devname',
+                      test_get_vf_devname)
+
+        bridge = objects.object_from_json(json.loads(data))
+        self.assertEqual("br-foo", bridge.name)
+        self.assertTrue(bridge.use_dhcp)
+        dpdk_interface = bridge.members[0]
+        self.assertEqual("dpdk0", dpdk_interface.name)
+        self.assertFalse(dpdk_interface.ovs_port)
+        self.assertEqual("br-foo", dpdk_interface.bridge_name)
+
+        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        vf_map = yaml.load(contents) if contents else []
+        self.assertListEqual(vf_final, vf_map)
+
+    def test_ovs_user_bridge_with_param_set(self):
+        data = """{
+"type": "ovs_user_bridge",
+"name": "br-foo",
+"use_dhcp": true,
+"members": [{
+        "type": "ovs_dpdk_port",
+        "name": "dpdk0",
+        "members": [
+            {
+                "type": "sriov_vf",
+                "device": "em1",
+                "vfid": 1,
+                "vlan_id": 111,
+                "qos": 1,
+                "spoofcheck": false,
+                "trust": false,
+                "promisc": false
+            }
+        ]
+}]
+}
+"""
+        vf_final = [{'device_type': 'vf', 'name': 'em1_1',
+                     'device': {'name': 'em1', 'vfid': 1},
+                     'vlan_id': 111, 'qos': 1,
+                     'spoofcheck': 'off', 'trust': 'off'
+                     }]
+
+        def test_get_vf_devname(device, vfid):
+            return device + '_' + str(vfid)
+        self.stub_out('os_net_config.utils.get_vf_devname',
+                      test_get_vf_devname)
+
+        bridge = objects.object_from_json(json.loads(data))
+        self.assertEqual("br-foo", bridge.name)
+        self.assertTrue(bridge.use_dhcp)
+        dpdk_interface = bridge.members[0]
+        self.assertEqual("dpdk0", dpdk_interface.name)
+        self.assertFalse(dpdk_interface.ovs_port)
+        self.assertEqual("br-foo", dpdk_interface.bridge_name)
+
+        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        vf_map = yaml.load(contents) if contents else []
+        self.assertListEqual(vf_final, vf_map)
 
     def test_from_json_dhcp_with_nic1(self):
         def dummy_mapped_nics(nic_mapping=None):

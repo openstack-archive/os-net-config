@@ -506,6 +506,8 @@ class OvsBridge(_BaseOpts):
         self.ovs_extra = format_ovs_extra(self, ovs_extra)
         for member in self.members:
             member.bridge_name = name
+            if isinstance(member, SriovVF):
+                OvsBridge.update_vf_config(member)
             if not isinstance(member, OvsTunnel):
                 member.ovs_port = True
             if member.primary:
@@ -516,6 +518,22 @@ class OvsBridge(_BaseOpts):
                     self.primary_interface_name = member.primary_interface_name
                 else:
                     self.primary_interface_name = member.name
+
+    @staticmethod
+    def update_vf_config(iface):
+        if iface.trust is None:
+            logger.info("Trust is not set for VF %s:%d, defaulting to on"
+                        % (iface.device, iface.vfid))
+            iface.trust = "on"
+        if iface.promisc is None:
+            logger.info("Promisc is not set for VF %s:%d, defaulting to on"
+                        % (iface.device, iface.vfid))
+            iface.promisc = "on"
+        utils.update_sriov_vf_map(iface.device, iface.vfid, iface.name,
+                                  vlan_id=iface.vlan_id, qos=iface.qos,
+                                  spoofcheck=iface.spoofcheck,
+                                  trust=iface.trust, state=iface.state,
+                                  macaddr=iface.macaddr, promisc=iface.promisc)
 
     @staticmethod
     def from_json(json):
@@ -1041,6 +1059,21 @@ class OvsDpdkPort(_BaseOpts):
         self.rx_queue = rx_queue
 
     @staticmethod
+    def update_vf_config(iface):
+        if iface.trust is None:
+            logger.info("Trust is not set for VF %s:%d, defaulting to on"
+                        % (iface.device, iface.vfid))
+            iface.trust = "on"
+        if iface.promisc is not None:
+            logger.warning("Promisc can't be changed for ovs_dpdk_port")
+            iface.promisc = None
+        utils.update_sriov_vf_map(iface.device, iface.vfid, iface.name,
+                                  vlan_id=iface.vlan_id, qos=iface.qos,
+                                  spoofcheck=iface.spoofcheck,
+                                  trust=iface.trust, state=iface.state,
+                                  macaddr=iface.macaddr, promisc=iface.promisc)
+
+    @staticmethod
     def from_json(json):
         name = _get_required_field(json, 'name', 'OvsDpdkPort')
         # driver name by default will be 'vfio-pci' if not specified
@@ -1064,10 +1097,13 @@ class OvsDpdkPort(_BaseOpts):
                         member.update({'nic_mapping': nic_mapping})
                     member.update({'persist_mapping': persist_mapping})
                     iface = object_from_json(member)
-                    if (isinstance(iface, Interface) or
-                       isinstance(iface, SriovVF)):
+                    if isinstance(iface, Interface):
+
                         # TODO(skramaja): Add checks for IP and route not to
                         # be set in the interface part of DPDK Port
+                        members.append(iface)
+                    elif isinstance(iface, SriovVF):
+                        OvsDpdkPort.update_vf_config(iface)
                         members.append(iface)
                     else:
                         msg = 'OVS DPDK Port should have only interface member'
