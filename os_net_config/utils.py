@@ -18,6 +18,7 @@ import glob
 import logging
 import os
 import re
+import six
 import time
 import yaml
 
@@ -446,19 +447,24 @@ def _set_vf_fields(vf_name, vlan_id, qos, spoofcheck, trust, state, macaddr,
     vf_configs['name'] = vf_name
     if vlan_id != 0:
         vf_configs['vlan_id'] = vlan_id
+    else:
+        vf_configs['vlan_id'] = None
     if qos != 0:
         vf_configs['qos'] = qos
-    if spoofcheck is not None:
-        vf_configs['spoofcheck'] = spoofcheck
-    if trust is not None:
-        vf_configs['trust'] = trust
-    if state is not None:
-        vf_configs['state'] = state
-    if macaddr is not None:
-        vf_configs['macaddr'] = macaddr
-    if promisc is not None:
-        vf_configs['promisc'] = promisc
+    else:
+        vf_configs['qos'] = None
+    vf_configs['spoofcheck'] = spoofcheck
+    vf_configs['trust'] = trust
+    vf_configs['state'] = state
+    vf_configs['macaddr'] = macaddr
+    vf_configs['promisc'] = promisc
     return vf_configs
+
+
+def _clear_empty_values(vf_config):
+    for (key, val) in list(six.iteritems(vf_config)):
+        if val is None:
+            del vf_config[key]
 
 
 def update_sriov_vf_map(pf_name, vfid, vf_name, vlan_id=0, qos=0,
@@ -471,6 +477,7 @@ def update_sriov_vf_map(pf_name, vfid, vf_name, vlan_id=0, qos=0,
            item['device'].get('vfid') == vfid):
             item.update(_set_vf_fields(vf_name, vlan_id, qos, spoofcheck,
                                        trust, state, macaddr, promisc))
+            _clear_empty_values(item)
             break
     else:
         new_item = {}
@@ -478,6 +485,7 @@ def update_sriov_vf_map(pf_name, vfid, vf_name, vlan_id=0, qos=0,
         new_item['device'] = {"name": pf_name, "vfid": vfid}
         new_item.update(_set_vf_fields(vf_name, vlan_id, qos, spoofcheck,
                                        trust, state, macaddr, promisc))
+        _clear_empty_values(new_item)
         sriov_map.append(new_item)
 
     write_yaml_config(sriov_config._SRIOV_CONFIG_FILE, sriov_map)
