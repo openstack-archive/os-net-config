@@ -242,11 +242,31 @@ class TestUtils(base.TestCase):
                           utils.get_vf_devname, "eth1", 1)
         shutil.rmtree(tmpdir)
 
+    def test_get_vf_devname_vf_dir_found_in_map(self):
+        tmpdir = tempfile.mkdtemp()
+        self.stub_out('os_net_config.utils._SYS_CLASS_NET', tmpdir)
+
+        def test_get_vf_name_from_map(pf_name, vfid):
+            return pf_name + '_' + str(vfid)
+        self.stub_out('os_net_config.utils._get_vf_name_from_map',
+                      test_get_vf_name_from_map)
+
+        vf_path = os.path.join(utils._SYS_CLASS_NET, 'eth1/device/virtfn1')
+        os.makedirs(vf_path)
+
+        self.assertEqual(utils.get_vf_devname("eth1", 1), "eth1_1")
+        shutil.rmtree(tmpdir)
+
     def test_get_vf_devname_vf_dir_not_found(self):
         tmpdir = tempfile.mkdtemp()
         self.stub_out('os_net_config.utils._SYS_CLASS_NET', tmpdir)
 
-        vf_path = os.path.join(utils._SYS_CLASS_NET, 'eth1/device/virtfn1/net')
+        def test_get_vf_name_from_map(pf_name, vfid):
+            return None
+        self.stub_out('os_net_config.utils._get_vf_name_from_map',
+                      test_get_vf_name_from_map)
+
+        vf_path = os.path.join(utils._SYS_CLASS_NET, 'eth1/device/virtfn1')
         os.makedirs(vf_path)
 
         self.assertRaises(utils.SriovVfNotFoundException,
