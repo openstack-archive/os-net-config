@@ -1734,6 +1734,9 @@ class TestVppBond(base.TestCase):
 
 class TestOvsRequiredObjects(base.TestCase):
 
+    def stub_is_ovs_installed(self):
+        return False
+
     def test_ovs_bond(self):
         data = """{
         "type": "ovs_bond",
@@ -1752,6 +1755,8 @@ class TestOvsRequiredObjects(base.TestCase):
         }
         """
 
+        self.stub_out('os_net_config.utils.is_ovs_installed',
+                      self.stub_is_ovs_installed)
         err = self.assertRaises(objects.InvalidConfigException,
                                 objects.OvsBond.from_json,
                                 json.loads(data))
@@ -1770,6 +1775,8 @@ class TestOvsRequiredObjects(base.TestCase):
         }
         """
 
+        self.stub_out('os_net_config.utils.is_ovs_installed',
+                      self.stub_is_ovs_installed)
         err = self.assertRaises(objects.InvalidConfigException,
                                 objects.OvsBridge.from_json,
                                 json.loads(data))
@@ -1785,6 +1792,8 @@ class TestOvsRequiredObjects(base.TestCase):
             }
             """
 
+        self.stub_out('os_net_config.utils.is_ovs_installed',
+                      self.stub_is_ovs_installed)
         err = self.assertRaises(objects.InvalidConfigException,
                                 objects.OvsDpdkPort.from_json,
                                 json.loads(data))
