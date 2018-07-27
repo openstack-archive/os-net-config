@@ -120,6 +120,15 @@ class TestInterface(base.TestCase):
         self.assertEqual("em1", interface.name)
         self.assertTrue(interface.use_dhcp)
 
+    def test_from_json_dotted_vlan(self):
+        def dummy_mapped_nics(nic_mapping=None):
+            return {"nic1": "em3"}
+        self.stub_out('os_net_config.objects.mapped_nics', dummy_mapped_nics)
+
+        data = '{"type": "interface", "name": "nic1.10", "use_dhcp": true}'
+        interface = objects.object_from_json(json.loads(data))
+        self.assertEqual("em3.10", interface.name)
+
     def test_from_json_hotplug(self):
         data = """{
 "type": "interface",
