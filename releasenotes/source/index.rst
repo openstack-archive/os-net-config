@@ -6,4 +6,5 @@ os-net-config Release Notes
    :maxdepth: 1
 
    unreleased
+   rocky
    queens
