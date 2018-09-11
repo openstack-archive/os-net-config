@@ -911,7 +911,7 @@ definitions:
                   - $ref: "#/definitions/int_or_param"
             driver:
                 $ref: "#/definitions/string_or_param"
-            coremask:
+            cpu_list:
                 $ref: "#/definitions/string_or_param"
             vlan_id:
                 oneOf:
