@@ -1,0 +1,6 @@
+---
+other:
+  - |
+    The schema now allow the ``routes`` option to be an empty list. (Previously
+    at least one route was was required.) Bug: `1792992
+    <https://bugs.launchpad.net/os-net-config/+bug/1792992>_`.
