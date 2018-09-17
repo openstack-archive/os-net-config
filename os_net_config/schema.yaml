@@ -179,7 +179,7 @@ definitions:
         type: array
         items:
             $ref: "#/definitions/route"
-        minItems: 1
+        minItems: 0
 
     route_rule:
         type: object
