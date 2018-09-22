@@ -1,18 +1,12 @@
 - project:
     templates:
-      - tripleo-multinode-baremetal-minimal
-      - tripleo-multinode-container-minimal
       - check-requirements
+      - openstack-cover-jobs
       - openstack-python-jobs
       - openstack-python35-jobs
       - openstack-python36-jobs
       - release-notes-jobs-python3
-    check:
-      jobs:
-        - openstack-tox-py35
-        - openstack-tox-cover:
-            voting: false
+      - tripleo-multinode-baremetal-minimal
+      - tripleo-multinode-container-minimal
     gate:
       queue: tripleo
-      jobs:
-        - openstack-tox-py35
