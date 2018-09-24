@@ -1,0 +1,5 @@
+---
+fixes:
+  - When the ivs interface (or nfvswitch) configuration changes,
+    ivs (or nvfswitch) needs to be restarted in order to pick
+    up the new configuration.
