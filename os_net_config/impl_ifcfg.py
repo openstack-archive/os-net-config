@@ -1110,13 +1110,21 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         if ivs_uplinks or ivs_interfaces:
             location = ivs_config_path()
             data = self.generate_ivs_config(ivs_uplinks, ivs_interfaces)
-            self.write_config(location, data)
+            if (utils.diff(location, data)):
+                self.write_config(location, data)
+                msg = "Restart ivs"
+                self.execute(msg, '/usr/bin/systemctl',
+                             'restart', 'ivs')
 
         if nfvswitch_interfaces or nfvswitch_internal_ifaces:
             location = nfvswitch_config_path()
             data = self.generate_nfvswitch_config(nfvswitch_interfaces,
                                                   nfvswitch_internal_ifaces)
-            self.write_config(location, data)
+            if (utils.diff(location, data)):
+                self.write_config(location, data)
+                msg = "Restart nfvswitch"
+                self.execute(msg, '/usr/bin/systemctl',
+                             'restart', 'nfvswitch')
 
         if activate:
             for linux_team in restart_linux_teams:
