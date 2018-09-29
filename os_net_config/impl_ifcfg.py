@@ -16,6 +16,7 @@
 
 import glob
 import logging
+import netaddr
 import os
 import re
 
@@ -126,6 +127,183 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         self.renamed_interfaces = {}
         self.bond_primary_ifaces = {}
         logger.info('Ifcfg net config provider created.')
+
+    def parse_ifcfg(self, ifcfg_data):
+        """Break out the key/value pairs from ifcfg_data
+
+           Return the keys and values without quotes.
+           """
+        ifcfg_values = {}
+        for line in ifcfg_data.split("\n"):
+            if not line.startswith("#") and line.find("=") > 0:
+                k, v = line.split("=", 1)
+                ifcfg_values[k] = v.strip("\"'")
+        return ifcfg_values
+
+    def parse_ifcfg_routes(self, ifcfg_data):
+        """Break out the individual routes from an ifcfg route file."""
+        routes = []
+        for line in ifcfg_data.split("\n"):
+            if not line.startswith("#"):
+                routes.append(line)
+        return routes
+
+    def enumerate_ifcfg_changes(self, ifcfg_data_old, ifcfg_data_new):
+        """Determine which values are added/modified/removed
+
+        :param ifcfg_data_old: content of existing ifcfg file
+        :param ifcfg_data_new: content of replacement ifcfg file
+        :return: dict of changed values and states (added, removed, modified)
+        """
+
+        changed_values = {}
+        for key in ifcfg_data_old:
+            if key in ifcfg_data_new:
+                if ifcfg_data_old[key].upper() != ifcfg_data_new[key].upper():
+                    changed_values[key] = "modified"
+            else:
+                changed_values[key] = "removed"
+        for key in ifcfg_data_new:
+            if key not in ifcfg_data_old:
+                changed_values[key] = "added"
+        return changed_values
+
+    def enumerate_ifcfg_route_changes(self, old_routes, new_routes):
+        """Determine which routes are added or removed.
+
+        :param file_values: contents of existing interface route file
+        :param data_values: contents of replacement interface route file
+        :return: list of tuples representing changes (route, state), where
+                 state is one of added or removed
+        """
+
+        route_changes = []
+        for route in old_routes:
+            if route not in new_routes:
+                route_changes.append((route, 'removed'))
+        for route in new_routes:
+            if route not in old_routes:
+                route_changes.append((route, 'added'))
+        return route_changes
+
+    def ifcfg_requires_restart(self, filename, new_data):
+        """Determine if changes to the ifcfg file require a restart to apply.
+
+           Simple changes like IP, MTU, and routes can be directly applied
+           without restarting the interface.
+
+        :param filename: The ifcfg-<int> filename.
+        :type filename: string
+        :param new_data: The data for the new ifcfg-<int> file.
+        :type new_data: string
+        :returns: boolean value for whether a restart is required
+        """
+
+        file_data = utils.get_file_data(filename)
+        logger.debug("Original ifcfg file:\n%s" % file_data)
+        logger.debug("New ifcfg file:\n%s" % new_data)
+        file_values = self.parse_ifcfg(file_data)
+        new_values = self.parse_ifcfg(new_data)
+        restart_required = False
+        # Certain changes can be applied without restarting the interface
+        permitted_changes = [
+            "IPADDR",
+            "NETMASK",
+            "MTU",
+            "ONBOOT"
+        ]
+        # Check whether any of the changes require restart
+        for change in self.enumerate_ifcfg_changes(file_values, new_values):
+            if change not in permitted_changes:
+                # Moving to DHCP requires restarting interface
+                if change in ["BOOTPROTO", "OVSBOOTPROTO"]:
+                    if change in new_values:
+                        if (new_values[change].upper() == "DHCP"):
+                            restart_required = True
+                            logger.debug(
+                                "DHCP on %s requires restart" % change)
+                else:
+                    restart_required = True
+        if not restart_required:
+            logger.debug("Changes do not require restart")
+        return restart_required
+
+    def iproute2_apply_commands(self, device_name, filename, data):
+        """Return list of commands needed to implement changes.
+
+           Given ifcfg data for an interface, return commands required to
+           apply the configuration using 'ip' commands.
+
+        :param device_name: The name of the int, bridge, or bond
+        :type device_name: string
+        :param filename: The ifcfg-<int> filename.
+        :type filename: string
+        :param data: The data for the new ifcfg-<int> file.
+        :type data: string
+        :returns: commands (commands to be run)
+        """
+
+        previous_cfg = utils.get_file_data(filename)
+        file_values = self.parse_ifcfg(previous_cfg)
+        data_values = self.parse_ifcfg(data)
+        logger.debug("File values:\n%s" % file_values)
+        logger.debug("Data values:\n%s" % data_values)
+        changes = self.enumerate_ifcfg_changes(file_values, data_values)
+        commands = []
+        new_cidr = 0
+        old_cidr = 0
+        # Convert dot notation netmask to CIDR length notation
+        if "NETMASK" in file_values:
+            netmask = file_values["NETMASK"]
+            old_cidr = netaddr.IPAddress(netmask).netmask_bits()
+        if "NETMASK" in data_values:
+            netmask = data_values["NETMASK"]
+            new_cidr = netaddr.IPAddress(netmask).netmask_bits()
+        if "IPADDR" in changes:
+            if changes["IPADDR"] == "removed" or changes[
+                "IPADDR"] == "modified":
+                if old_cidr:
+                    commands.append("addr del %s/%s dev %s" %
+                                    (file_values["IPADDR"], old_cidr,
+                                     device_name))
+                else:
+                    # Cannot remove old IP specifically if netmask not known
+                    commands.append("addr flush dev %s" % device_name)
+            if changes["IPADDR"] == "added" or changes["IPADDR"] == "modified":
+                commands.insert(0, "addr add %s/%s dev %s" %
+                                (data_values["IPADDR"], new_cidr, device_name))
+        if "MTU" in changes:
+            if changes["MTU"] == "added" or changes["MTU"] == "modified":
+                commands.append("link set dev %s mtu %s" %
+                                (device_name, data_values["MTU"]))
+            elif changes["MTU"] == "removed":
+                commands.append("link set dev %s mtu 1500" % device_name)
+        return commands
+
+    def iproute2_route_commands(self, filename, data):
+        """Return a list of commands for 'ip route' to modify routing table.
+
+           The list of commands is generated by comparing the old and new
+           configs, and calculating which routes need to be added and which
+           need to be removed.
+
+        :param filename: path to the original interface route file
+        :param data: data that is to be written to new route file
+        :return: list of commands to feed to 'ip' to reconfigure routes
+        """
+
+        file_values = self.parse_ifcfg_routes(utils.get_file_data(filename))
+        data_values = self.parse_ifcfg_routes(data)
+        route_changes = self.enumerate_ifcfg_route_changes(file_values,
+                                                           data_values)
+        commands = []
+
+        for route in route_changes:
+            if route[1] == 'removed':
+                commands.append('route del ' + route[0])
+            elif route[1] == 'added':
+                commands.append('route add ' + route[0])
+        return commands
 
     def child_members(self, name):
         children = set()
@@ -834,6 +1012,9 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         restart_linux_bonds = []
         restart_linux_teams = []
         restart_vpp = False
+        apply_interfaces = []
+        apply_bridges = []
+        apply_routes = []
         update_files = {}
         all_file_names = []
         ivs_uplinks = []  # ivs physical uplinks
@@ -844,6 +1025,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         ovs_needs_restart = False
         vpp_interfaces = self.vpp_interface_data.values()
         vpp_bonds = self.vpp_bond_data.values()
+        ipcmd = utils.iproute2_path()
 
         for interface_name, iface_data in self.interface_data.items():
             route_data = self.route_data.get(interface_name, '')
@@ -858,25 +1040,31 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 ivs_uplinks.append(interface_name)
             if "NFVSWITCH_BRIDGE" in iface_data:
                 nfvswitch_interfaces.append(interface_name)
-            all_file_names.append(route6_path)
-            if (utils.diff(interface_path, iface_data) or
-                    utils.diff(route_path, route_data) or
-                    utils.diff(route6_path, route6_data)):
-                restart_interfaces.append(interface_name)
-                restart_interfaces.extend(self.child_members(interface_name))
+            if utils.diff(interface_path, iface_data):
+                if self.ifcfg_requires_restart(interface_path, iface_data):
+                    restart_interfaces.append(interface_name)
+                    # Openvswitch needs to be restarted when OVSDPDKPort or
+                    # OVSDPDKBond is added
+                    if "OVSDPDK" in iface_data:
+                        ovs_needs_restart = True
+                else:
+                    apply_interfaces.append(
+                        (interface_name, interface_path, iface_data))
                 update_files[interface_path] = iface_data
-                update_files[route_path] = route_data
-                update_files[route6_path] = route6_data
                 if "BOOTPROTO=dhcp" not in iface_data:
                     stop_dhclient_interfaces.append(interface_name)
-                # Openvswitch needs to be restarted when OVSDPDKPort or
-                # OVSDPDKBond is added
-                if "OVSDPDK" in iface_data:
-                    ovs_needs_restart = True
 
             else:
                 logger.info('No changes required for interface: %s' %
                             interface_name)
+            if utils.diff(route_path, route_data):
+                update_files[route_path] = route_data
+                if interface_name not in restart_interfaces:
+                    apply_routes.append((interface_name, route_data))
+            if utils.diff(route6_path, route6_data):
+                update_files[route6_path] = route6_data
+                if interface_name not in restart_interfaces:
+                    apply_routes.append((interface_name, route6_data))
 
         for interface_name, iface_data in self.ivsinterface_data.items():
             route_data = self.route_data.get(interface_name, '')
@@ -888,16 +1076,24 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             all_file_names.append(route_path)
             all_file_names.append(route6_path)
             ivs_interfaces.append(interface_name)
-            if (utils.diff(interface_path, iface_data) or
-                    utils.diff(route_path, route_data)):
-                restart_interfaces.append(interface_name)
-                restart_interfaces.extend(self.child_members(interface_name))
+            if utils.diff(interface_path, iface_data):
+                if self.ifcfg_requires_restart(interface_path, iface_data):
+                    restart_interfaces.append(interface_name)
+                else:
+                    apply_interfaces.append(
+                        (interface_name, interface_path, iface_data))
                 update_files[interface_path] = iface_data
-                update_files[route_path] = route_data
-                update_files[route6_path] = route6_data
             else:
                 logger.info('No changes required for ivs interface: %s' %
                             interface_name)
+            if utils.diff(route_path, route_data):
+                update_files[route_path] = route_data
+                if interface_name not in restart_interfaces:
+                    apply_routes.append((interface_name, route_data))
+            if utils.diff(route6_path, route6_data):
+                update_files[route6_path] = route6_data
+                if interface_name not in restart_interfaces:
+                    apply_routes.append((interface_name, route6_data))
 
         for iface_name, iface_data in self.nfvswitch_intiface_data.items():
             route_data = self.route_data.get(iface_name, '')
@@ -909,16 +1105,24 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             all_file_names.append(route_path)
             all_file_names.append(route6_path)
             nfvswitch_internal_ifaces.append(iface_name)
-            if (utils.diff(iface_path, iface_data) or
-                    utils.diff(route_path, route_data)):
-                restart_interfaces.append(iface_name)
-                restart_interfaces.extend(self.child_members(iface_name))
+            if utils.diff(iface_path, iface_data):
+                if self.ifcfg_requires_restart(iface_path, iface_data):
+                    restart_interfaces.append(iface_name)
+                else:
+                    apply_interfaces.append(
+                        (iface_name, iface_path, iface_data))
                 update_files[iface_path] = iface_data
-                update_files[route_path] = route_data
-                update_files[route6_path] = route6_data
             else:
                 logger.info('No changes required for nfvswitch interface: %s' %
                             iface_name)
+            if utils.diff(route_path, route_data):
+                update_files[route_path] = route_data
+                if iface_name not in restart_interfaces:
+                    apply_routes.append((iface_name, route_data))
+            if utils.diff(route6_path, route6_data):
+                update_files[route6_path] = route6_data
+                if iface_name not in restart_interfaces:
+                    apply_routes.append((iface_name, route6_data))
 
         for vlan_name, vlan_data in self.vlan_data.items():
             route_data = self.route_data.get(vlan_name, '')
@@ -929,16 +1133,24 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             all_file_names.append(vlan_path)
             all_file_names.append(vlan_route_path)
             all_file_names.append(vlan_route6_path)
-            if (utils.diff(vlan_path, vlan_data) or
-                    utils.diff(vlan_route_path, route_data)):
-                restart_vlans.append(vlan_name)
-                restart_vlans.extend(self.child_members(vlan_name))
+            if utils.diff(vlan_path, vlan_data):
+                if self.ifcfg_requires_restart(vlan_path, vlan_data):
+                    restart_vlans.append(vlan_name)
+                else:
+                    apply_interfaces.append(
+                        (vlan_name, vlan_path, vlan_data))
                 update_files[vlan_path] = vlan_data
-                update_files[vlan_route_path] = route_data
-                update_files[vlan_route6_path] = route6_data
             else:
                 logger.info('No changes required for vlan interface: %s' %
                             vlan_name)
+            if utils.diff(vlan_route_path, route_data):
+                update_files[vlan_route_path] = route_data
+                if vlan_name not in restart_vlans:
+                    apply_routes.append((vlan_name, route_data))
+            if utils.diff(vlan_route6_path, route6_data):
+                update_files[vlan_route6_path] = route6_data
+                if vlan_name not in restart_vlans:
+                    apply_routes.append((vlan_name, route6_data))
 
         for bridge_name, bridge_data in self.bridge_data.items():
             route_data = self.route_data.get(bridge_name, '')
@@ -949,20 +1161,28 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             all_file_names.append(bridge_path)
             all_file_names.append(br_route_path)
             all_file_names.append(br_route6_path)
-            if (utils.diff(bridge_path, bridge_data) or
-                    utils.diff(br_route_path, route_data) or
-                    utils.diff(br_route6_path, route6_data)):
-                restart_bridges.append(bridge_name)
-                # Avoid duplicate interface being added to the restart list
-                children = self.child_members(bridge_name)
-                for child in children:
-                    if child not in restart_interfaces:
-                        restart_interfaces.append(child)
+            if utils.diff(bridge_path, bridge_data):
+                if self.ifcfg_requires_restart(bridge_path, bridge_data):
+                    restart_bridges.append(bridge_name)
+                    # Avoid duplicate interface being added to the restart list
+                    children = self.child_members(bridge_name)
+                    for child in children:
+                        if child not in restart_interfaces:
+                            restart_interfaces.append(child)
+                else:
+                    apply_bridges.append((bridge_name, bridge_path,
+                                          bridge_data))
                 update_files[bridge_path] = bridge_data
-                update_files[br_route_path] = route_data
-                update_files[br_route6_path] = route6_data
             else:
                 logger.info('No changes required for bridge: %s' % bridge_name)
+            if utils.diff(br_route_path, route_data):
+                update_files[br_route_path] = route_data
+                if bridge_name not in restart_interfaces:
+                    apply_routes.append((bridge_name, route_data))
+            if utils.diff(br_route6_path, route6_data):
+                update_files[br_route6_path] = route6_data
+                if bridge_name not in restart_interfaces:
+                    apply_routes.append((bridge_name, route6_data))
 
         for bridge_name, bridge_data in self.linuxbridge_data.items():
             route_data = self.route_data.get(bridge_name, '')
@@ -973,16 +1193,28 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             all_file_names.append(bridge_path)
             all_file_names.append(br_route_path)
             all_file_names.append(br_route6_path)
-            if (utils.diff(bridge_path, bridge_data) or
-                    utils.diff(br_route_path, route_data) or
-                    utils.diff(br_route6_path, route6_data)):
-                restart_bridges.append(bridge_name)
-                restart_interfaces.extend(self.child_members(bridge_name))
+            if utils.diff(bridge_path, bridge_data):
+                if self.ifcfg_requires_restart(bridge_path, bridge_data):
+                    restart_bridges.append(bridge_name)
+                    # Avoid duplicate interface being added to the restart list
+                    children = self.child_members(bridge_name)
+                    for child in children:
+                        if child not in restart_interfaces:
+                            restart_interfaces.append(child)
+                else:
+                    apply_bridges.append((bridge_name, bridge_path,
+                                          bridge_data))
                 update_files[bridge_path] = bridge_data
-                update_files[br_route_path] = route_data
-                update_files[br_route6_path] = route6_data
             else:
                 logger.info('No changes required for bridge: %s' % bridge_name)
+            if utils.diff(br_route_path, route_data):
+                update_files[br_route_path] = route_data
+                if bridge_name not in restart_bridges:
+                    apply_routes.append((bridge_name, route_data))
+            if utils.diff(route6_path, route6_data):
+                update_files[route6_path] = route6_data
+                if bridge_name not in restart_bridges:
+                    apply_routes.append((bridge_name, route6_data))
 
         for team_name, team_data in self.linuxteam_data.items():
             route_data = self.route_data.get(team_name, '')
@@ -993,17 +1225,29 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             all_file_names.append(team_path)
             all_file_names.append(team_route_path)
             all_file_names.append(team_route6_path)
-            if (utils.diff(team_path, team_data) or
-                    utils.diff(team_route_path, route_data) or
-                    utils.diff(team_route6_path, route6_data)):
-                restart_linux_teams.append(team_name)
-                restart_interfaces.extend(self.child_members(team_name))
+            if utils.diff(team_path, team_data):
+                if self.ifcfg_requires_restart(team_path, team_data):
+                    restart_linux_teams.append(team_name)
+                    # Avoid duplicate interface being added to the restart list
+                    children = self.child_members(team_name)
+                    for child in children:
+                        if child not in restart_interfaces:
+                            restart_interfaces.append(child)
+                else:
+                    apply_interfaces.append(
+                        (team_name, team_path, team_data))
                 update_files[team_path] = team_data
-                update_files[team_route_path] = route_data
-                update_files[team_route6_path] = route6_data
             else:
                 logger.info('No changes required for linux team: %s' %
                             team_name)
+            if utils.diff(team_route_path, route_data):
+                update_files[team_route_path] = route_data
+                if team_name not in restart_linux_teams:
+                    apply_routes.append((team_name, route_data))
+            if utils.diff(team_route6_path, route6_data):
+                update_files[team_route6_path] = route6_data
+                if team_name not in restart_linux_teams:
+                    apply_routes.append((team_name, route6_data))
 
         for bond_name, bond_data in self.linuxbond_data.items():
             route_data = self.route_data.get(bond_name, '')
@@ -1014,17 +1258,29 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             all_file_names.append(bond_path)
             all_file_names.append(bond_route_path)
             all_file_names.append(bond_route6_path)
-            if (utils.diff(bond_path, bond_data) or
-                    utils.diff(bond_route_path, route_data) or
-                    utils.diff(bond_route6_path, route6_data)):
-                restart_linux_bonds.append(bond_name)
-                restart_interfaces.extend(self.child_members(bond_name))
+            if utils.diff(bond_path, bond_data):
+                if self.ifcfg_requires_restart(bond_path, bond_data):
+                    restart_linux_bonds.append(bond_name)
+                    # Avoid duplicate interface being added to the restart list
+                    children = self.child_members(bond_name)
+                    for child in children:
+                        if child not in restart_interfaces:
+                            restart_interfaces.append(child)
+                else:
+                    apply_interfaces.append(
+                        (bond_name, bond_path, bond_data))
                 update_files[bond_path] = bond_data
-                update_files[bond_route_path] = route_data
-                update_files[bond_route6_path] = route6_data
             else:
                 logger.info('No changes required for linux bond: %s' %
                             bond_name)
+            if utils.diff(bond_route_path, route_data):
+                update_files[bond_route_path] = route_data
+                if bond_name not in restart_linux_bonds:
+                    apply_routes.append((bond_name, route_data))
+            if utils.diff(bond_route6_path, route6_data):
+                update_files[bond_route6_path] = route6_data
+                if bond_name not in restart_linux_bonds:
+                    apply_routes.append((bond_name, route6_data))
 
         # Infiniband interfaces are handled similarly to Ethernet interfaces
         for interface_name, iface_data in self.ib_interface_data.items():
@@ -1039,18 +1295,24 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             # TODO(dsneddon) determine if InfiniBand can be used with IVS
             if "IVS_BRIDGE" in iface_data:
                 ivs_uplinks.append(interface_name)
-            all_file_names.append(route6_path)
-            if (utils.diff(interface_path, iface_data) or
-                    utils.diff(route_path, route_data) or
-                    utils.diff(route6_path, route6_data)):
-                restart_interfaces.append(interface_name)
-                restart_interfaces.extend(self.child_members(interface_name))
+            if utils.diff(interface_path, iface_data):
+                if self.ifcfg_requires_restart(interface_path, iface_data):
+                    restart_interfaces.append(interface_name)
+                else:
+                    apply_interfaces.append(
+                        (interface_name, interface_path, iface_data))
                 update_files[interface_path] = iface_data
-                update_files[route_path] = route_data
-                update_files[route6_path] = route6_data
             else:
                 logger.info('No changes required for InfiniBand iface: %s' %
                             interface_name)
+            if utils.diff(route_path, route_data):
+                update_files[route_path] = route_data
+                if interface_name not in restart_interfaces:
+                    apply_routes.append((interface_name, route_data))
+            if utils.diff(route6_path, route6_data):
+                update_files[route6_path] = route6_data
+                if interface_name not in restart_interfaces:
+                    apply_routes.append((interface_name, route6_data))
 
         if self.vpp_interface_data or self.vpp_bond_data:
             vpp_path = self.root_dir + vpp_config_path()
@@ -1073,6 +1335,57 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                         self.remove_config(ifcfg_file)
 
         if activate:
+            for interface in apply_interfaces:
+                logger.debug('Running ip commands on interface: %s' %
+                             interface[0])
+                commands = self.iproute2_apply_commands(interface[0],
+                                                        interface[1],
+                                                        interface[2])
+                for command in commands:
+                    try:
+                        args = command.split()
+                        self.execute('Running ip %s' % command, ipcmd, *args)
+                    except Exception as e:
+                        logger.warning("Error in 'ip %s', restarting %s:\n%s" %
+                                       (command, interface[0], str(e)))
+                        restart_interfaces.append(interface[0])
+                        restart_interfaces.extend(
+                            self.child_members(interface[0]))
+                        break
+
+            for bridge in apply_bridges:
+                logger.debug('Running ip commands on bridge: %s' %
+                             interface[0])
+                commands = self.iproute2_apply_commands(interface[0],
+                                                        interface[1],
+                                                        interface[2])
+                for command in commands:
+                    try:
+                        args = command.split()
+                        self.execute('Running ip %s' % command, ipcmd, *args)
+                    except Exception as e:
+                        logger.warning("Error in 'ip %s', restarting %s:\n%s" %
+                                       (command, interface[0], str(e)))
+                        restart_bridges.append(interface[0])
+                        restart_interfaces.extend(
+                            self.child_members(interface[0]))
+                        break
+
+            for interface in apply_routes:
+                logger.debug('Applying routes for interface %s' % interface[0])
+                commands = self.iproute2_route_commands(interface[0],
+                                                        interface[1])
+                for command in commands:
+                    try:
+                        self.execute('Running ip %s' % command, ipcmd, command)
+                    except Exception as e:
+                        logger.warning("Error in 'ip %s', restarting %s:\n%s" %
+                                       (command, interface[0], str(e)))
+                        restart_interfaces.append(interface[0])
+                        restart_interfaces.extend(
+                            self.child_members(interface[0]))
+                        break
+
             for vlan in restart_vlans:
                 self.ifdown(vlan)
 

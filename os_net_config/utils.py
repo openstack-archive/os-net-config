@@ -835,3 +835,15 @@ def is_ovs_installed():
     ovs-bridges etc.
     """
     return os.path.exists("/usr/bin/ovs-appctl")
+
+
+def iproute2_path():
+    """Find 'ip' executable."""
+    if os.access('/sbin/ip', os.X_OK):
+        ipcmd = '/sbin/ip'
+    elif os.access('/usr/sbin/ip', os.X_OK):
+        ipcmd = '/usr/sbin/ip'
+    else:
+        logger.warning("Could not execute /sbin/ip or /usr/sbin/ip")
+        return False
+    return ipcmd
