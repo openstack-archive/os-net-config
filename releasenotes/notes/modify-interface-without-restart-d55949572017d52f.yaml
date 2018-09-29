@@ -1,0 +1,12 @@
+---
+features:
+  - |
+    Some changes can now be made to interfaces without restarting. Changes to
+    routes, IP addresses, netmask, or MTU will now be applied using iproute2
+    without restarting the interface, and the ifcfg file will be updated.
+other:
+  - |
+    Since this change uses iproute2 to make changes to live interfaces, it
+    does not allow MTU on DPDK interfaces to be modified in place. DPDK
+    requires that ovs-vsctl be run to modify MTU. For DPDK interfaces, MTU
+    changes will result in an interface restart.
