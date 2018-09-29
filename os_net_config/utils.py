@@ -757,3 +757,26 @@ def update_vpp_mapping(vpp_interfaces, vpp_bonds):
     # Enable VPP service to make the VPP interface configuration
     # persistent.
     processutils.execute('systemctl', 'enable', 'vpp')
+
+
+def is_ovs_installed():
+    """Check if OpenVswitch is installed
+
+    Verify that OpenVswitch is installed by checking if
+    ovs-appctl is on the system.  If OVS is not installed
+    it will limit os-net-config's ability to set up ovs-bonds,
+    ovs-bridges etc.
+    """
+    return os.path.exists("/usr/bin/ovs-appctl")
+
+
+def iproute2_path():
+    """Find 'ip' executable."""
+    if os.access('/sbin/ip', os.X_OK):
+        ipcmd = '/sbin/ip'
+    elif os.access('/usr/sbin/ip', os.X_OK):
+        ipcmd = '/usr/sbin/ip'
+    else:
+        logger.warning("Could not execute /sbin/ip or /usr/sbin/ip")
+        return False
+    return ipcmd
