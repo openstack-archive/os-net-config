@@ -1,0 +1,6 @@
+---
+fixes:
+  - The ovs-appctl command may fail, particularly when setting an
+    interface as a slave in a bond if the primary interface is not
+    yet up.  Retry the ovs-appctl command and log a failure if the
+    command still fails.
