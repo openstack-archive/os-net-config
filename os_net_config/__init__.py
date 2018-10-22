@@ -334,5 +334,19 @@ class NetConfig(object):
                      'link', 'set', 'dev', newname, 'up')
 
     def ovs_appctl(self, action, *parameters):
+        """Run 'ovs-appctl' with the specified action
+
+         Its possible the command may fail due to timing if, for example,
+         the command affects an interface and it the prior ifup command
+         has not completed.  So retry the command and if a failures still
+         occurs save the error for later handling.
+
+         :param action: The ovs-appctl action.
+         :param parameters: Parameters to pass to ovs-appctl.
+         """
         msg = 'Running ovs-appctl %s %s' % (action, parameters)
-        self.execute(msg, '/bin/ovs-appctl', action, *parameters)
+        try:
+            self.execute(msg, '/bin/ovs-appctl', action, *parameters,
+                         delay_on_retry=True, attempts=5)
+        except processutils.ProcessExecutionError as e:
+            self.errors.append(e)
