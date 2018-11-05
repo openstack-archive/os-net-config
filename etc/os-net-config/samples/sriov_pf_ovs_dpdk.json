@@ -5,7 +5,14 @@
             "name": "p2p1",
             "numvfs": 10,
             "use_dhcp": false,
-            "promisc": on
+            "promisc": true
+        },
+        {
+            "type": "sriov_pf",
+            "name": "p2p2",
+            "numvfs": 10,
+            "use_dhcp": false,
+            "promisc": true
         },
         {
           "type": "sriov_vf",
@@ -21,7 +28,7 @@
           "spoofcheck": true,
           "macaddr": "00:78:90:80:cc:30",
           "trust": true,
-          "state": auto,
+          "state": "auto",
           "promisc": false
         },
         {
@@ -35,7 +42,7 @@
                     "members": [
                         {
                             "device": "p5p2",
-                            "qos": 2,
+                            "qos": 3,
                             "spoofcheck": false,
                             "trust": true,
                             "type": "sriov_vf",
@@ -46,6 +53,50 @@
                 }
             ]
 
+        },
+        {
+            "type": "ovs_user_bridge",
+            "name": "br-bond",
+            "members": [
+                {
+                    "type" : "ovs_dpdk_bond",
+                    "name" : "dpdkbond1",
+                    "ovs_options": "bond_mode=active-backup",
+                    "members": [
+                        {
+                            "type" : "ovs_dpdk_port",
+                            "name" : "dpdk2",
+                            "members": [
+                                {
+                                    "type": "sriov_vf",
+                                    "device": "p2p1",
+                                    "vfid": 4,
+                                    "vlan_id": 114,
+                                    "spoofcheck": false,
+                                    "trust": true,
+                                    "qos": 6
+                                }
+                            ],
+                            "primary": true
+                        },
+                        {
+                            "type" : "ovs_dpdk_port",
+                            "name" : "dpdk3",
+                            "members": [
+                                {
+                                    "type": "sriov_vf",
+                                    "device": "p2p2",
+                                    "vfid": 4,
+                                    "vlan_id": 114,
+                                    "spoofcheck": false,
+                                    "trust": true,
+                                    "qos": 6
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
         }
     ]
 }

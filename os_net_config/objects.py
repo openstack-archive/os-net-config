@@ -525,6 +525,10 @@ class OvsBridge(_BaseOpts):
             logger.info("Trust is not set for VF %s:%d, defaulting to on"
                         % (iface.device, iface.vfid))
             iface.trust = "on"
+        if iface.spoofcheck is None:
+            logger.info("Spoofcheck is not set for VF %s:%d, defaulting to off"
+                        % (iface.device, iface.vfid))
+            iface.spoofcheck = "off"
         if iface.promisc is None:
             logger.info("Promisc is not set for VF %s:%d, defaulting to on"
                         % (iface.device, iface.vfid))
@@ -854,6 +858,8 @@ class LinuxBond(_BaseOpts):
         self.members = members
         self.bonding_options = bonding_options
         for member in self.members:
+            if isinstance(member, SriovVF):
+                LinuxBond.update_vf_config(member)
             member.linux_bond_name = name
             if member.primary:
                 if self.primary_interface_name:
@@ -863,6 +869,26 @@ class LinuxBond(_BaseOpts):
                     self.primary_interface_name = member.primary_interface_name
                 else:
                     self.primary_interface_name = member.name
+
+    @staticmethod
+    def update_vf_config(iface):
+        if iface.trust is None:
+            logger.info("Trust is not set for VF %s:%d, defaulting to on"
+                        % (iface.device, iface.vfid))
+            iface.trust = 'on'
+        if iface.spoofcheck is None:
+            logger.info("Spoofcheck is not set for VF %s:%d, defaulting to on"
+                        % (iface.device, iface.vfid))
+            iface.spoofcheck = 'on'
+        if iface.promisc is None:
+            logger.info("Promisc is not set for VF %s:%d, defaulting to off"
+                        % (iface.device, iface.vfid))
+            iface.promisc = 'off'
+        utils.update_sriov_vf_map(iface.device, iface.vfid, iface.name,
+                                  vlan_id=iface.vlan_id, qos=iface.qos,
+                                  spoofcheck=iface.spoofcheck,
+                                  trust=iface.trust, state=iface.state,
+                                  macaddr=iface.macaddr, promisc=iface.promisc)
 
     @staticmethod
     def from_json(json):
@@ -904,6 +930,8 @@ class OvsBond(_BaseOpts):
         self.ovs_options = ovs_options
         self.ovs_extra = format_ovs_extra(self, ovs_extra)
         for member in self.members:
+            if isinstance(member, SriovVF):
+                OvsBond.update_vf_config(member)
             if member.primary:
                 if self.primary_interface_name:
                     msg = 'Only one primary interface allowed per bond.'
@@ -916,6 +944,26 @@ class OvsBond(_BaseOpts):
             bond_members = list(self.members)
             bond_members.sort(key=lambda x: x.name)
             self.primary_interface_name = bond_members[0].name
+
+    @staticmethod
+    def update_vf_config(iface):
+        if iface.trust is None:
+            logger.info("Trust is not set for VF %s:%d, defaulting to on"
+                        % (iface.device, iface.vfid))
+            iface.trust = "on"
+        if iface.spoofcheck is None:
+            logger.info("Spoofcheck is not set for VF %s:%d, defaulting to off"
+                        % (iface.device, iface.vfid))
+            iface.spoofcheck = "off"
+        if iface.promisc is None:
+            logger.info("Promisc is not set for VF %s:%d, defaulting to on"
+                        % (iface.device, iface.vfid))
+            iface.promisc = "on"
+        utils.update_sriov_vf_map(iface.device, iface.vfid, iface.name,
+                                  vlan_id=iface.vlan_id, qos=iface.qos,
+                                  spoofcheck=iface.spoofcheck,
+                                  trust=iface.trust, state=iface.state,
+                                  macaddr=iface.macaddr, promisc=iface.promisc)
 
     @staticmethod
     def from_json(json):
@@ -1064,6 +1112,10 @@ class OvsDpdkPort(_BaseOpts):
             logger.info("Trust is not set for VF %s:%d, defaulting to on"
                         % (iface.device, iface.vfid))
             iface.trust = "on"
+        if iface.spoofcheck is None:
+            logger.info("Spoofcheck is not set for VF %s:%d, defaulting to off"
+                        % (iface.device, iface.vfid))
+            iface.spoofcheck = "off"
         if iface.promisc is not None:
             logger.warning("Promisc can't be changed for ovs_dpdk_port")
             iface.promisc = None
@@ -1106,7 +1158,7 @@ class OvsDpdkPort(_BaseOpts):
                         OvsDpdkPort.update_vf_config(iface)
                         members.append(iface)
                     else:
-                        msg = 'OVS DPDK Port should have only interface member'
+                        msg = 'Unsupported OVS DPDK Port member type'
                         raise InvalidConfigException(msg)
                 else:
                     msg = 'OVS DPDK Port should have only one member'
@@ -1181,10 +1233,10 @@ class SriovVF(_BaseOpts):
     @staticmethod
     def get_on_off(config):
         rval = None
-        if config:
-            rval = "on"
-        elif config is False:
+        if config is False or config == "off":
             rval = "off"
+        elif config is True or config == "on":
+            rval = "on"
         return rval
 
     @staticmethod
@@ -1237,14 +1289,21 @@ class SriovPF(_BaseOpts):
         self.promisc = promisc
 
     @staticmethod
+    def get_on_off(config):
+        rval = None
+        if config is False or config == "off":
+            rval = "off"
+        elif config is True or config == "on":
+            rval = "on"
+        return rval
+
+    @staticmethod
     def from_json(json):
         name = _get_required_field(json, 'name', 'SriovPF')
         numvfs = _get_required_field(json, 'numvfs', 'SriovPF')
-        promisc = json.get('promisc', None)
-        if promisc is True:
-            promisc = "on"
-        elif promisc is False:
-            promisc = "off"
+        # SR-IOV PF - promisc: on (default)
+        promisc = json.get('promisc', True)
+        promisc = SriovPF.get_on_off(promisc)
         opts = _BaseOpts.base_opts_from_json(json)
         return SriovPF(name, numvfs, *opts, promisc=promisc)
 
