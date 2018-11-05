@@ -1,5 +1,3 @@
-
-
 network_config:
   # sriov_pf type shall be used to configure the PF's of NICs.
   # The numvfs configured for the PF's shall be set on the sriov_numvfs of the
@@ -14,9 +12,15 @@ network_config:
     # Dont set the IP address on the PF
     use_dhcp: false
     # Allow all the traffic received. It might be needed when one of its VF
-    # is attached to a ovs bridge
-    promisc: on
+    # is attached to a ovs bridge. Default: true
+    promisc: true
 
+  -
+    type: sriov_pf
+    name: p2p2
+    numvfs: 10
+    use_dhcp: false
+    promisc: true
   # sriov_vf type shall be used to configure the VF's of NICs.
   # It requires the PF devices to be configured via sriov_pf types
   # "name" parameter is not required for VF's. It'll be derived from the VF id
@@ -43,12 +47,12 @@ network_config:
     # MAC spoofing is a method of altering the MAC address
     # The MAC address anti-spoofing when enabled protects from malicious MAC
     # address spoofing. It should be disabled for 802.3ad bonds.
-    spoofcheck: on
+    spoofcheck: true
     # Change the MAC address of the VF.
     macaddr: 00:78:90:80:cc:30
     # Enabling trust (true) for VF allows enabling multicast/promiscuous mode
-    # on the VF. The default value is off.
-    trust: on
+    # on the VF. The default value is false.
+    trust: true
     # Link state seen by the VF
     # - auto: a reflection of the PF link state (default)
     # - enable: lets the VF to communicate with other VFs on this host even
@@ -60,8 +64,8 @@ network_config:
     # traffic received in the physical port. Note that all traffic that has
     # destination mac that does not match any of the VFs/PF MAC addresses is
     # referred to as unmatched traffic.
-    # The default value is off. Requires the enabling of trust mode
-    promisc: off
+    # The default value is false. Requires the enabling of trust mode
+    promisc: false
   # Attach a SR-IOV VF to a ovs bridge
   - type: ovs_bridge
     name: br-vfs
@@ -77,9 +81,67 @@ network_config:
       vlan_id: 116
       # Optional field, but requires vlan_id
       qos: 3
-      # Set trust to 'on' when attaching to ovs_bridge
-      trust: on
-      # Set promisc to 'on' when attaching to ovs_bridge
-      promisc: on
-      # Set spoofcheck to 'off' when attaching to ovs_bridge
-      spoofcheck: off
+      # For OVS Bridge, the default value is true (recommended)
+      trust: true
+      # For OVS Bridge, the default value is true (recommended)
+      promisc: true
+      # For OVS Bridge, the default value is false (recommended)
+      spoofcheck: false
+  - type: ovs_bridge
+    name: br-bond
+    use_dhcp: true
+    members:
+    -
+      type: ovs_bond
+      name: bond_vf
+      ovs_options: "bond_mode=active-backup"
+      members:
+      -
+        type: sriov_vf
+        device: p2p1
+        vfid: 2
+        vlan_id: 112
+        qos: 4
+        primary: true
+        # For OVS Bond, the default value is true (recommended)
+        trust: true
+        # For OVS Bond, the default value is true (recommended)
+        promisc: true
+        # For OVS Bond, the default value is false (recommended)
+        spoofcheck: false
+      -
+        type: sriov_vf
+        device: p2p2
+        vfid: 2
+        vlan_id: 112
+        qos: 4
+        trust: true
+        promisc: true
+        spoofcheck: false
+  - type: linux_bond
+    name: bond_lnx
+    use_dhcp: true
+    bonding_options: "mode=active-backup"
+    members:
+    -
+      type: sriov_vf
+      device: p2p1
+      vfid: 3
+      vlan_id: 113
+      qos: 5
+      # For linux_bond, the default value is true
+      spoofcheck: true
+      # For linux_bond, the default value is true
+      trust: true
+      # For linux_bond, the default value is false
+      promisc: false
+      primary: true
+    -
+      type: sriov_vf
+      device: p2p2
+      vfid: 3
+      vlan_id: 113
+      qos: 5
+      spoofcheck: true
+      trust: true
+      promisc: false
