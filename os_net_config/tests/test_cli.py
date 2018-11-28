@@ -212,11 +212,16 @@ class TestCli(base.TestCase):
         def test_get_vf_devname(device, vfid):
             return device + '_' + str(vfid)
 
+        def test_get_pci_address(ifname, noop):
+            return '0000:79:10.2'
+
         def test_interface_mac(name):
             return 'AA:BB:CC:DD:EE:FF'
 
         self.stub_out('os_net_config.utils.get_vf_devname',
                       test_get_vf_devname)
+        self.stub_out('os_net_config.utils.get_pci_address',
+                      test_get_pci_address)
         self.stub_out('os_net_config.utils.interface_mac',
                       test_interface_mac)
         ivs_yaml = os.path.join(SAMPLE_BASE, 'sriov_pf.yaml')
@@ -248,8 +253,14 @@ class TestCli(base.TestCase):
     def test_sriov_vf_with_dpdk_noop_output(self):
         def test_get_vf_devname(device, vfid):
             return device + '_' + str(vfid)
+
+        def test_get_pci_address(ifname, noop):
+            return '0000:79:10.2'
+
         self.stub_out('os_net_config.utils.get_vf_devname',
                       test_get_vf_devname)
+        self.stub_out('os_net_config.utils.get_pci_address',
+                      test_get_pci_address)
         ivs_yaml = os.path.join(SAMPLE_BASE, 'sriov_pf_ovs_dpdk.yaml')
         ivs_json = os.path.join(SAMPLE_BASE, 'sriov_pf_ovs_dpdk.json')
         stdout_yaml, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '

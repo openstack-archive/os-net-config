@@ -639,7 +639,8 @@ class OvsBridge(_BaseOpts):
                                   vlan_id=iface.vlan_id, qos=iface.qos,
                                   spoofcheck=iface.spoofcheck,
                                   trust=iface.trust, state=iface.state,
-                                  macaddr=iface.macaddr, promisc=iface.promisc)
+                                  macaddr=iface.macaddr, promisc=iface.promisc,
+                                  pci_address=iface.pci_address)
 
     @staticmethod
     def from_json(json):
@@ -1005,7 +1006,8 @@ class LinuxBond(_BaseOpts):
                                   vlan_id=iface.vlan_id, qos=iface.qos,
                                   spoofcheck=iface.spoofcheck,
                                   trust=iface.trust, state=iface.state,
-                                  macaddr=iface.macaddr, promisc=iface.promisc)
+                                  macaddr=iface.macaddr, promisc=iface.promisc,
+                                  pci_address=iface.pci_address)
 
     @staticmethod
     def from_json(json):
@@ -1264,7 +1266,8 @@ class OvsDpdkPort(_BaseOpts):
                                   vlan_id=iface.vlan_id, qos=iface.qos,
                                   spoofcheck=iface.spoofcheck,
                                   trust=iface.trust, state=iface.state,
-                                  macaddr=iface.macaddr, promisc=iface.promisc)
+                                  macaddr=iface.macaddr, promisc=iface.promisc,
+                                  pci_address=iface.pci_address)
 
     @staticmethod
     def from_json(json):
@@ -1362,8 +1365,12 @@ class SriovVF(_BaseOpts):
         self.spoofcheck = spoofcheck
         self.trust = trust
         self.state = state
+        pci_address = utils.get_pci_address(name, False)
+        if pci_address is None:
+            pci_address = utils.get_stored_pci_address(name, False)
         self.macaddr = macaddr
         self.promisc = promisc
+        self.pci_address = pci_address
         utils.update_sriov_vf_map(device, self.vfid, name,
                                   vlan_id=self.vlan_id,
                                   qos=self.qos,
@@ -1371,7 +1378,8 @@ class SriovVF(_BaseOpts):
                                   trust=trust,
                                   state=state,
                                   macaddr=macaddr,
-                                  promisc=promisc)
+                                  promisc=promisc,
+                                  pci_address=pci_address)
 
     @staticmethod
     def get_on_off(config):

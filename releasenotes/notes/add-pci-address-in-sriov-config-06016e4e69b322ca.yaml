@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Adding PCI address of each VF to sriov_config.yaml. This information
+    could be used in deriving the PCI passthrough whitelist.

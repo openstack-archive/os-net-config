@@ -176,7 +176,8 @@ class TestUtils(base.TestCase):
     def test_update_sriov_vf_map_complete_new(self):
         utils.update_sriov_vf_map('eth1', 2, 'eth1_2', vlan_id=10, qos=5,
                                   spoofcheck="on", trust="on", state="enable",
-                                  macaddr="AA:BB:CC:DD:EE:FF", promisc="off")
+                                  macaddr="AA:BB:CC:DD:EE:FF", promisc="off",
+                                  pci_address="0000:80:00.1")
         contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
         sriov_vf_map = yaml.safe_load(contents) if contents else []
         self.assertEqual(1, len(sriov_vf_map))
@@ -186,7 +187,8 @@ class TestUtils(base.TestCase):
                               'spoofcheck': 'on', 'trust': 'on',
                               'state': 'enable',
                               'macaddr': 'AA:BB:CC:DD:EE:FF',
-                              'promisc': 'off'}]
+                              'promisc': 'off',
+                              'pci_address': "0000:80:00.1"}]
         self.assertListEqual(test_sriov_vf_map, sriov_vf_map)
 
     def test_update_sriov_vf_map_exist(self):
@@ -196,14 +198,16 @@ class TestUtils(base.TestCase):
 
         utils.update_sriov_vf_map('eth1', 2, 'eth1_2', vlan_id=10, qos=5,
                                   spoofcheck="on", trust="on", state="enable",
-                                  macaddr="AA:BB:CC:DD:EE:FF", promisc="off")
+                                  macaddr="AA:BB:CC:DD:EE:FF", promisc="off",
+                                  pci_address="0000:80:00.1")
         vf_final = [{'device_type': 'vf', 'name': 'eth1_2',
                      'device': {'name': 'eth1', 'vfid': 2},
                      'vlan_id': 10, 'qos': 5,
                      'spoofcheck': 'on', 'trust': 'on',
                      'state': 'enable',
                      'macaddr': 'AA:BB:CC:DD:EE:FF',
-                     'promisc': 'off'}]
+                     'promisc': 'off',
+                     'pci_address': '0000:80:00.1'}]
         contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
 
         vf_map = yaml.safe_load(contents) if contents else []
@@ -217,19 +221,22 @@ class TestUtils(base.TestCase):
                        'spoofcheck': 'on', 'trust': 'on',
                        'state': 'enable',
                        'macaddr': 'AA:BB:CC:DD:EE:FF',
-                       'promisc': 'off'}]
+                       'promisc': 'off',
+                       'pci_address': "0000:80:00.1"}]
         utils.write_yaml_config(sriov_config._SRIOV_CONFIG_FILE, vf_initial)
 
         utils.update_sriov_vf_map('eth1', 2, 'eth1_2', vlan_id=100, qos=15,
                                   spoofcheck="off", trust="off", state="auto",
-                                  macaddr="BB:BB:CC:DD:EE:FF", promisc="on")
+                                  macaddr="BB:BB:CC:DD:EE:FF", promisc="on",
+                                  pci_address="0000:80:00.1")
         vf_final = [{'device_type': 'vf', 'name': 'eth1_2',
                      'device': {'name': 'eth1', 'vfid': 2},
                      'vlan_id': 100, 'qos': 15,
                      'spoofcheck': 'off', 'trust': 'off',
                      'state': 'auto',
                      'macaddr': 'BB:BB:CC:DD:EE:FF',
-                     'promisc': 'on'}]
+                     'promisc': 'on',
+                     'pci_address': '0000:80:00.1'}]
         contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
 
         vf_map = yaml.safe_load(contents) if contents else []

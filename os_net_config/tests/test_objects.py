@@ -436,12 +436,18 @@ class TestBridge(base.TestCase):
                      'device': {'name': 'em1', 'vfid': 1},
                      'vlan_id': 111, 'qos': 1,
                      'spoofcheck': 'off', 'trust': 'on',
-                     'promisc': 'on'}]
+                     'promisc': 'on', 'pci_address': '0000:79:10.2'}]
 
         def test_get_vf_devname(device, vfid):
             return device + '_' + str(vfid)
+
+        def test_get_pci_address(ifname, noop):
+            return '0000:79:10.2'
+
         self.stub_out('os_net_config.utils.get_vf_devname',
                       test_get_vf_devname)
+        self.stub_out('os_net_config.utils.get_pci_address',
+                      test_get_pci_address)
 
         bridge = objects.object_from_json(json.loads(data))
         self.assertEqual("br-foo", bridge.name)
@@ -495,8 +501,14 @@ class TestBridge(base.TestCase):
 
         def test_get_vf_devname(device, vfid):
             return device + '_' + str(vfid)
+
+        def test_get_pci_address(ifname, noop):
+            return '0000:79:10.2'
+
         self.stub_out('os_net_config.utils.get_vf_devname',
                       test_get_vf_devname)
+        self.stub_out('os_net_config.utils.get_pci_address',
+                      test_get_pci_address)
 
         bridge = objects.object_from_json(json.loads(data))
         self.assertEqual("br-foo", bridge.name)
@@ -558,8 +570,14 @@ class TestBridge(base.TestCase):
 
         def test_get_vf_devname(device, vfid):
             return device + '_' + str(vfid)
+
+        def test_get_pci_address(ifname, noop):
+            return '0000:79:10.2'
+
         self.stub_out('os_net_config.utils.get_vf_devname',
                       test_get_vf_devname)
+        self.stub_out('os_net_config.utils.get_pci_address',
+                      test_get_pci_address)
 
         objects.object_from_json(json.loads(data))
 
@@ -587,14 +605,20 @@ class TestBridge(base.TestCase):
         vf_final = [{'device_type': 'vf', 'name': 'em1_1',
                      'device': {'name': 'em1', 'vfid': 1},
                      'vlan_id': 111, 'qos': 1,
+                     'pci_address': '0000:79:10.2',
                      'spoofcheck': 'off', 'trust': 'off',
                      'promisc': 'off'}]
 
         def test_get_vf_devname(device, vfid):
             return device + '_' + str(vfid)
+
+        def test_get_pci_address(ifname, noop):
+            return '0000:79:10.2'
+
         self.stub_out('os_net_config.utils.get_vf_devname',
                       test_get_vf_devname)
-
+        self.stub_out('os_net_config.utils.get_pci_address',
+                      test_get_pci_address)
         bridge = objects.object_from_json(json.loads(data))
         self.assertEqual("br-foo", bridge.name)
         self.assertTrue(bridge.use_dhcp)
@@ -630,13 +654,20 @@ class TestBridge(base.TestCase):
         vf_final = [{'device_type': 'vf', 'name': 'em1_1',
                      'device': {'name': 'em1', 'vfid': 1},
                      'vlan_id': 111, 'qos': 1,
-                     'spoofcheck': 'off', 'trust': 'on'
+                     'spoofcheck': 'off', 'trust': 'on',
+                     'pci_address': '0000:79:10.2'
                      }]
 
         def test_get_vf_devname(device, vfid):
             return device + '_' + str(vfid)
+
+        def test_get_pci_address(ifname, noop):
+            return '0000:79:10.2'
+
         self.stub_out('os_net_config.utils.get_vf_devname',
                       test_get_vf_devname)
+        self.stub_out('os_net_config.utils.get_pci_address',
+                      test_get_pci_address)
 
         bridge = objects.object_from_json(json.loads(data))
         self.assertEqual("br-foo", bridge.name)
@@ -676,13 +707,20 @@ class TestBridge(base.TestCase):
         vf_final = [{'device_type': 'vf', 'name': 'em1_1',
                      'device': {'name': 'em1', 'vfid': 1},
                      'vlan_id': 111, 'qos': 1,
-                     'spoofcheck': 'off', 'trust': 'off'
+                     'spoofcheck': 'off', 'trust': 'off',
+                     'pci_address': '0000:79:10.2'
                      }]
 
         def test_get_vf_devname(device, vfid):
             return device + '_' + str(vfid)
+
+        def test_get_pci_address(ifname, noop):
+            return '0000:79:10.2'
+
         self.stub_out('os_net_config.utils.get_vf_devname',
                       test_get_vf_devname)
+        self.stub_out('os_net_config.utils.get_pci_address',
+                      test_get_pci_address)
 
         bridge = objects.object_from_json(json.loads(data))
         self.assertEqual("br-foo", bridge.name)
@@ -1177,18 +1215,29 @@ class TestLinuxBond(base.TestCase):
         vf_final = [{'device_type': 'vf', 'name': 'em1_1',
                      'device': {'name': 'em1', 'vfid': 1},
                      'vlan_id': 111, 'qos': 1,
+                     'pci_address': '0000:79:10.1',
                      'spoofcheck': 'on', 'trust': 'on',
                      'promisc': 'off'},
                     {'device_type': 'vf', 'name': 'em2_1',
                      'device': {'name': 'em2', 'vfid': 1},
                      'vlan_id': 111, 'qos': 1,
+                     'pci_address': '0000:79:10.2',
                      'spoofcheck': 'on', 'trust': 'on',
                      'promisc': 'off'}]
 
         def test_get_vf_devname(device, vfid):
             return device + '_' + str(vfid)
+
+        def test_get_pci_address(ifname, noop):
+            if ifname == 'em1_1':
+                return '0000:79:10.1'
+            elif ifname == 'em2_1':
+                return '0000:79:10.2'
+
         self.stub_out('os_net_config.utils.get_vf_devname',
                       test_get_vf_devname)
+        self.stub_out('os_net_config.utils.get_pci_address',
+                      test_get_pci_address)
 
         bond = objects.object_from_json(json.loads(data))
         self.assertEqual("bond1", bond.name)
@@ -1233,18 +1282,29 @@ class TestLinuxBond(base.TestCase):
         vf_final = [{'device_type': 'vf', 'name': 'em1_1',
                      'device': {'name': 'em1', 'vfid': 1},
                      'vlan_id': 111, 'qos': 1,
+                     'pci_address': '0000:79:10.1',
                      'spoofcheck': 'off', 'trust': 'off',
                      'promisc': 'off'},
                     {'device_type': 'vf', 'name': 'em2_1',
                      'device': {'name': 'em2', 'vfid': 1},
                      'vlan_id': 111, 'qos': 1,
+                     'pci_address': '0000:79:10.2',
                      'spoofcheck': 'off', 'trust': 'off',
                      'promisc': 'off'}]
 
         def test_get_vf_devname(device, vfid):
             return device + '_' + str(vfid)
+
+        def test_get_pci_address(ifname, noop):
+            if ifname == 'em1_1':
+                return '0000:79:10.1'
+            elif ifname == 'em2_1':
+                return '0000:79:10.2'
+
         self.stub_out('os_net_config.utils.get_vf_devname',
                       test_get_vf_devname)
+        self.stub_out('os_net_config.utils.get_pci_address',
+                      test_get_pci_address)
 
         objects.object_from_json(json.loads(data))
         contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
@@ -1787,8 +1847,14 @@ class TestSriovVF(base.TestCase):
     def test_from_json_vfid(self):
         def test_get_vf_devname(device, vfid):
             return device + '_' + str(vfid)
+
+        def test_get_pci_address(ifname, noop):
+            return '0000:79:10.2'
+
         self.stub_out('os_net_config.utils.get_vf_devname',
                       test_get_vf_devname)
+        self.stub_out('os_net_config.utils.get_pci_address',
+                      test_get_pci_address)
         data = '{"type": "sriov_vf", "device": "em1", "vfid": 16,' \
                '"use_dhcp": false}'
         vf = objects.object_from_json(json.loads(data))
@@ -1800,8 +1866,14 @@ class TestSriovVF(base.TestCase):
     def test_from_json_name_ignored(self):
         def test_get_vf_devname(device, vfid):
             return device + '_' + str(vfid)
+
+        def test_get_pci_address(ifname, noop):
+            return '0000:79:10.2'
+
         self.stub_out('os_net_config.utils.get_vf_devname',
                       test_get_vf_devname)
+        self.stub_out('os_net_config.utils.get_pci_address',
+                      test_get_pci_address)
         data = '{"type": "sriov_vf", "device": "em1", "vfid": 16,' \
                '"use_dhcp": false, "name": "em1_7"}'
         vf = objects.object_from_json(json.loads(data))
@@ -1813,8 +1885,14 @@ class TestSriovVF(base.TestCase):
     def test_from_json_vfid_configs_enabled(self):
         def test_get_vf_devname(device, vfid):
             return device + '_' + str(vfid)
+
+        def test_get_pci_address(ifname, noop):
+            return '0000:79:10.2'
+
         self.stub_out('os_net_config.utils.get_vf_devname',
                       test_get_vf_devname)
+        self.stub_out('os_net_config.utils.get_pci_address',
+                      test_get_pci_address)
 
         data = '{"type": "sriov_vf", "device": "em4", "vfid": 16,' \
                '"use_dhcp": false, "vlan_id": 100, "qos": 2, "trust": true,' \
@@ -1836,8 +1914,14 @@ class TestSriovVF(base.TestCase):
     def test_from_json_vfid_configs_disabled(self):
         def test_get_vf_devname(device, vfid):
             return device + '_' + str(vfid)
+
+        def test_get_pci_address(ifname, noop):
+            return '0000:79:10.2'
+
         self.stub_out('os_net_config.utils.get_vf_devname',
                       test_get_vf_devname)
+        self.stub_out('os_net_config.utils.get_pci_address',
+                      test_get_pci_address)
 
         data = '{"type": "sriov_vf", "device": "em4", "vfid": 16,' \
                '"use_dhcp": false, "vlan_id": 0, "qos": 0, "trust": false,' \
@@ -1859,8 +1943,14 @@ class TestSriovVF(base.TestCase):
     def test_from_json_vfid_invalid_state(self):
         def test_get_vf_devname(device, vfid):
             return device + '_' + str(vfid)
+
+        def test_get_pci_address(ifname, noop):
+            return '0000:79:10.2'
+
         self.stub_out('os_net_config.utils.get_vf_devname',
                       test_get_vf_devname)
+        self.stub_out('os_net_config.utils.get_pci_address',
+                      test_get_pci_address)
 
         data = '{"type": "sriov_vf", "device": "em4", "vfid": 16,' \
                '"use_dhcp": false, "vlan_id": 0, "qos": 0, "trust": false,' \
@@ -1875,8 +1965,14 @@ class TestSriovVF(base.TestCase):
     def test_from_json_vfid_invalid_qos(self):
         def test_get_vf_devname(device, vfid):
             return device + '_' + str(vfid)
+
+        def test_get_pci_address(ifname, noop):
+            return '0000:79:10.2'
+
         self.stub_out('os_net_config.utils.get_vf_devname',
                       test_get_vf_devname)
+        self.stub_out('os_net_config.utils.get_pci_address',
+                      test_get_pci_address)
 
         data = '{"type": "sriov_vf", "device": "em4", "vfid": 16,' \
                '"use_dhcp": false, "vlan_id": 0, "qos": 10, "trust": false,' \
@@ -1890,8 +1986,14 @@ class TestSriovVF(base.TestCase):
     def test_from_json_vfid_nic1(self):
         def test_get_vf_devname(device, vfid):
             return device + '_' + str(vfid)
+
+        def test_get_pci_address(ifname, noop):
+            return '0000:79:10.2'
+
         self.stub_out('os_net_config.utils.get_vf_devname',
                       test_get_vf_devname)
+        self.stub_out('os_net_config.utils.get_pci_address',
+                      test_get_pci_address)
 
         def dummy_mapped_nics(nic_mapping=None):
             return {"nic1": "em4"}
@@ -1905,6 +2007,30 @@ class TestSriovVF(base.TestCase):
         self.assertEqual(16, vf.vfid)
         self.assertFalse(vf.use_dhcp)
         self.assertEqual("em4_16", vf.name)
+
+    def test_from_json_pci_address_none(self):
+        def test_get_vf_devname(device, vfid):
+            return device + '_' + str(vfid)
+
+        def test_get_pci_address(ifname, noop):
+            return None
+
+        def test_get_stored_pci_address(ifname, noop):
+            return '0000:79:10.2'
+
+        self.stub_out('os_net_config.utils.get_vf_devname',
+                      test_get_vf_devname)
+        self.stub_out('os_net_config.utils.get_pci_address',
+                      test_get_pci_address)
+        self.stub_out('os_net_config.utils.get_stored_pci_address',
+                      test_get_stored_pci_address)
+        data = '{"type": "sriov_vf", "device": "em1", "vfid": 16,' \
+               '"use_dhcp": false}'
+        vf = objects.object_from_json(json.loads(data))
+        self.assertEqual("em1", vf.device)
+        self.assertEqual(16, vf.vfid)
+        self.assertFalse(vf.use_dhcp)
+        self.assertEqual("em1_16", vf.name)
 
 
 class TestOvsDpdkBond(base.TestCase):
