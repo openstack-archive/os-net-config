@@ -1367,20 +1367,20 @@ class IfcfgNetConfig(os_net_config.NetConfig):
 
             for bridge in apply_bridges:
                 logger.debug('Running ip commands on bridge: %s' %
-                             interface[0])
-                commands = self.iproute2_apply_commands(interface[0],
-                                                        interface[1],
-                                                        interface[2])
+                             bridge[0])
+                commands = self.iproute2_apply_commands(bridge[0],
+                                                        bridge[1],
+                                                        bridge[2])
                 for command in commands:
                     try:
                         args = command.split()
                         self.execute('Running ip %s' % command, ipcmd, *args)
                     except Exception as e:
                         logger.warning("Error in 'ip %s', restarting %s:\n%s" %
-                                       (command, interface[0], str(e)))
-                        restart_bridges.append(interface[0])
+                                       (command, bridge[0], str(e)))
+                        restart_bridges.append(bridge[0])
                         restart_interfaces.extend(
-                            self.child_members(interface[0]))
+                            self.child_members(bridge[0]))
                         break
 
             for interface in apply_routes:
