@@ -15,6 +15,7 @@
 # under the License.
 
 import glob
+import itertools
 import logging
 import os
 import re
@@ -125,6 +126,18 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         self.renamed_interfaces = {}
         self.bond_primary_ifaces = {}
         logger.info('Ifcfg net config provider created.')
+
+    def parse_ifcfg(self, ifcfg_data):
+        """Break out the key/value pairs from ifcfg_data
+
+           Return the keys and values without quotes.
+           """
+        ifcfg_values = {}
+        for line in ifcfg_data.split("\n"):
+            if not line.startswith("#") and line.find("=") > 0:
+                k, v = line.split("=", 1)
+                ifcfg_values[k] = v.strip("\"'")
+        return ifcfg_values
 
     def child_members(self, name):
         children = set()
@@ -834,26 +847,6 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 logger.info('No changes required for nfvswitch interface: %s' %
                             iface_name)
 
-        for vlan_name, vlan_data in self.vlan_data.items():
-            route_data = self.route_data.get(vlan_name, '')
-            route6_data = self.route6_data.get(vlan_name, '')
-            vlan_path = self.root_dir + ifcfg_config_path(vlan_name)
-            vlan_route_path = self.root_dir + route_config_path(vlan_name)
-            vlan_route6_path = self.root_dir + route6_config_path(vlan_name)
-            all_file_names.append(vlan_path)
-            all_file_names.append(vlan_route_path)
-            all_file_names.append(vlan_route6_path)
-            if (utils.diff(vlan_path, vlan_data) or
-                    utils.diff(vlan_route_path, route_data)):
-                restart_vlans.append(vlan_name)
-                restart_vlans.extend(self.child_members(vlan_name))
-                update_files[vlan_path] = vlan_data
-                update_files[vlan_route_path] = route_data
-                update_files[vlan_route6_path] = route6_data
-            else:
-                logger.info('No changes required for vlan interface: %s' %
-                            vlan_name)
-
         for bridge_name, bridge_data in self.bridge_data.items():
             route_data = self.route_data.get(bridge_name, '')
             route6_data = self.route6_data.get(bridge_name, '')
@@ -965,6 +958,39 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             else:
                 logger.info('No changes required for InfiniBand iface: %s' %
                             interface_name)
+
+        # NOTE(hjensas): Process the VLAN's last so that we know if the vlan's
+        # parent interface is being restarted.
+        for vlan_name, vlan_data in self.vlan_data.items():
+            route_data = self.route_data.get(vlan_name, '')
+            route6_data = self.route6_data.get(vlan_name, '')
+            vlan_path = self.root_dir + ifcfg_config_path(vlan_name)
+            vlan_route_path = self.root_dir + route_config_path(vlan_name)
+            vlan_route6_path = self.root_dir + route6_config_path(vlan_name)
+            all_file_names.append(vlan_path)
+            all_file_names.append(vlan_route_path)
+            all_file_names.append(vlan_route6_path)
+            restarts_concatenated = itertools.chain(restart_interfaces,
+                                                    restart_bridges,
+                                                    restart_linux_bonds,
+                                                    restart_linux_teams)
+            if (self.parse_ifcfg(vlan_data).get('PHYSDEV') in
+                    restarts_concatenated):
+                if vlan_name not in restart_vlans:
+                    restart_vlans.append(vlan_name)
+                update_files[vlan_path] = vlan_data
+                update_files[vlan_route_path] = route_data
+                update_files[vlan_route6_path] = route6_data
+            elif (utils.diff(vlan_path, vlan_data) or
+                  utils.diff(vlan_route_path, route_data)):
+                restart_vlans.append(vlan_name)
+                restart_vlans.extend(self.child_members(vlan_name))
+                update_files[vlan_path] = vlan_data
+                update_files[vlan_route_path] = route_data
+                update_files[vlan_route6_path] = route6_data
+            else:
+                logger.info('No changes required for vlan interface: %s' %
+                            vlan_name)
 
         if self.vpp_interface_data:
             vpp_path = self.root_dir + vpp_config_path()

@@ -1392,6 +1392,32 @@ class TestIfcfgNetConfigApply(base.TestCase):
         self.assertIn('em1', self.ifup_interface_names)
         self.assertIn('em2', self.ifup_interface_names)
 
+    def test_restart_vlans_on_bond_change(self):
+        self.ifup_interface_names = []
+        interface1 = objects.Interface('em1')
+        interface2 = objects.Interface('em2')
+        bond = objects.LinuxBond('bond0', members=[interface1, interface2])
+        vlan = objects.Vlan('bond0', 10)
+        self.provider.add_interface(interface1)
+        self.provider.add_interface(interface2)
+        self.provider.add_linux_bond(bond)
+        self.provider.add_vlan(vlan)
+        self.provider.apply()
+        self.assertIn('bond0', self.ifup_interface_names)
+        self.assertIn('em1', self.ifup_interface_names)
+        self.assertIn('em2', self.ifup_interface_names)
+        self.assertIn('vlan10', self.ifup_interface_names)
+
+        # Change the bond configuration
+        self.ifup_interface_names = []
+        bond.bonding_options = 'mode=1 miimon=100'
+        self.provider.add_linux_bond(bond)
+        self.provider.apply()
+        self.assertIn('bond0', self.ifup_interface_names)
+        self.assertIn('em1', self.ifup_interface_names)
+        self.assertIn('em2', self.ifup_interface_names)
+        self.assertIn('vlan10', self.ifup_interface_names)
+
     def test_restart_interface_counts(self):
         interface = objects.Interface('em1')
         self.provider.add_interface(interface)
