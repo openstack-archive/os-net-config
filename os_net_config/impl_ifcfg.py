@@ -15,6 +15,7 @@
 # under the License.
 
 import glob
+import itertools
 import logging
 import netaddr
 import os
@@ -1130,34 +1131,6 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 if iface_name not in restart_interfaces:
                     apply_routes.append((iface_name, route6_data))
 
-        for vlan_name, vlan_data in self.vlan_data.items():
-            route_data = self.route_data.get(vlan_name, '')
-            route6_data = self.route6_data.get(vlan_name, '')
-            vlan_path = self.root_dir + ifcfg_config_path(vlan_name)
-            vlan_route_path = self.root_dir + route_config_path(vlan_name)
-            vlan_route6_path = self.root_dir + route6_config_path(vlan_name)
-            all_file_names.append(vlan_path)
-            all_file_names.append(vlan_route_path)
-            all_file_names.append(vlan_route6_path)
-            if utils.diff(vlan_path, vlan_data):
-                if self.ifcfg_requires_restart(vlan_path, vlan_data):
-                    restart_vlans.append(vlan_name)
-                else:
-                    apply_interfaces.append(
-                        (vlan_name, vlan_path, vlan_data))
-                update_files[vlan_path] = vlan_data
-            else:
-                logger.info('No changes required for vlan interface: %s' %
-                            vlan_name)
-            if utils.diff(vlan_route_path, route_data):
-                update_files[vlan_route_path] = route_data
-                if vlan_name not in restart_vlans:
-                    apply_routes.append((vlan_name, route_data))
-            if utils.diff(vlan_route6_path, route6_data):
-                update_files[vlan_route6_path] = route6_data
-                if vlan_name not in restart_vlans:
-                    apply_routes.append((vlan_name, route6_data))
-
         for bridge_name, bridge_data in self.bridge_data.items():
             route_data = self.route_data.get(bridge_name, '')
             route6_data = self.route6_data.get(bridge_name, '')
@@ -1319,6 +1292,45 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 update_files[route6_path] = route6_data
                 if interface_name not in restart_interfaces:
                     apply_routes.append((interface_name, route6_data))
+
+        # NOTE(hjensas): Process the VLAN's last so that we know if the vlan's
+        # parent interface is being restarted.
+        for vlan_name, vlan_data in self.vlan_data.items():
+            route_data = self.route_data.get(vlan_name, '')
+            route6_data = self.route6_data.get(vlan_name, '')
+            vlan_path = self.root_dir + ifcfg_config_path(vlan_name)
+            vlan_route_path = self.root_dir + route_config_path(vlan_name)
+            vlan_route6_path = self.root_dir + route6_config_path(vlan_name)
+            all_file_names.append(vlan_path)
+            all_file_names.append(vlan_route_path)
+            all_file_names.append(vlan_route6_path)
+            restarts_concatenated = itertools.chain(restart_interfaces,
+                                                    restart_bridges,
+                                                    restart_linux_bonds,
+                                                    restart_linux_teams)
+            if (self.parse_ifcfg(vlan_data).get('PHYSDEV') in
+                    restarts_concatenated):
+                if vlan_name not in restart_vlans:
+                    restart_vlans.append(vlan_name)
+                update_files[vlan_path] = vlan_data
+            elif utils.diff(vlan_path, vlan_data):
+                if self.ifcfg_requires_restart(vlan_path, vlan_data):
+                    restart_vlans.append(vlan_name)
+                else:
+                    apply_interfaces.append(
+                        (vlan_name, vlan_path, vlan_data))
+                update_files[vlan_path] = vlan_data
+            else:
+                logger.info('No changes required for vlan interface: %s' %
+                            vlan_name)
+            if utils.diff(vlan_route_path, route_data):
+                update_files[vlan_route_path] = route_data
+                if vlan_name not in restart_vlans:
+                    apply_routes.append((vlan_name, route_data))
+            if utils.diff(vlan_route6_path, route6_data):
+                update_files[vlan_route6_path] = route6_data
+                if vlan_name not in restart_vlans:
+                    apply_routes.append((vlan_name, route6_data))
 
         if self.vpp_interface_data or self.vpp_bond_data:
             vpp_path = self.root_dir + vpp_config_path()
