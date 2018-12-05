@@ -263,8 +263,17 @@ def main(argv=sys.argv):
             configure_sriov = True
             provider.add_object(obj)
 
-    if configure_sriov and not opts.noop:
-        utils.configure_sriov_pfs()
+    if configure_sriov:
+        # Apply the ifcfgs for PFs now, so that NM_CONTROLLED=no is applied
+        # for each of the PFs before configuring the numvfs for the PF device.
+        # This step allows the network manager to unmanage the created VFs.
+        # In the second parse, when these ifcfgs for PFs are encountered,
+        # os-net-config skips the ifup <ifcfg-pfs>, since the ifcfgs for PFs
+        # wouldn't have changed.
+        pf_files_changed = provider.apply(cleanup=opts.cleanup,
+                                          activate=not opts.no_activate)
+        if not opts.noop:
+            utils.configure_sriov_pfs()
 
     for iface_json in iface_array:
         # All objects other than the sriov_pf will be added here.
@@ -283,8 +292,9 @@ def main(argv=sys.argv):
 
     files_changed = provider.apply(cleanup=opts.cleanup,
                                    activate=not opts.no_activate)
-
     if opts.noop:
+        if configure_sriov:
+            files_changed.update(pf_files_changed)
         for location, data in files_changed.items():
             print("File: %s\n" % location)
             print(data)
