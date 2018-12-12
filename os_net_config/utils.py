@@ -82,7 +82,7 @@ def write_config(filename, data):
 def write_yaml_config(filepath, data):
     ensure_directory_presence(filepath)
     with open(filepath, 'w') as f:
-        yaml.dump(data, f, default_flow_style=False)
+        yaml.safe_dump(data, f, default_flow_style=False)
 
 
 def ensure_directory_presence(filepath):

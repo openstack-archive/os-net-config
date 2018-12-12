@@ -5,7 +5,14 @@
             "name": "p2p1",
             "numvfs": 10,
             "use_dhcp": false,
-            "promisc": on
+            "promisc": true
+        },
+        {
+            "type": "sriov_pf",
+            "name": "p2p2",
+            "numvfs": 10,
+            "use_dhcp": false,
+            "promisc": true
         },
         {
           "type": "sriov_vf",
@@ -21,7 +28,7 @@
           "spoofcheck": true,
           "macaddr": "00:78:90:80:cc:30",
           "trust": true,
-          "state": auto,
+          "state": "auto",
           "promisc": false
         },
         {
@@ -35,11 +42,75 @@
                     "device": "p2p1",
                     "promisc": true,
                     "vlan_id": 116,
-                    "qos": 2,
+                    "qos": 3,
                     "spoofcheck": false
                 }
             ],
             "use_dhcp": true
+        },
+        {
+            "type": "ovs_bridge",
+            "name": "br-bond",
+            "use_dhcp": true,
+            "members": [
+                {
+                    "type": "ovs_bond",
+                    "name": "bond_vf",
+                    "ovs_options": "bond_mode=active-backup",
+                    "members": [
+                        {
+                            "type": "sriov_vf",
+                            "device": "p2p1",
+                            "vfid": 2,
+                            "vlan_id": 112,
+                            "qos": 4,
+                            "primary": true,
+                            "trust": true,
+                            "promisc": true,
+                            "spoofcheck": false
+                        },
+                        {
+                            "type": "sriov_vf",
+                            "device": "p2p2",
+                            "vfid": 2,
+                            "vlan_id": 112,
+                            "qos": 4,
+                            "trust": true,
+                            "promisc": true,
+                            "spoofcheck": false
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "linux_bond",
+            "name": "bond_lnx",
+            "use_dhcp": true,
+            "bonding_options": "mode=active-backup",
+            "members": [
+                {
+                    "type": "sriov_vf",
+                    "device": "p2p1",
+                    "vfid": 3,
+                    "vlan_id": 113,
+                    "qos": 5,
+                    "spoofcheck": true,
+                    "trust": true,
+                    "promisc": false,
+                    "primary": true,
+                },
+                {
+                    "type": "sriov_vf",
+                    "device": "p2p2",
+                    "vfid": 3,
+                    "vlan_id": 113,
+                    "qos": 5,
+                    "spoofcheck": true,
+                    "trust": true,
+                    "promisc": false
+                }
+            ]
         }
     ]
 }

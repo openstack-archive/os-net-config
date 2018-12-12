@@ -14,9 +14,14 @@ network_config:
     # Dont set the IP address on the PF
     use_dhcp: false
     # Allow all the traffic received. It might be needed when one of its VF
-    # is attached to a ovs bridge
-    promisc: on
-
+    # is attached to a ovs bridge. Default: true
+    promisc: true
+  -
+    type: sriov_pf
+    name: p2p2
+    numvfs: 10
+    use_dhcp: false
+    promisc: true
   # sriov_vf type shall be used to configure the VF's of NICs.
   # It requires the PF devices to be configured via sriov_pf types
   # "name" parameter is not required for VF's. It'll be derived from the VF id
@@ -43,12 +48,12 @@ network_config:
     # MAC spoofing is a method of altering the MAC address
     # The MAC address anti-spoofing when enabled protects from malicious MAC
     # address spoofing. It should be disabled for 802.3ad bonds.
-    spoofcheck: on
+    spoofcheck: true
     # Change the MAC address of the VF.
     macaddr: 00:78:90:80:cc:30
     # Enabling trust (true) for VF allows enabling multicast/promiscuous mode
-    # on the VF. The default value is off.
-    trust: on
+    # on the VF. The default value is false.
+    trust: true
     # Link state seen by the VF
     # - auto: a reflection of the PF link state (default)
     # - enable: lets the VF to communicate with other VFs on this host even
@@ -60,8 +65,8 @@ network_config:
     # traffic received in the physical port. Note that all traffic that has
     # destination mac that does not match any of the VFs/PF MAC addresses is
     # referred to as unmatched traffic.
-    # The default value is off. Requires the enabling of trust mode
-    promisc: off
+    # The default value is false. Requires the enabling of trust mode
+    promisc: false
   # Attach a SR-IOV VF to a ovs user bridge
   - type: ovs_user_bridge
     name: br-vfs
@@ -80,8 +85,45 @@ network_config:
         vlan_id: 116
         # Optional field, but requires vlan_id
         qos: 3
-        # Set trust to 'on' when attaching to ovs_user_bridge
-        trust: on
-        # Set spoofcheck to 'off' when attaching to ovs_user_bridge
-        spoofcheck: off
+        # Set trust to true when attaching to ovs_user_bridge
+        trust: true
+        # Set spoofcheck to false when attaching to ovs_user_bridge
+        spoofcheck: false
         # Note: Do not set promisc mode.
+  -
+    type: ovs_user_bridge
+    name: br-bond
+    members:
+      -
+        type: ovs_dpdk_bond
+        name: dpdkbond1
+        ovs_options: "bond_mode=active-backup"
+        members:
+            -
+              type: ovs_dpdk_port
+              name: dpdk2
+              members:
+                  -
+                    type: sriov_vf
+                    device: p2p1
+                    vfid: 4
+                    vlan_id: 114
+                    qos: 6
+                    # Default/Recommended : false
+                    spoofcheck: false
+                    # Default/Recommended : true
+                    trust: true
+                    primary: true
+                    # Note: DO NOT SET promisc mode
+            -
+              type: ovs_dpdk_port
+              name: dpdk3
+              members:
+                  -
+                    type: sriov_vf
+                    device: p2p2
+                    vfid: 4
+                    vlan_id: 114
+                    qos: 6
+                    spoofcheck: false
+                    trust: true

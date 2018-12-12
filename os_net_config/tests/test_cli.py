@@ -23,6 +23,7 @@ import os_net_config
 from os_net_config import cli
 from os_net_config import sriov_config
 from os_net_config.tests import base
+from os_net_config import utils
 import six
 
 
@@ -210,26 +211,39 @@ class TestCli(base.TestCase):
     def test_sriov_noop_output(self):
         def test_get_vf_devname(device, vfid):
             return device + '_' + str(vfid)
+
+        def test_interface_mac(name):
+            return 'AA:BB:CC:DD:EE:FF'
+
         self.stub_out('os_net_config.utils.get_vf_devname',
                       test_get_vf_devname)
+        self.stub_out('os_net_config.utils.interface_mac',
+                      test_interface_mac)
         ivs_yaml = os.path.join(SAMPLE_BASE, 'sriov_pf.yaml')
         ivs_json = os.path.join(SAMPLE_BASE, 'sriov_pf.json')
         stdout_yaml, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
                                            '--exit-on-validation-errors '
                                            '-c %s' % ivs_yaml)
         self.assertEqual('', stderr)
+        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        sriov_config_yaml = yaml.load(contents)
+        os.remove(sriov_config._SRIOV_CONFIG_FILE)
         stdout_json, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
                                            '--exit-on-validation-errors '
                                            '-c %s' % ivs_json)
         self.assertEqual('', stderr)
+        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        sriov_config_json = yaml.load(contents)
         sanity_devices = ['DEVICE=p2p1',
                           'DEVICE=p2p1_5',
                           'DEVICE=p2p1_1',
                           'DEVICE=br-vfs',
+                          'DEVICE=br-bond',
                           'TYPE=OVSBridge']
         for dev in sanity_devices:
             self.assertIn(dev, stdout_yaml)
         self.assertEqual(stdout_yaml, stdout_json)
+        self.assertItemsEqual(sriov_config_yaml, sriov_config_json)
 
     def test_sriov_vf_with_dpdk_noop_output(self):
         def test_get_vf_devname(device, vfid):
@@ -242,10 +256,15 @@ class TestCli(base.TestCase):
                                            '--exit-on-validation-errors '
                                            '-c %s' % ivs_yaml)
         self.assertEqual('', stderr)
+        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        sriov_config_yaml = yaml.load(contents)
+        os.remove(sriov_config._SRIOV_CONFIG_FILE)
         stdout_json, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
                                            '--exit-on-validation-errors '
                                            '-c %s' % ivs_json)
         self.assertEqual('', stderr)
+        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        sriov_config_json = yaml.load(contents)
         sanity_devices = ['DEVICE=p2p1',
                           'DEVICE=p2p1_5',
                           'DEVICE=br-vfs',
@@ -255,6 +274,7 @@ class TestCli(base.TestCase):
         for dev in sanity_devices:
             self.assertIn(dev, stdout_yaml)
         self.assertEqual(stdout_yaml, stdout_json)
+        self.assertItemsEqual(sriov_config_yaml, sriov_config_json)
 
     def test_ovs_dpdk_bond_noop_output(self):
         ivs_yaml = os.path.join(SAMPLE_BASE, 'ovs_dpdk_bond.yaml')

@@ -1004,6 +1004,7 @@ definitions:
                     oneOf:
                       - $ref: "#/definitions/interface"
                       - $ref: "#/definitions/vlan"
+                      - $ref: "#/definitions/sriov_vf"
             bonding_options:
                 $ref: "#/definitions/bonding_options"
             # common options:
