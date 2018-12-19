@@ -30,12 +30,13 @@ class TestRoute(base.TestCase):
 
     def test_from_json(self):
         data = '{"next_hop": "172.19.0.1", "ip_netmask": "172.19.0.0/24", ' \
-               '"route_options": "metric 10"}'
+               '"route_options": "metric 10", "table": "200"}'
         route = objects.Route.from_json(json.loads(data))
         self.assertEqual("172.19.0.1", route.next_hop)
         self.assertEqual("172.19.0.0/24", route.ip_netmask)
         self.assertFalse(route.default)
         self.assertEqual("metric 10", route.route_options)
+        self.assertEqual("200", route.route_table)
 
     def test_from_json_default_route(self):
         data = '{"next_hop": "172.19.0.1", "ip_netmask": "172.19.0.0/24", ' \
@@ -71,6 +72,45 @@ class TestRoute(base.TestCase):
                 'ip_netmask': '172.19.0.0/24'}
         self.assertRaises(objects.InvalidConfigException,
                           objects.Route.from_json, data)
+
+
+class TestRouteTable(base.TestCase):
+
+    def test_from_json(self):
+        data = '{"type": "route_table", "name": "custom", "table_id": 200}'
+        route_table = objects.RouteTable.from_json(json.loads(data))
+        self.assertEqual("custom", route_table.name)
+        self.assertEqual(200, route_table.table_id)
+
+    def test_from_json_invalid(self):
+        self.assertRaises(objects.InvalidConfigException,
+                          objects.RouteTable.from_json,
+                          {})
+
+        data = '{"type": "route_table", "table_id": 200}'
+        json_data = json.loads(data)
+        self.assertRaises(objects.InvalidConfigException,
+                          objects.RouteTable.from_json,
+                          json_data)
+
+        data = '{"type": "route_table", "name": "custom"}'
+        json_data = json.loads(data)
+        self.assertRaises(objects.InvalidConfigException,
+                          objects.RouteTable.from_json,
+                          json_data)
+
+
+class TestRouteRule(base.TestCase):
+
+    def test_rule(self):
+        rule1 = objects.RouteRule('from 192.0.2.0/24 table 200 prio 1000')
+        self.assertEqual('from 192.0.2.0/24 table 200 prio 1000', rule1.rule)
+
+    def test_rule_from_json(self):
+        data = '{"rule":"from 172.19.0.0/24 table 200", "comment":"test"}'
+        route_rule = objects.RouteRule.from_json(json.loads(data))
+        self.assertEqual("from 172.19.0.0/24 table 200", route_rule.rule)
+        self.assertEqual("test", route_rule.comment)
 
 
 class TestAddress(base.TestCase):
