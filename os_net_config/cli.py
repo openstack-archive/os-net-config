@@ -235,8 +235,9 @@ def main(argv=sys.argv):
         return 1
 
     for iface_json in iface_array:
-        iface_json.update({'nic_mapping': iface_mapping})
-        iface_json.update({'persist_mapping': persist_mapping})
+        if iface_json.get('type') != 'route_table':
+            iface_json.update({'nic_mapping': iface_mapping})
+            iface_json.update({'persist_mapping': persist_mapping})
 
     validation_errors = validator.validate_config(iface_array)
     if validation_errors:
