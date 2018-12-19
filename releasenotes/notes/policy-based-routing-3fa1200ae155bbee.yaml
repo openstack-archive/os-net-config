@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    Support for configuring policy-based routing has been added. A new
+    top-level object "route_table" has been added, which allows the user to
+    add tables to the system route table at /etc/iproute2/rt_tables. Routes
+    have a new "table" property for specifying which table to apply the route.
+    Interfaces now have a "rules" property that allows the user to add
+    arbitrary rules for when the system should use a particular routing table,
+    such as input interface or source IP address.

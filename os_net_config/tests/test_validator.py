@@ -211,6 +211,28 @@ class TestDerivedTypes(base.TestCase):
         self.assertFalse(v.is_valid([]))
         self.assertFalse(v.is_valid(None))
 
+    def test_route_table(self):
+        schema = validator.get_schema_for_defined_type("route_table")
+        v = jsonschema.Draft4Validator(schema)
+        data = {"type": "route_table", "name": "custom", "table_id": "20"}
+        self.assertTrue(v.is_valid(data))
+        data["unkown_property"] = "value"
+        self.assertFalse(v.is_valid(data))
+        self.assertFalse(v.is_valid({}))
+        self.assertFalse(v.is_valid([]))
+        self.assertFalse(v.is_valid(None))
+
+    def test_route_rule(self):
+        schema = validator.get_schema_for_defined_type("route_rule")
+        v = jsonschema.Draft4Validator(schema)
+        data = {"rule": "iif em2 table 20"}
+        self.assertTrue(v.is_valid(data))
+        data["unkown_property"] = "value"
+        self.assertFalse(v.is_valid(data))
+        self.assertFalse(v.is_valid({}))
+        self.assertFalse(v.is_valid([]))
+        self.assertFalse(v.is_valid(None))
+
 
 class TestDeviceTypes(base.TestCase):
 
