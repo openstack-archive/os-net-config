@@ -43,7 +43,7 @@ _SRIOV_CONFIG_SERVICE_FILE = "/etc/systemd/system/sriov_config.service"
 _SRIOV_CONFIG_DEVICE_CONTENT = """[Unit]
 Description=SR-IOV numvfs configuration
 After=systemd-udev-settle.service
-Before=openvswitch.service
+Before=ovs-vswitchd.service
 
 [Service]
 Type=oneshot
