@@ -262,14 +262,22 @@ class _BaseOpts(object):
         self.hwaddr = None
         self.hwname = None
         self.renamed = False
-        if name in mapped_nic_names:
+        # Split name to support <nic>.<vlan_id> format, e.g. em1.10 or nic1.10
+        if len(name.split('.')) > 1 and name.split('.')[1].isdigit():
+            base_name = name.split('.')[0]
+            vlan_suffix = '.%s' % name.split('.')[1]
+        else:
+            base_name = name
+            vlan_suffix = ''
+        if base_name in mapped_nic_names:
             if persist_mapping:
                 self.name = name
-                self.hwname = mapped_nic_names[name]
+                self.hwname = '%s%s' % (mapped_nic_names[base_name],
+                                        vlan_suffix)
                 self.hwaddr = utils.interface_mac(self.hwname)
                 self.renamed = True
             else:
-                self.name = mapped_nic_names[name]
+                self.name = '%s%s' % (mapped_nic_names[base_name], vlan_suffix)
         else:
             self.name = name
 
