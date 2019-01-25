@@ -39,6 +39,10 @@ class InvalidConfigException(ValueError):
 
 def object_from_json(json):
     obj_type = json.get("type")
+    if obj_type == "route_table":
+        return RouteTable.from_json(json)
+    if obj_type == "route_rule":
+        return RouteRule.from_json(json)
     if obj_type == "interface":
         return Interface.from_json(json)
     elif obj_type == "vlan":
@@ -222,11 +226,12 @@ class Route(object):
     """Base class for network routes."""
 
     def __init__(self, next_hop, ip_netmask="", default=False,
-                 route_options=""):
+                 route_options="", route_table=None):
         self.next_hop = next_hop
         self.ip_netmask = ip_netmask
         self.default = default
         self.route_options = route_options
+        self.route_table = route_table
 
     @staticmethod
     def from_json(json):
@@ -249,7 +254,9 @@ class Route(object):
         ip_netmask = json.get('ip_netmask', json.get('destination', ""))
         route_options = json.get('route_options', "")
         default = strutils.bool_from_string(str(json.get('default', False)))
-        return Route(next_hop, ip_netmask, default, route_options)
+        route_options = json.get('route_options', "")
+        route_table = json.get('table', "")
+        return Route(next_hop, ip_netmask, default, route_options, route_table)
 
 
 class Address(object):
@@ -269,15 +276,56 @@ class Address(object):
         return Address(ip_netmask)
 
 
+class RouteRule(object):
+    """Base class for route rules."""
+
+    def __init__(self, rule, comment=""):
+        self.rule = rule
+        self.comment = comment
+
+    @staticmethod
+    def from_json(json):
+        rule = _get_required_field(json, 'rule', 'RouteRule')
+        comment = json.get('comment', "")
+        return RouteRule(rule, comment)
+
+
+class RouteTable(object):
+    """Base class for route tables for policy-based routing."""
+
+    def __init__(self, name, table_id):
+        self.name = name
+        self.table_id = table_id
+
+    @staticmethod
+    def from_json(json):
+        name = _get_required_field(json, 'name', 'RouteTable')
+        table_id = _get_required_field(json, 'table_id', 'RouteTable')
+        reserved_ids = [0, 253, 254, 255]
+        reserved_names = ['unspec', 'default', 'main', 'local']
+        if table_id in reserved_ids:
+            msg = 'Route table "%s" conflicts with reserved table "%s %s"'\
+                  % (table_id, table_id,
+                     reserved_names[reserved_ids.index(table_id)])
+            raise InvalidConfigException(msg)
+        elif name in reserved_names:
+            msg = 'Route table "%s" conflicts with reserved table "%s %s"'\
+                  % (name, reserved_ids[reserved_names.index(name)], name)
+            raise InvalidConfigException(msg)
+        return RouteTable(name, table_id)
+
+
 class _BaseOpts(object):
     """Base abstraction for logical port options."""
 
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
-                 routes=None, mtu=None, primary=False, nic_mapping=None,
-                 persist_mapping=False, defroute=True, dhclient_args=None,
-                 dns_servers=None, nm_controlled=False, onboot=True):
+                 routes=None, rules=None, mtu=None, primary=False,
+                 nic_mapping=None, persist_mapping=False, defroute=True,
+                 dhclient_args=None, dns_servers=None, nm_controlled=False,
+                 onboot=True):
         addresses = addresses or []
         routes = routes or []
+        rules = rules or []
         dns_servers = dns_servers or []
         mapped_nic_names = mapped_nics(nic_mapping)
         self.hwaddr = None
@@ -307,6 +355,7 @@ class _BaseOpts(object):
         self.use_dhcpv6 = use_dhcpv6
         self.addresses = addresses
         self.routes = routes
+        self.rules = rules
         self.primary = primary
         self.defroute = defroute
         self.dhclient_args = dhclient_args
@@ -355,6 +404,7 @@ class _BaseOpts(object):
         primary = strutils.bool_from_string(str(json.get('primary', False)))
         addresses = []
         routes = []
+        rules = []
 
         # addresses
         addresses_json = json.get('addresses')
@@ -376,15 +426,25 @@ class _BaseOpts(object):
                 msg = 'Routes must be a list.'
                 raise InvalidConfigException(msg)
 
+        # rules
+        rules_json = json.get('rules')
+        if rules_json:
+            if isinstance(rules_json, list):
+                for rule in rules_json:
+                    rules.append(RouteRule.from_json(rule))
+            else:
+                msg = 'Routes must be a list.'
+                raise InvalidConfigException(msg)
+
         nic_mapping = json.get('nic_mapping')
         persist_mapping = json.get('persist_mapping')
 
         if include_primary:
-            return (use_dhcp, use_dhcpv6, addresses, routes, mtu, primary,
-                    nic_mapping, persist_mapping, defroute, dhclient_args,
-                    dns_servers, nm_controlled, onboot)
+            return (use_dhcp, use_dhcpv6, addresses, routes, rules, mtu,
+                    primary, nic_mapping, persist_mapping, defroute,
+                    dhclient_args, dns_servers, nm_controlled, onboot)
         else:
-            return (use_dhcp, use_dhcpv6, addresses, routes, mtu,
+            return (use_dhcp, use_dhcpv6, addresses, routes, rules, mtu,
                     nic_mapping, persist_mapping, defroute, dhclient_args,
                     dns_servers, nm_controlled, onboot)
 
@@ -393,16 +453,17 @@ class Interface(_BaseOpts):
     """Base class for network interfaces."""
 
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
-                 routes=None, mtu=None, primary=False, nic_mapping=None,
-                 persist_mapping=False, defroute=True, dhclient_args=None,
-                 dns_servers=None, nm_controlled=False, onboot=True,
-                 ethtool_opts=None, hotplug=False):
+                 routes=None, rules=None, mtu=None, primary=False,
+                 nic_mapping=None, persist_mapping=False, defroute=True,
+                 dhclient_args=None, dns_servers=None, nm_controlled=False,
+                 onboot=True, ethtool_opts=None, hotplug=False):
         addresses = addresses or []
         routes = routes or []
+        rules = rules or []
         dns_servers = dns_servers or []
         super(Interface, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
-                                        routes, mtu, primary, nic_mapping,
-                                        persist_mapping, defroute,
+                                        routes, rules, mtu, primary,
+                                        nic_mapping, persist_mapping, defroute,
                                         dhclient_args, dns_servers,
                                         nm_controlled, onboot)
         self.ethtool_opts = ethtool_opts
@@ -426,16 +487,17 @@ class Vlan(_BaseOpts):
     """
 
     def __init__(self, device, vlan_id, use_dhcp=False, use_dhcpv6=False,
-                 addresses=None, routes=None, mtu=None, primary=False,
-                 nic_mapping=None, persist_mapping=False, defroute=True,
-                 dhclient_args=None, dns_servers=None, nm_controlled=False,
-                 onboot=True):
+                 addresses=None, routes=None, rules=None, mtu=None,
+                 primary=False, nic_mapping=None, persist_mapping=False,
+                 defroute=True, dhclient_args=None, dns_servers=None,
+                 nm_controlled=False, onboot=True):
         addresses = addresses or []
         routes = routes or []
+        rules = rules or []
         dns_servers = dns_servers or []
         name = 'vlan%i' % vlan_id
         super(Vlan, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
-                                   routes, mtu, primary, nic_mapping,
+                                   routes, rules, mtu, primary, nic_mapping,
                                    persist_mapping, defroute, dhclient_args,
                                    dns_servers, nm_controlled, onboot)
         self.vlan_id = int(vlan_id)
@@ -458,20 +520,21 @@ class IvsInterface(_BaseOpts):
     """Base class for ivs interfaces."""
 
     def __init__(self, vlan_id, name='ivs', use_dhcp=False, use_dhcpv6=False,
-                 addresses=None, routes=None, mtu=1500, primary=False,
-                 nic_mapping=None, persist_mapping=False, defroute=True,
-                 dhclient_args=None, dns_servers=None, nm_controlled=False,
-                 onboot=True):
+                 addresses=None, routes=None, rules=None, mtu=1500,
+                 primary=False, nic_mapping=None, persist_mapping=False,
+                 defroute=True, dhclient_args=None, dns_servers=None,
+                 nm_controlled=False, onboot=True):
         addresses = addresses or []
         routes = routes or []
+        rules = rules or []
         dns_servers = dns_servers or []
         name_vlan = '%s%i' % (name, vlan_id)
         super(IvsInterface, self).__init__(name_vlan, use_dhcp, use_dhcpv6,
-                                           addresses, routes, mtu, primary,
-                                           nic_mapping, persist_mapping,
-                                           defroute, dhclient_args,
-                                           dns_servers, nm_controlled,
-                                           onboot)
+                                           addresses, routes, rules, mtu,
+                                           primary, nic_mapping,
+                                           persist_mapping, defroute,
+                                           dhclient_args, dns_servers,
+                                           nm_controlled, onboot)
         self.vlan_id = int(vlan_id)
 
     @staticmethod
@@ -486,20 +549,22 @@ class NfvswitchInternal(_BaseOpts):
     """Base class for nfvswitch internal interfaces."""
 
     def __init__(self, vlan_id, name='nfvswitch', use_dhcp=False,
-                 use_dhcpv6=False, addresses=None, routes=None, mtu=1500,
-                 primary=False, nic_mapping=None, persist_mapping=False,
-                 defroute=True, dhclient_args=None, dns_servers=None,
-                 nm_controlled=False, onboot=True):
+                 use_dhcpv6=False, addresses=None, routes=None, rules=None,
+                 mtu=1500, primary=False, nic_mapping=None,
+                 persist_mapping=False, defroute=True, dhclient_args=None,
+                 dns_servers=None, nm_controlled=False, onboot=True):
         addresses = addresses or []
         routes = routes or []
+        rules = rules or []
         dns_servers = dns_servers or []
         name_vlan = '%s%i' % (name, vlan_id)
         super(NfvswitchInternal, self).__init__(name_vlan, use_dhcp,
                                                 use_dhcpv6, addresses, routes,
-                                                mtu, primary, nic_mapping,
-                                                persist_mapping, defroute,
-                                                dhclient_args, dns_servers,
-                                                nm_controlled, onboot)
+                                                rules, mtu, primary,
+                                                nic_mapping, persist_mapping,
+                                                defroute, dhclient_args,
+                                                dns_servers, nm_controlled,
+                                                onboot)
         self.vlan_id = int(vlan_id)
 
     @staticmethod
@@ -514,19 +579,21 @@ class OvsBridge(_BaseOpts):
     """Base class for OVS bridges."""
 
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
-                 routes=None, mtu=None, members=None, ovs_options=None,
-                 ovs_extra=None, nic_mapping=None, persist_mapping=False,
-                 defroute=True, dhclient_args=None, dns_servers=None,
-                 nm_controlled=False, onboot=True, fail_mode=None):
+                 routes=None, rules=None, mtu=None, members=None,
+                 ovs_options=None, ovs_extra=None, nic_mapping=None,
+                 persist_mapping=False, defroute=True, dhclient_args=None,
+                 dns_servers=None, nm_controlled=False, onboot=True,
+                 fail_mode=None):
 
         check_ovs_installed(self.__class__.__name__)
 
         addresses = addresses or []
         routes = routes or []
+        rules = rules or []
         members = members or []
         dns_servers = dns_servers or []
         super(OvsBridge, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
-                                        routes, mtu, False, nic_mapping,
+                                        routes, rules, mtu, False, nic_mapping,
                                         persist_mapping, defroute,
                                         dhclient_args, dns_servers,
                                         nm_controlled, onboot)
@@ -574,9 +641,8 @@ class OvsBridge(_BaseOpts):
     @staticmethod
     def from_json(json):
         name = _get_required_field(json, 'name', 'OvsBridge')
-        (use_dhcp, use_dhcpv6, addresses, routes, mtu, nic_mapping,
-         persist_mapping, defroute,
-         dhclient_args, dns_servers,
+        (use_dhcp, use_dhcpv6, addresses, routes, rules, mtu, nic_mapping,
+         persist_mapping, defroute, dhclient_args, dns_servers,
          nm_controlled, onboot) = _BaseOpts.base_opts_from_json(
              json, include_primary=False)
         ovs_options = json.get('ovs_options')
@@ -588,8 +654,8 @@ class OvsBridge(_BaseOpts):
         members = _update_members(json, nic_mapping, persist_mapping)
 
         return OvsBridge(name, use_dhcp=use_dhcp, use_dhcpv6=use_dhcpv6,
-                         addresses=addresses, routes=routes, mtu=mtu,
-                         members=members, ovs_options=ovs_options,
+                         addresses=addresses, routes=routes, rules=rules,
+                         mtu=mtu, members=members, ovs_options=ovs_options,
                          ovs_extra=ovs_extra, nic_mapping=nic_mapping,
                          persist_mapping=persist_mapping, defroute=defroute,
                          dhclient_args=dhclient_args, dns_servers=dns_servers,
@@ -601,19 +667,20 @@ class OvsUserBridge(_BaseOpts):
     """Base class for OVS User bridges."""
 
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
-                 routes=None, mtu=None, members=None, ovs_options=None,
-                 ovs_extra=None, nic_mapping=None, persist_mapping=False,
-                 defroute=True, dhclient_args=None, dns_servers=None,
-                 nm_controlled=False, onboot=True, fail_mode=None):
+                 routes=None, rules=None, mtu=None, members=None,
+                 ovs_options=None, ovs_extra=None, nic_mapping=None,
+                 persist_mapping=False, defroute=True, dhclient_args=None,
+                 dns_servers=None, nm_controlled=False, onboot=True,
+                 fail_mode=None):
 
         check_ovs_installed(self.__class__.__name__)
 
         super(OvsUserBridge, self).__init__(name, use_dhcp, use_dhcpv6,
-                                            addresses, routes, mtu, False,
-                                            nic_mapping, persist_mapping,
-                                            defroute, dhclient_args,
-                                            dns_servers, nm_controlled,
-                                            onboot)
+                                            addresses, routes, rules, mtu,
+                                            False, nic_mapping,
+                                            persist_mapping, defroute,
+                                            dhclient_args, dns_servers,
+                                            nm_controlled, onboot)
         self.members = members or []
         self.ovs_options = ovs_options
         ovs_extra = ovs_extra or []
@@ -638,9 +705,8 @@ class OvsUserBridge(_BaseOpts):
     @staticmethod
     def from_json(json):
         name = _get_required_field(json, 'name', 'OvsUserBridge')
-        (use_dhcp, use_dhcpv6, addresses, routes, mtu, nic_mapping,
-         persist_mapping, defroute,
-         dhclient_args, dns_servers,
+        (use_dhcp, use_dhcpv6, addresses, routes, rules, mtu, nic_mapping,
+         persist_mapping, defroute, dhclient_args, dns_servers,
          nm_controlled, onboot) = _BaseOpts.base_opts_from_json(
              json, include_primary=False)
         ovs_options = json.get('ovs_options')
@@ -652,8 +718,8 @@ class OvsUserBridge(_BaseOpts):
         members = _update_members(json, nic_mapping, persist_mapping)
 
         return OvsUserBridge(name, use_dhcp=use_dhcp, use_dhcpv6=use_dhcpv6,
-                             addresses=addresses, routes=routes, mtu=mtu,
-                             members=members, ovs_options=ovs_options,
+                             addresses=addresses, routes=routes, rules=rules,
+                             mtu=mtu, members=members, ovs_options=ovs_options,
                              ovs_extra=ovs_extra, nic_mapping=nic_mapping,
                              persist_mapping=persist_mapping,
                              defroute=defroute, dhclient_args=dhclient_args,
@@ -666,15 +732,17 @@ class LinuxBridge(_BaseOpts):
     """Base class for Linux bridges."""
 
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
-                 routes=None, mtu=None, members=None, nic_mapping=None,
-                 persist_mapping=False, defroute=True, dhclient_args=None,
-                 dns_servers=None, nm_controlled=False, onboot=True):
+                 routes=None, rules=None, mtu=None, members=None,
+                 nic_mapping=None, persist_mapping=False, defroute=True,
+                 dhclient_args=None, dns_servers=None, nm_controlled=False,
+                 onboot=True):
         addresses = addresses or []
         routes = routes or []
+        rules = rules or []
         members = members or []
         dns_servers = dns_servers or []
         super(LinuxBridge, self).__init__(name, use_dhcp, use_dhcpv6,
-                                          addresses, routes, mtu, False,
+                                          addresses, routes, rules, mtu, False,
                                           nic_mapping, persist_mapping,
                                           defroute, dhclient_args, dns_servers,
                                           nm_controlled, onboot)
@@ -694,16 +762,15 @@ class LinuxBridge(_BaseOpts):
     @staticmethod
     def from_json(json):
         name = _get_required_field(json, 'name', 'LinuxBridge')
-        (use_dhcp, use_dhcpv6, addresses, routes, mtu, nic_mapping,
-         persist_mapping, defroute, dhclient_args,
-         dns_servers, nm_controlled, onboot) = _BaseOpts.base_opts_from_json(
-             json, include_primary=False)
+        (use_dhcp, use_dhcpv6, addresses, routes, rules, mtu, nic_mapping,
+         persist_mapping, defroute, dhclient_args, dns_servers, nm_controlled,
+         onboot) = _BaseOpts.base_opts_from_json(json, include_primary=False)
 
         members = _update_members(json, nic_mapping, persist_mapping)
 
         return LinuxBridge(name, use_dhcp=use_dhcp, use_dhcpv6=use_dhcpv6,
-                           addresses=addresses, routes=routes, mtu=mtu,
-                           members=members, nic_mapping=nic_mapping,
+                           addresses=addresses, routes=routes, rules=rules,
+                           mtu=mtu, members=members, nic_mapping=nic_mapping,
                            persist_mapping=persist_mapping, defroute=defroute,
                            dhclient_args=dhclient_args,
                            dns_servers=dns_servers,
@@ -724,16 +791,17 @@ class IvsBridge(_BaseOpts):
     """
 
     def __init__(self, name='ivs', use_dhcp=False, use_dhcpv6=False,
-                 addresses=None, routes=None, mtu=1500, members=None,
-                 nic_mapping=None, persist_mapping=False, defroute=True,
-                 dhclient_args=None, dns_servers=None, nm_controlled=False,
-                 onboot=True):
+                 addresses=None, rules=None, routes=None,
+                 mtu=1500, members=None, nic_mapping=None,
+                 persist_mapping=False, defroute=True, dhclient_args=None,
+                 dns_servers=None, nm_controlled=False, onboot=True):
         addresses = addresses or []
         routes = routes or []
+        rules = rules or []
         members = members or []
         dns_servers = dns_servers or []
         super(IvsBridge, self).__init__(name, use_dhcp, use_dhcpv6,
-                                        addresses, routes, mtu, False,
+                                        addresses, routes, rules, mtu, False,
                                         nic_mapping, persist_mapping,
                                         defroute, dhclient_args, dns_servers,
                                         nm_controlled, onboot)
@@ -749,16 +817,15 @@ class IvsBridge(_BaseOpts):
     @staticmethod
     def from_json(json):
         name = 'ivs'
-        (use_dhcp, use_dhcpv6, addresses, routes, mtu, nic_mapping,
-         persist_mapping, defroute, dhclient_args,
-         dns_servers, nm_controlled, onboot) = _BaseOpts.base_opts_from_json(
-             json, include_primary=False)
+        (use_dhcp, use_dhcpv6, addresses, routes, rules, mtu, nic_mapping,
+         persist_mapping, defroute, dhclient_args, dns_servers, nm_controlled,
+         onboot) = _BaseOpts.base_opts_from_json(json, include_primary=False)
 
         members = _update_members(json, nic_mapping, persist_mapping)
 
         return IvsBridge(name, use_dhcp=use_dhcp, use_dhcpv6=use_dhcpv6,
-                         addresses=addresses, routes=routes, mtu=mtu,
-                         members=members, nic_mapping=nic_mapping,
+                         addresses=addresses, routes=routes, rules=rules,
+                         mtu=mtu, members=members, nic_mapping=nic_mapping,
                          persist_mapping=persist_mapping, defroute=defroute,
                          dhclient_args=dhclient_args,
                          dns_servers=dns_servers, nm_controlled=nm_controlled,
@@ -774,20 +841,21 @@ class NfvswitchBridge(_BaseOpts):
     """
 
     def __init__(self, name='nfvswitch', use_dhcp=False, use_dhcpv6=False,
-                 addresses=None, routes=None, mtu=1500, members=None,
-                 nic_mapping=None, persist_mapping=False, defroute=True,
-                 dhclient_args=None, dns_servers=None, nm_controlled=False,
-                 onboot=True, options=""):
+                 addresses=None, routes=None, rules=None, mtu=1500,
+                 members=None, nic_mapping=None, persist_mapping=False,
+                 defroute=True, dhclient_args=None, dns_servers=None,
+                 nm_controlled=False, onboot=True, options=""):
         addresses = addresses or []
         routes = routes or []
+        rules = rules or []
         members = members or []
         dns_servers = dns_servers or []
         super(NfvswitchBridge, self).__init__(name, use_dhcp, use_dhcpv6,
-                                              addresses, routes, mtu, False,
-                                              nic_mapping, persist_mapping,
-                                              defroute, dhclient_args,
-                                              dns_servers, nm_controlled,
-                                              onboot)
+                                              addresses, routes, rules, mtu,
+                                              False, nic_mapping,
+                                              persist_mapping, defroute,
+                                              dhclient_args, dns_servers,
+                                              nm_controlled, onboot)
         self.options = options
         self.members = members
         for member in self.members:
@@ -801,10 +869,9 @@ class NfvswitchBridge(_BaseOpts):
     @staticmethod
     def from_json(json):
         name = 'nfvswitch'
-        (use_dhcp, use_dhcpv6, addresses, routes, mtu, nic_mapping,
-         persist_mapping, defroute, dhclient_args,
-         dns_servers, nm_controlled, onboot) = _BaseOpts.base_opts_from_json(
-             json, include_primary=False)
+        (use_dhcp, use_dhcpv6, addresses, routes, rules, mtu, nic_mapping,
+         persist_mapping, defroute, dhclient_args, dns_servers, nm_controlled,
+         onboot) = _BaseOpts.base_opts_from_json(json, include_primary=False)
 
         members = _update_members(json, nic_mapping, persist_mapping)
 
@@ -814,8 +881,9 @@ class NfvswitchBridge(_BaseOpts):
             raise InvalidConfigException(msg)
 
         return NfvswitchBridge(name, use_dhcp=use_dhcp, use_dhcpv6=use_dhcpv6,
-                               addresses=addresses, routes=routes, mtu=mtu,
-                               members=members, nic_mapping=nic_mapping,
+                               addresses=addresses, routes=routes, rules=rules,
+                               mtu=mtu, members=members,
+                               nic_mapping=nic_mapping,
                                persist_mapping=persist_mapping,
                                defroute=defroute, dhclient_args=dhclient_args,
                                dns_servers=dns_servers,
@@ -827,17 +895,18 @@ class LinuxTeam(_BaseOpts):
     """Base class for Linux bonds using teamd."""
 
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
-                 routes=None, mtu=None, primary=False, members=None,
-                 bonding_options=None, nic_mapping=None, persist_mapping=False,
-                 defroute=True, dhclient_args=None, dns_servers=None,
-                 nm_controlled=False, onboot=True):
+                 routes=None, rules=None, mtu=None, primary=False,
+                 members=None, bonding_options=None, nic_mapping=None,
+                 persist_mapping=False, defroute=True, dhclient_args=None,
+                 dns_servers=None, nm_controlled=False, onboot=True):
         addresses = addresses or []
         routes = routes or []
+        rules = rules or []
         members = members or []
         dns_servers = dns_servers or []
         super(LinuxTeam, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
-                                        routes, mtu, primary, nic_mapping,
-                                        persist_mapping, defroute,
+                                        routes, rules, mtu, primary,
+                                        nic_mapping, persist_mapping, defroute,
                                         dhclient_args, dns_servers,
                                         nm_controlled, onboot)
         self.members = members
@@ -856,17 +925,17 @@ class LinuxTeam(_BaseOpts):
     @staticmethod
     def from_json(json):
         name = _get_required_field(json, 'name', 'LinuxTeam')
-        (use_dhcp, use_dhcpv6, addresses, routes, mtu, nic_mapping,
-         persist_mapping, defroute, dhclient_args,
-         dns_servers, nm_controlled, onboot) = _BaseOpts.base_opts_from_json(
-             json, include_primary=False)
-        bonding_options = json.get('bonding_options')
+        (use_dhcp, use_dhcpv6, addresses, routes, rules, mtu, nic_mapping,
+         persist_mapping, defroute, dhclient_args, dns_servers, nm_controlled,
+         onboot) = _BaseOpts.base_opts_from_json(json, include_primary=False)
 
+        bonding_options = json.get('bonding_options')
         members = _update_members(json, nic_mapping, persist_mapping)
 
         return LinuxTeam(name, use_dhcp=use_dhcp, use_dhcpv6=use_dhcpv6,
-                         addresses=addresses, routes=routes, mtu=mtu,
-                         members=members, bonding_options=bonding_options,
+                         addresses=addresses, routes=routes, rules=rules,
+                         mtu=mtu, members=members,
+                         bonding_options=bonding_options,
                          nic_mapping=nic_mapping,
                          persist_mapping=persist_mapping, defroute=defroute,
                          dhclient_args=dhclient_args, dns_servers=dns_servers,
@@ -877,17 +946,18 @@ class LinuxBond(_BaseOpts):
     """Base class for Linux bonds."""
 
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
-                 routes=None, mtu=None, primary=False, members=None,
-                 bonding_options=None, nic_mapping=None, persist_mapping=False,
-                 defroute=True, dhclient_args=None, dns_servers=None,
-                 nm_controlled=False, onboot=True):
+                 routes=None, rules=None, mtu=None, primary=False,
+                 members=None, bonding_options=None, nic_mapping=None,
+                 persist_mapping=False, defroute=True, dhclient_args=None,
+                 dns_servers=None, nm_controlled=False, onboot=True):
         addresses = addresses or []
         routes = routes or []
+        rules = rules or []
         members = members or []
         dns_servers = dns_servers or []
         super(LinuxBond, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
-                                        routes, mtu, primary, nic_mapping,
-                                        persist_mapping, defroute,
+                                        routes, rules, mtu, primary,
+                                        nic_mapping, persist_mapping, defroute,
                                         dhclient_args, dns_servers,
                                         nm_controlled, onboot)
         self.members = members
@@ -928,7 +998,7 @@ class LinuxBond(_BaseOpts):
     @staticmethod
     def from_json(json):
         name = _get_required_field(json, 'name', 'LinuxBond')
-        (use_dhcp, use_dhcpv6, addresses, routes, mtu, nic_mapping,
+        (use_dhcp, use_dhcpv6, addresses, routes, rules, mtu, nic_mapping,
          persist_mapping, defroute, dhclient_args,
          dns_servers, nm_controlled, onboot) = _BaseOpts.base_opts_from_json(
              json, include_primary=False)
@@ -937,8 +1007,9 @@ class LinuxBond(_BaseOpts):
         members = _update_members(json, nic_mapping, persist_mapping)
 
         return LinuxBond(name, use_dhcp=use_dhcp, use_dhcpv6=use_dhcpv6,
-                         addresses=addresses, routes=routes, mtu=mtu,
-                         members=members, bonding_options=bonding_options,
+                         addresses=addresses, routes=routes, rules=rules,
+                         mtu=mtu, members=members,
+                         bonding_options=bonding_options,
                          nic_mapping=nic_mapping,
                          persist_mapping=persist_mapping, defroute=defroute,
                          dhclient_args=dhclient_args, dns_servers=dns_servers,
@@ -949,19 +1020,21 @@ class OvsBond(_BaseOpts):
     """Base class for OVS bonds."""
 
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
-                 routes=None, mtu=None, primary=False, members=None,
-                 ovs_options=None, ovs_extra=None, nic_mapping=None,
-                 persist_mapping=False, defroute=True, dhclient_args=None,
-                 dns_servers=None, nm_controlled=False, onboot=True):
+                 routes=None, rules=None, mtu=None, primary=False,
+                 members=None, ovs_options=None, ovs_extra=None,
+                 nic_mapping=None, persist_mapping=False, defroute=True,
+                 dhclient_args=None, dns_servers=None, nm_controlled=False,
+                 onboot=True):
 
         check_ovs_installed(self.__class__.__name__)
 
         addresses = addresses or []
         routes = routes or []
+        rules = rules or []
         members = members or []
         dns_servers = dns_servers or []
         super(OvsBond, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
-                                      routes, mtu, primary, nic_mapping,
+                                      routes, rules, mtu, primary, nic_mapping,
                                       persist_mapping, defroute, dhclient_args,
                                       dns_servers, nm_controlled, onboot)
         self.members = members
@@ -1006,7 +1079,7 @@ class OvsBond(_BaseOpts):
     @staticmethod
     def from_json(json):
         name = _get_required_field(json, 'name', 'OvsBond')
-        (use_dhcp, use_dhcpv6, addresses, routes, mtu, nic_mapping,
+        (use_dhcp, use_dhcpv6, addresses, routes, rules, mtu, nic_mapping,
          persist_mapping, defroute, dhclient_args,
          dns_servers, nm_controlled, onboot) = _BaseOpts.base_opts_from_json(
              json, include_primary=False)
@@ -1018,8 +1091,8 @@ class OvsBond(_BaseOpts):
         members = _update_members(json, nic_mapping, persist_mapping)
 
         return OvsBond(name, use_dhcp=use_dhcp, use_dhcpv6=use_dhcpv6,
-                       addresses=addresses, routes=routes, mtu=mtu,
-                       members=members, ovs_options=ovs_options,
+                       addresses=addresses, routes=routes, rules=rules,
+                       mtu=mtu, members=members, ovs_options=ovs_options,
                        ovs_extra=ovs_extra, nic_mapping=nic_mapping,
                        persist_mapping=persist_mapping, defroute=defroute,
                        dhclient_args=dhclient_args, dns_servers=dns_servers,
@@ -1030,19 +1103,21 @@ class OvsTunnel(_BaseOpts):
     """Base class for OVS Tunnels."""
 
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
-                 routes=None, mtu=None, primary=False, nic_mapping=None,
-                 persist_mapping=False, defroute=True, dhclient_args=None,
-                 dns_servers=None, nm_controlled=False, onboot=True,
-                 tunnel_type=None, ovs_options=None, ovs_extra=None):
+                 routes=None, rules=None, mtu=None, primary=False,
+                 nic_mapping=None, persist_mapping=False, defroute=True,
+                 dhclient_args=None, dns_servers=None, nm_controlled=False,
+                 onboot=True, tunnel_type=None, ovs_options=None,
+                 ovs_extra=None):
 
         check_ovs_installed(self.__class__.__name__)
 
         addresses = addresses or []
         routes = routes or []
+        rules = rules or []
         dns_servers = dns_servers or []
         super(OvsTunnel, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
-                                        routes, mtu, primary, nic_mapping,
-                                        persist_mapping, defroute,
+                                        routes, rules, mtu, primary,
+                                        nic_mapping, persist_mapping, defroute,
                                         dhclient_args, dns_servers,
                                         nm_controlled, onboot)
         self.tunnel_type = tunnel_type
@@ -1067,22 +1142,24 @@ class OvsPatchPort(_BaseOpts):
     """Base class for OVS Patch Ports."""
 
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
-                 routes=None, mtu=None, primary=False, nic_mapping=None,
-                 persist_mapping=False, defroute=True, dhclient_args=None,
-                 dns_servers=None, nm_controlled=False, onboot=True,
-                 bridge_name=None, peer=None, ovs_options=None,
+                 routes=None, rules=None, mtu=None, primary=False,
+                 nic_mapping=None, persist_mapping=False, defroute=True,
+                 dhclient_args=None, dns_servers=None, nm_controlled=False,
+                 onboot=True, bridge_name=None, peer=None, ovs_options=None,
                  ovs_extra=None):
 
         check_ovs_installed(self.__class__.__name__)
 
         addresses = addresses or []
         routes = routes or []
+        rules = rules or []
         dns_servers = dns_servers or []
         super(OvsPatchPort, self).__init__(name, use_dhcp, use_dhcpv6,
-                                           addresses, routes, mtu, primary,
-                                           nic_mapping, persist_mapping,
-                                           defroute, dhclient_args,
-                                           dns_servers, nm_controlled, onboot)
+                                           addresses, routes, rules, mtu,
+                                           primary, nic_mapping,
+                                           persist_mapping, defroute,
+                                           dhclient_args, dns_servers,
+                                           nm_controlled, onboot)
         self.bridge_name = bridge_name
         self.peer = peer
         self.ovs_options = ovs_options or []
@@ -1107,17 +1184,19 @@ class IbInterface(_BaseOpts):
     """Base class for InfiniBand network interfaces."""
 
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
-                 routes=None, mtu=None, primary=False, nic_mapping=None,
-                 persist_mapping=False, defroute=True, dhclient_args=None,
-                 dns_servers=None, nm_controlled=False, onboot=True,
-                 ethtool_opts=None):
+                 routes=None, rules=None, mtu=None, primary=False,
+                 nic_mapping=None, persist_mapping=False, defroute=True,
+                 dhclient_args=None, dns_servers=None, nm_controlled=False,
+                 onboot=True, ethtool_opts=None):
         addresses = addresses or []
         routes = routes or []
+        rules = rules or []
         dns_servers = dns_servers or []
         super(IbInterface, self).__init__(name, use_dhcp, use_dhcpv6,
-                                          addresses, routes, mtu, primary,
-                                          nic_mapping, persist_mapping,
-                                          defroute, dhclient_args, dns_servers,
+                                          addresses, routes, rules, mtu,
+                                          primary, nic_mapping,
+                                          persist_mapping, defroute,
+                                          dhclient_args, dns_servers,
                                           nm_controlled, onboot)
         self.ethtool_opts = ethtool_opts
 
@@ -1133,19 +1212,20 @@ class OvsDpdkPort(_BaseOpts):
     """Base class for OVS Dpdk Ports."""
 
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
-                 routes=None, mtu=None, primary=False, nic_mapping=None,
-                 persist_mapping=False, defroute=True, dhclient_args=None,
-                 dns_servers=None, nm_controlled=False, onboot=True,
-                 members=None, driver='vfio-pci', ovs_options=None,
-                 ovs_extra=None, rx_queue=None):
+                 routes=None, rules=None, mtu=None, primary=False,
+                 nic_mapping=None, persist_mapping=False, defroute=True,
+                 dhclient_args=None, dns_servers=None, nm_controlled=False,
+                 onboot=True, members=None, driver='vfio-pci',
+                 ovs_options=None, ovs_extra=None, rx_queue=None):
 
         check_ovs_installed(self.__class__.__name__)
 
         super(OvsDpdkPort, self).__init__(name, use_dhcp, use_dhcpv6,
-                                          addresses, routes, mtu, primary,
-                                          nic_mapping, persist_mapping,
-                                          defroute, dhclient_args,
-                                          dns_servers, nm_controlled, onboot)
+                                          addresses, routes, rules, mtu,
+                                          primary, nic_mapping,
+                                          persist_mapping, defroute,
+                                          dhclient_args, dns_servers,
+                                          nm_controlled, onboot)
         self.members = members or []
         self.ovs_options = ovs_options or []
         self.ovs_extra = format_ovs_extra(self, ovs_extra)
@@ -1175,8 +1255,8 @@ class OvsDpdkPort(_BaseOpts):
     def from_json(json):
         name = _get_required_field(json, 'name', 'OvsDpdkPort')
         # driver name by default will be 'vfio-pci' if not specified
-        (use_dhcp, use_dhcpv6, addresses, routes, mtu, primary, nic_mapping,
-         persist_mapping, defroute, dhclient_args,
+        (use_dhcp, use_dhcpv6, addresses, routes, rules, mtu, primary,
+         nic_mapping, persist_mapping, defroute, dhclient_args,
          dns_servers, nm_controlled,
          onboot) = _BaseOpts.base_opts_from_json(json)
 
@@ -1223,8 +1303,8 @@ class OvsDpdkPort(_BaseOpts):
         if not isinstance(ovs_extra, list):
             ovs_extra = [ovs_extra]
         return OvsDpdkPort(name, use_dhcp=use_dhcp, use_dhcpv6=use_dhcpv6,
-                           addresses=addresses, routes=routes, mtu=mtu,
-                           primary=primary, nic_mapping=nic_mapping,
+                           addresses=addresses, routes=routes, rules=rules,
+                           mtu=mtu, primary=primary, nic_mapping=nic_mapping,
                            persist_mapping=persist_mapping, defroute=defroute,
                            dhclient_args=dhclient_args,
                            dns_servers=dns_servers,
@@ -1238,13 +1318,15 @@ class SriovVF(_BaseOpts):
     """Base class for SR-IOV VF."""
 
     def __init__(self, device, vfid, use_dhcp=False, use_dhcpv6=False,
-                 addresses=None, routes=None, mtu=None, primary=False,
-                 nic_mapping=None, persist_mapping=False, defroute=True,
-                 dhclient_args=None, dns_servers=None, nm_controlled=False,
-                 onboot=True, vlan_id=0, qos=0, spoofcheck=None,
-                 trust=None, state=None, macaddr=None, promisc=None):
+                 addresses=None, routes=None, rules=None, mtu=None,
+                 primary=False, nic_mapping=None, persist_mapping=False,
+                 defroute=True, dhclient_args=None, dns_servers=None,
+                 nm_controlled=False, onboot=True, vlan_id=0, qos=0,
+                 spoofcheck=None, trust=None, state=None, macaddr=None,
+                 promisc=None):
         addresses = addresses or []
         routes = routes or []
+        rules = rules or []
         dns_servers = dns_servers or []
         mapped_nic_names = mapped_nics(nic_mapping)
         if device in mapped_nic_names:
@@ -1254,7 +1336,7 @@ class SriovVF(_BaseOpts):
         # (device) and the VF id.
         name = utils.get_vf_devname(device, vfid)
         super(SriovVF, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
-                                      routes, mtu, primary, nic_mapping,
+                                      routes, rules, mtu, primary, nic_mapping,
                                       persist_mapping, defroute,
                                       dhclient_args, dns_servers,
                                       nm_controlled, onboot)
@@ -1314,15 +1396,16 @@ class SriovPF(_BaseOpts):
     """Base class for SR-IOV PF."""
 
     def __init__(self, name, numvfs, use_dhcp=False, use_dhcpv6=False,
-                 addresses=None, routes=None, mtu=None, primary=False,
-                 nic_mapping=None, persist_mapping=False, defroute=True,
-                 dhclient_args=None, dns_servers=None, nm_controlled=False,
-                 onboot=True, members=None, promisc=None):
+                 addresses=None, routes=None, rules=None, mtu=None,
+                 primary=False, nic_mapping=None, persist_mapping=False,
+                 defroute=True, dhclient_args=None, dns_servers=None,
+                 nm_controlled=False, onboot=True, members=None, promisc=None):
         addresses = addresses or []
         routes = routes or []
+        rules = rules or []
         dns_servers = dns_servers or []
         super(SriovPF, self).__init__(name, use_dhcp, use_dhcpv6, addresses,
-                                      routes, mtu, primary, nic_mapping,
+                                      routes, rules, mtu, primary, nic_mapping,
                                       persist_mapping, defroute,
                                       dhclient_args, dns_servers,
                                       nm_controlled, onboot)
@@ -1358,18 +1441,19 @@ class OvsDpdkBond(_BaseOpts):
     """Base class for OVS DPDK bonds."""
 
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
-                 routes=None, mtu=None, primary=False, members=None,
-                 ovs_options=None, ovs_extra=None, nic_mapping=None,
-                 persist_mapping=False, defroute=True, dhclient_args=None,
-                 dns_servers=None, nm_controlled=False, onboot=True,
-                 rx_queue=None):
+                 routes=None, rules=None, mtu=None, primary=False,
+                 members=None, ovs_options=None, ovs_extra=None,
+                 nic_mapping=None, persist_mapping=False, defroute=True,
+                 dhclient_args=None, dns_servers=None, nm_controlled=False,
+                 onboot=True, rx_queue=None):
 
         check_ovs_installed(self.__class__.__name__)
 
         super(OvsDpdkBond, self).__init__(name, use_dhcp, use_dhcpv6,
-                                          addresses, routes, mtu, primary,
-                                          nic_mapping, persist_mapping,
-                                          defroute, dhclient_args, dns_servers,
+                                          addresses, routes, rules, mtu,
+                                          primary, nic_mapping,
+                                          persist_mapping, defroute,
+                                          dhclient_args, dns_servers,
                                           nm_controlled, onboot)
         self.members = members or []
         self.ovs_options = ovs_options
@@ -1393,7 +1477,7 @@ class OvsDpdkBond(_BaseOpts):
     @staticmethod
     def from_json(json):
         name = _get_required_field(json, 'name', 'OvsDpdkBond')
-        (use_dhcp, use_dhcpv6, addresses, routes, mtu, nic_mapping,
+        (use_dhcp, use_dhcpv6, addresses, routes, rules, mtu, nic_mapping,
          persist_mapping, defroute, dhclient_args,
          dns_servers, nm_controlled, onboot) = _BaseOpts.base_opts_from_json(
              json, include_primary=False)
@@ -1423,8 +1507,8 @@ class OvsDpdkBond(_BaseOpts):
                 raise InvalidConfigException(msg)
 
         return OvsDpdkBond(name, use_dhcp=use_dhcp, use_dhcpv6=use_dhcpv6,
-                           addresses=addresses, routes=routes, mtu=mtu,
-                           members=members, ovs_options=ovs_options,
+                           addresses=addresses, routes=routes, rules=rules,
+                           mtu=mtu, members=members, ovs_options=ovs_options,
                            ovs_extra=ovs_extra, nic_mapping=nic_mapping,
                            persist_mapping=persist_mapping,
                            defroute=defroute, dhclient_args=dhclient_args,
@@ -1458,17 +1542,20 @@ class VppInterface(_BaseOpts):
     subsequent runs of os-net-config.
     """
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
-                 routes=None, mtu=None, primary=False, nic_mapping=None,
-                 persist_mapping=False, defroute=True, dhclient_args=None,
-                 dns_servers=None, nm_controlled=False, onboot=True,
-                 uio_driver='vfio-pci', options=None):
+                 routes=None, rules=None, mtu=None, primary=False,
+                 nic_mapping=None, persist_mapping=False, defroute=True,
+                 dhclient_args=None, dns_servers=None, nm_controlled=False,
+                 onboot=True, uio_driver='vfio-pci', options=None):
         addresses = addresses or []
+        routes = routes or []
+        rules = rules or []
 
         super(VppInterface, self).__init__(name, use_dhcp, use_dhcpv6,
-                                           addresses, routes, mtu, primary,
-                                           nic_mapping, persist_mapping,
-                                           defroute, dhclient_args,
-                                           dns_servers, nm_controlled, onboot)
+                                           addresses, routes, rules, mtu,
+                                           primary, nic_mapping,
+                                           persist_mapping, defroute,
+                                           dhclient_args, dns_servers,
+                                           nm_controlled, onboot)
         self.uio_driver = uio_driver
         self.options = options
         # pci_dev contains pci address for the interface, it will be populated
@@ -1490,15 +1577,17 @@ class VppInterface(_BaseOpts):
 class VppBond(_BaseOpts):
     """Base class for VPP Bond."""
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
-                 routes=None, mtu=None, primary=False, nic_mapping=None,
-                 persist_mapping=False, defroute=True, dhclient_args=None,
-                 dns_servers=None, nm_controlled=False, onboot=True,
-                 members=None, bonding_options=None):
+                 routes=None, rules=None, mtu=None, primary=False,
+                 nic_mapping=None, persist_mapping=False, defroute=True,
+                 dhclient_args=None, dns_servers=None, nm_controlled=False,
+                 onboot=True, members=None, bonding_options=None):
         addresses = addresses or []
         members = members or []
+        routes = routes or []
+        rules = rules or []
 
         super(VppBond, self).__init__(name, use_dhcp, use_dhcpv6,
-                                      addresses, routes, mtu, primary,
+                                      addresses, routes, rules, mtu, primary,
                                       nic_mapping, persist_mapping,
                                       defroute, dhclient_args,
                                       dns_servers, nm_controlled, onboot)
@@ -1510,10 +1599,9 @@ class VppBond(_BaseOpts):
         name = _get_required_field(json, 'name', 'VppBond')
         bonding_options = json.get('bonding_options', '')
 
-        (use_dhcp, use_dhcpv6, addresses, routes, mtu, nic_mapping,
-         persist_mapping, defroute, dhclient_args,
-         dns_servers, nm_controlled, onboot) = _BaseOpts.base_opts_from_json(
-             json, include_primary=False)
+        (use_dhcp, use_dhcpv6, addresses, routes, rules, mtu, nic_mapping,
+         persist_mapping, defroute, dhclient_args, dns_servers, nm_controlled,
+         onboot) = _BaseOpts.base_opts_from_json(json, include_primary=False)
 
         members = []
         members_json = json.get('members', None)
@@ -1534,8 +1622,8 @@ class VppBond(_BaseOpts):
                 raise InvalidConfigException(msg)
 
         return VppBond(name, use_dhcp=use_dhcp, use_dhcpv6=use_dhcpv6,
-                       addresses=addresses, routes=routes, mtu=mtu,
-                       members=members, nic_mapping=nic_mapping,
+                       addresses=addresses, routes=routes, rules=rules,
+                       mtu=mtu, members=members, nic_mapping=nic_mapping,
                        persist_mapping=persist_mapping,
                        defroute=defroute, dhclient_args=dhclient_args,
                        dns_servers=dns_servers, nm_controlled=nm_controlled,
@@ -1552,14 +1640,14 @@ class ContrailVrouter(_BaseOpts):
       - members: List of sole interface to use by vhost0
     """
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
-                 routes=None, mtu=None, primary=False, nic_mapping=None,
-                 persist_mapping=False, defroute=True, dhclient_args=None,
-                 dns_servers=None, nm_controlled=False, onboot=True,
-                 members=None):
+                 routes=None, rules=None, mtu=None, primary=False,
+                 nic_mapping=None, persist_mapping=False, defroute=True,
+                 dhclient_args=None, dns_servers=None, nm_controlled=False,
+                 onboot=True, members=None):
         addresses = addresses or []
 
         super(ContrailVrouter, self).__init__(name, use_dhcp, use_dhcpv6,
-                                              addresses, routes, mtu,
+                                              addresses, routes, rules, mtu,
                                               primary, nic_mapping,
                                               persist_mapping, defroute,
                                               dhclient_args, dns_servers,
@@ -1570,7 +1658,7 @@ class ContrailVrouter(_BaseOpts):
     def from_json(json):
         name = _get_required_field(json, 'name', 'ContrailVrouter')
 
-        (_use_dhcp, _use_dhcpv6, _addresses, _routes, _mtu, _primary,
+        (_use_dhcp, _use_dhcpv6, _addresses, _routes, _rules, _mtu, _primary,
          nic_mapping, persist_mapping, _defroute, _dhclient_args, _dns_servers,
          _nm_controlled, _onboot) = opts = _BaseOpts.base_opts_from_json(json)
         members = _update_members(json, nic_mapping, persist_mapping)
@@ -1592,16 +1680,16 @@ class ContrailVrouterDpdk(_BaseOpts):
       - vlan_id:
     """
     def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
-                 routes=None, mtu=None, primary=False, nic_mapping=None,
-                 persist_mapping=False, defroute=True, dhclient_args=None,
-                 dns_servers=None, nm_controlled=False, onboot=True,
-                 members=None, bond_mode=None, bond_policy=None,
+                 routes=None, rules=None, mtu=None, primary=False,
+                 nic_mapping=None, persist_mapping=False, defroute=True,
+                 dhclient_args=None, dns_servers=None, nm_controlled=False,
+                 onboot=True, members=None, bond_mode=None, bond_policy=None,
                  driver=None, cpu_list='0-31', vlan_id=None):
         addresses = addresses or []
 
         super(ContrailVrouterDpdk, self).__init__(name, use_dhcp, use_dhcpv6,
-                                                  addresses, routes, mtu,
-                                                  primary, nic_mapping,
+                                                  addresses, routes, rules,
+                                                  mtu, primary, nic_mapping,
                                                   persist_mapping, defroute,
                                                   dhclient_args, dns_servers,
                                                   nm_controlled, onboot)
@@ -1622,7 +1710,7 @@ class ContrailVrouterDpdk(_BaseOpts):
         cpu_list = json.get('cpu_list', '0-31')
         vlan_id = json.get('vlan_id', '')
 
-        (_use_dhcp, _use_dhcpv6, _addresses, _routes, _mtu, _primary,
+        (_use_dhcp, _use_dhcpv6, _addresses, _routes, _rules, _mtu, _primary,
          nic_mapping, persist_mapping, _defroute, _dhclient_args, _dns_servers,
          _nm_controlled, _onboot) = opts = _BaseOpts.base_opts_from_json(json)
         members = _update_members(json, nic_mapping, persist_mapping)

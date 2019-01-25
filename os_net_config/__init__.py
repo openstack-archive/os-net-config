@@ -50,6 +50,8 @@ class NetConfig(object):
 
         :param obj: The object to add.
         """
+        if isinstance(obj, objects.RouteTable):
+            self.add_route_table(obj)
         if isinstance(obj, objects.Interface):
             self.add_interface(obj)
         elif isinstance(obj, objects.Vlan):
@@ -114,6 +116,13 @@ class NetConfig(object):
             self.add_contrail_vrouter(obj)
         elif isinstance(obj, objects.ContrailVrouterDpdk):
             self.add_contrail_vrouter_dpdk(obj)
+
+    def add_route_table(self, route_table):
+        """Add a route table object to the net config object.
+
+        :param route_table: The RouteTable object to add.
+        """
+        raise NotImplementedError("add_route_table is not implemented.")
 
     def add_interface(self, interface):
         """Add an Interface object to the net config object.

@@ -135,6 +135,10 @@ definitions:
                 $ref: "#/definitions/bool_or_param"
             route_options:
                 $ref: "#/definitions/string_or_param"
+            table:
+                oneOf:
+                    - $ref: "#/definitions/string_or_param"
+                    - $ref: "#/definitions/int_or_param"
           requires:
             - next_hop
           additionalProperties: False
@@ -147,6 +151,10 @@ definitions:
                 $ref: "#/definitions/bool_or_param"
             route_options:
                 $ref: "#/definitions/string_or_param"
+            table:
+                oneOf:
+                    - $ref: "#/definitions/string_or_param"
+                    - $ref: "#/definitions/int_or_param"
           requires:
             - nexthop
           additionalProperties: False
@@ -155,6 +163,22 @@ definitions:
         items:
             $ref: "#/definitions/route"
         minItems: 0
+
+    route_rule:
+        type: object
+        properties:
+            rule:
+                $ref: "#/definitions/string_or_param"
+            comment:
+                $ref: "#/definitions/string_or_param"
+        required:
+          - rule
+        additionalProperties: False
+    list_of_rule:
+        type: array
+        items:
+            $ref: "#/definitions/route_rule"
+        minItems: 1
 
     nic_mapping:
         type: ["object", "null"]
@@ -230,6 +254,8 @@ definitions:
                 $ref: "#/definitions/list_of_address"
             routes:
                 $ref: "#/definitions/list_of_route"
+            rules:
+                $ref: "#/definitions/list_of_rule"
             mtu:
                 $ref: "#/definitions/int_or_param"
             nic_mapping:
@@ -249,6 +275,23 @@ definitions:
         required:
           - type
           - name
+        additionalProperties: False
+
+    route_table:
+        type: object
+        properties:
+            type:
+                enum: ["route_table"]
+            name:
+                $ref: "#/definitions/string_or_param"
+            table_id:
+                oneOf:
+                  - $ref: "#/definitions/int_or_param"
+                  - $ref: "#/definitions/string_or_param"
+        required:
+          - type
+          - name
+          - table_id
         additionalProperties: False
 
     sriov_pf:
@@ -275,6 +318,8 @@ definitions:
                 $ref: "#/definitions/list_of_address"
             routes:
                 $ref: "#/definitions/list_of_route"
+            rules:
+                $ref: "#/definitions/list_of_rule"
             mtu:
                 $ref: "#/definitions/int_or_param"
             nic_mapping:
@@ -333,6 +378,8 @@ definitions:
                 $ref: "#/definitions/list_of_address"
             routes:
                 $ref: "#/definitions/list_of_route"
+            rules:
+                $ref: "#/definitions/list_of_rule"
             mtu:
                 $ref: "#/definitions/int_or_param"
             nic_mapping:
@@ -375,6 +422,8 @@ definitions:
                 $ref: "#/definitions/list_of_address"
             routes:
                 $ref: "#/definitions/list_of_route"
+            rules:
+                $ref: "#/definitions/list_of_rule"
             mtu:
                 $ref: "#/definitions/int_or_param"
             nic_mapping:
@@ -429,6 +478,8 @@ definitions:
                 $ref: "#/definitions/list_of_address"
             routes:
                 $ref: "#/definitions/list_of_route"
+            rules:
+                $ref: "#/definitions/list_of_rule"
             mtu:
                 $ref: "#/definitions/int_or_param"
             nic_mapping:
@@ -484,6 +535,8 @@ definitions:
                 $ref: "#/definitions/list_of_address"
             routes:
                 $ref: "#/definitions/list_of_route"
+            rules:
+                $ref: "#/definitions/list_of_rule"
             mtu:
                 $ref: "#/definitions/int_or_param"
             nic_mapping:
@@ -534,6 +587,8 @@ definitions:
                 $ref: "#/definitions/list_of_address"
             routes:
                 $ref: "#/definitions/list_of_route"
+            rules:
+                $ref: "#/definitions/list_of_rule"
             mtu:
                 $ref: "#/definitions/int_or_param"
             nic_mapping:
@@ -582,6 +637,8 @@ definitions:
                 $ref: "#/definitions/list_of_address"
             routes:
                 $ref: "#/definitions/list_of_route"
+            rules:
+                $ref: "#/definitions/list_of_rule"
             mtu:
                 $ref: "#/definitions/int_or_param"
             nic_mapping:
@@ -629,6 +686,8 @@ definitions:
                 $ref: "#/definitions/list_of_address"
             routes:
                 $ref: "#/definitions/list_of_route"
+            rules:
+                $ref: "#/definitions/list_of_rule"
             mtu:
                 $ref: "#/definitions/int_or_param"
             nic_mapping:
@@ -677,6 +736,8 @@ definitions:
                 $ref: "#/definitions/list_of_address"
             routes:
                 $ref: "#/definitions/list_of_route"
+            rules:
+                $ref: "#/definitions/list_of_rule"
             mtu:
                 $ref: "#/definitions/int_or_param"
             nic_mapping:
@@ -733,6 +794,8 @@ definitions:
                 $ref: "#/definitions/list_of_address"
             routes:
                 $ref: "#/definitions/list_of_route"
+            rules:
+                $ref: "#/definitions/list_of_rule"
             mtu:
                 $ref: "#/definitions/int_or_param"
             nic_mapping:
@@ -775,6 +838,8 @@ definitions:
                 $ref: "#/definitions/list_of_address"
             routes:
                 $ref: "#/definitions/list_of_route"
+            rules:
+                $ref: "#/definitions/list_of_rule"
             mtu:
                 $ref: "#/definitions/int_or_param"
             nic_mapping:
@@ -816,6 +881,8 @@ definitions:
                 $ref: "#/definitions/list_of_address"
             routes:
                 $ref: "#/definitions/list_of_route"
+            rules:
+                $ref: "#/definitions/list_of_rule"
             mtu:
                 $ref: "#/definitions/int_or_param"
             nic_mapping:
@@ -869,6 +936,8 @@ definitions:
                 $ref: "#/definitions/list_of_address"
             routes:
                 $ref: "#/definitions/list_of_route"
+            rules:
+                $ref: "#/definitions/list_of_rule"
             mtu:
                 $ref: "#/definitions/int_or_param"
             nic_mapping:
@@ -926,6 +995,8 @@ definitions:
                 $ref: "#/definitions/list_of_address"
             routes:
                 $ref: "#/definitions/list_of_route"
+            rules:
+                $ref: "#/definitions/list_of_rule"
             mtu:
                 $ref: "#/definitions/int_or_param"
             nic_mapping:
@@ -969,6 +1040,8 @@ definitions:
                 $ref: "#/definitions/list_of_address"
             routes:
                 $ref: "#/definitions/list_of_route"
+            rules:
+                $ref: "#/definitions/list_of_rule"
             mtu:
                 $ref: "#/definitions/int_or_param"
             nic_mapping:
@@ -1016,6 +1089,8 @@ definitions:
                 $ref: "#/definitions/list_of_address"
             routes:
                 $ref: "#/definitions/list_of_route"
+            rules:
+                $ref: "#/definitions/list_of_rule"
             mtu:
                 $ref: "#/definitions/int_or_param"
             nic_mapping:
@@ -1062,6 +1137,8 @@ definitions:
                 $ref: "#/definitions/list_of_address"
             routes:
                 $ref: "#/definitions/list_of_route"
+            rules:
+                $ref: "#/definitions/list_of_rule"
             mtu:
                 $ref: "#/definitions/int_or_param"
             nic_mapping:
@@ -1104,6 +1181,8 @@ definitions:
                 $ref: "#/definitions/list_of_address"
             routes:
                 $ref: "#/definitions/list_of_route"
+            rules:
+                $ref: "#/definitions/list_of_rule"
             mtu:
                 $ref: "#/definitions/int_or_param"
             nic_mapping:
@@ -1145,6 +1224,8 @@ definitions:
                 $ref: "#/definitions/list_of_address"
             routes:
                 $ref: "#/definitions/list_of_route"
+            rules:
+                $ref: "#/definitions/list_of_rule"
             mtu:
                 $ref: "#/definitions/int_or_param"
             nic_mapping:
@@ -1189,6 +1270,8 @@ definitions:
                 $ref: "#/definitions/list_of_address"
             routes:
                 $ref: "#/definitions/list_of_route"
+            rules:
+                $ref: "#/definitions/list_of_rule"
             mtu:
                 $ref: "#/definitions/int_or_param"
             nic_mapping:
@@ -1231,6 +1314,8 @@ definitions:
                 $ref: "#/definitions/list_of_address"
             routes:
                 $ref: "#/definitions/list_of_route"
+            rules:
+                $ref: "#/definitions/list_of_rule"
             mtu:
                 $ref: "#/definitions/int_or_param"
             nic_mapping:
@@ -1272,6 +1357,8 @@ definitions:
                 $ref: "#/definitions/list_of_address"
             routes:
                 $ref: "#/definitions/list_of_route"
+            rules:
+                $ref: "#/definitions/list_of_rule"
             mtu:
                 $ref: "#/definitions/int_or_param"
             nic_mapping:
@@ -1297,6 +1384,7 @@ type: array
 items:
     oneOf:
       - $ref: "#/definitions/interface"
+      - $ref: "#/definitions/route_table"
       - $ref: "#/definitions/sriov_pf"
       - $ref: "#/definitions/sriov_vf"
       - $ref: "#/definitions/vlan"
