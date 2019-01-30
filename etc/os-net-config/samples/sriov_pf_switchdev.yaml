@@ -1,0 +1,87 @@
+network_config:
+  # sriov_pf type shall be used to configure the PF's of NICs.
+  # The numvfs configured for the PF's shall be set on the sriov_numvfs of the
+  # sysfs for the corresponding NIC and the persistence of the same across reboots
+  # shall be handled.
+  # The link_mode configured the mode of the sriov_pf which can be "switchdev"
+  # or legacy.
+  # In case fo switchdev, you will enable the hardware offloading and VF-LAG
+  # capabilities
+  # For now, if you configured link_mode with "switchdev" you will not be able
+  # to use any of its sriov_vfs, the vfs will be only used for vms.
+  -
+    type: sriov_pf
+    # nic name or nic number of the NIC that needs to be configured for SRIOV
+    name: p2p1
+    # number of VFs required on the particular NIC
+    numvfs: 10
+    addresses:
+    - ip_netmask: 192.0.2.1/24
+    # Allow all the traffic received. Default: true
+    promisc: true
+    # The mode of sriov_pf which:
+    # - switchdev
+    # - legacy (default)
+    link_mode: switchdev
+
+  -
+    type: ovs_bridge
+    name: br-pfs
+    use_dhcp: true
+    members:
+    -
+      type: sriov_pf
+      name: p2p2
+      numvfs: 10
+      promisc: true
+      use_dhcp: false
+      link_mode: switchdev
+
+  -
+    type: ovs_bridge
+    name: br-bond
+    use_dhcp: true
+    members:
+    -
+      type: ovs_bond
+      name: bond_pf
+      ovs_options: "bond_mode=active-backup"
+      members:
+      -
+        type: sriov_pf
+        name: p5p1
+        numvfs: 10
+        primary: true
+        promisc: true
+        use_dhcp: false
+        link_mode: switchdev
+      -
+        type: sriov_pf
+        name: p5p2
+        numvfs: 10
+        promisc: true
+        use_dhcp: false
+        link_mode: switchdev
+
+  -
+    # VF-LAG capability, which means that the vfs will be bonded in hardware
+    type: linux_bond
+    name: bond_lnx
+    use_dhcp: true
+    bonding_options: "mode=active-backup"
+    members:
+    -
+      type: sriov_pf
+      name: p6p1
+      numvfs: 10
+      primary: true
+      promisc: true
+      use_dhcp: false
+      link_mode: switchdev
+    -
+      type: sriov_pf
+      name: p6p2
+      numvfs: 10
+      promisc: true
+      use_dhcp: false
+      link_mode: switchdev

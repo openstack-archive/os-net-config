@@ -25,6 +25,7 @@ import argparse
 import logging
 import os
 import pyudev
+import re
 from six.moves import queue as Queue
 import sys
 import yaml
@@ -32,6 +33,7 @@ import yaml
 from oslo_concurrency import processutils
 
 logger = logging.getLogger(__name__)
+_SYS_CLASS_NET = '/sys/class/net'
 # Create a queue for passing the udev network events
 vf_queue = Queue.Queue()
 
@@ -94,6 +96,8 @@ def configure_sriov_pf():
     observer.start()
 
     sriov_map = _get_sriov_map()
+    MLNX_UNBIND_FILE_PATH = "/sys/bus/pci/drivers/mlx5_core/unbind"
+    MLNX_VENDOR_ID = "0x15b3"
     for item in sriov_map:
         if item['device_type'] == 'pf':
             _pf_interface_up(item)
@@ -108,6 +112,19 @@ def configure_sriov_pf():
                 raise SRIOVNumvfsException(msg)
             # Wait for the creation of VFs for each PF
             _wait_for_vf_creation(item['name'], item['numvfs'])
+            # Configure switchdev mode
+            vendor_id = get_vendor_id(item['name'])
+            if (item.get('link_mode') == "switchdev" and
+                    vendor_id == MLNX_VENDOR_ID):
+                vf_pcis_list = get_vf_pcis_list(item['name'])
+                for vf_pci in vf_pcis_list:
+                    vf_pci_path = "/sys/bus/pci/devices/%s/driver" % vf_pci
+                    if os.path.exists(vf_pci_path):
+                        with open(MLNX_UNBIND_FILE_PATH, 'w') as f:
+                            f.write("%s" % vf_pci)
+                configure_switchdev(item['name'])
+                if_up_interface(item['name'])
+
     observer.stop()
 
 
@@ -139,6 +156,30 @@ def _wait_for_vf_creation(pf_name, numvfs):
     logger.info("Required VFs are created for PF %s" % pf_name)
 
 
+def configure_switchdev(pf_name):
+    pf_pci = get_pf_pci(pf_name)
+    pf_device_id = get_pf_device_id(pf_name)
+    if pf_device_id == "0x1013" or pf_device_id == "0x1015":
+        try:
+            processutils.execute('/usr/sbin/devlink', 'dev', 'eswitch', 'set',
+                                 'pci/%s' % pf_pci, 'inline-mode', 'transport')
+        except processutils.ProcessExecutionError:
+            logger.error("Failed to set inline-mode to transport")
+            raise
+    try:
+        processutils.execute('/usr/sbin/devlink', 'dev', 'eswitch', 'set',
+                             'pci/%s' % pf_pci, 'mode', 'switchdev')
+    except processutils.ProcessExecutionError:
+        logger.error("Failed to set mode to switchdev")
+        raise
+    try:
+        processutils.execute('/usr/sbin/ethtool', '-K', pf_name,
+                             'hw-tc-offload', 'on')
+    except processutils.ProcessExecutionError:
+        logger.error("Failed to enable hw-tc-offload")
+        raise
+
+
 def run_ip_config_cmd(*cmd, **kwargs):
     logger.info("Running %s" % ' '.join(cmd))
     try:
@@ -154,6 +195,51 @@ def _pf_interface_up(pf_device):
                           'promisc', pf_device['promisc'])
     logger.info("Bringing up PF: %s" % pf_device['name'])
     run_ip_config_cmd('ip', 'link', 'set', 'dev', pf_device['name'], 'up')
+
+
+def get_vendor_id(ifname):
+    try:
+        with open(os.path.join(_SYS_CLASS_NET, ifname, "device/vendor"),
+                  'r') as f:
+            out = f.read().strip()
+        return out
+    except IOError:
+        return
+
+
+def get_pf_pci(pf_name):
+    pf_pci_path = os.path.join(_SYS_CLASS_NET, pf_name, "device/uevent")
+    pf_info = get_file_data(pf_pci_path)
+    pf_pci = re.search(r'PCI_SLOT_NAME=(.*)', pf_info, re.MULTILINE).group(1)
+    return pf_pci
+
+
+def get_pf_device_id(pf_name):
+    pf_device_path = os.path.join(_SYS_CLASS_NET, pf_name, "device/device")
+    pf_device_id = get_file_data(pf_device_path).strip()
+    return pf_device_id
+
+
+def get_vf_pcis_list(pf_name):
+    vf_pcis_list = []
+    listOfPfFiles = os.listdir(os.path.join(_SYS_CLASS_NET, pf_name,
+                                            "device"))
+    for pf_file in listOfPfFiles:
+        if pf_file.startswith("virtfn"):
+            vf_info = get_file_data(os.path.join(_SYS_CLASS_NET, pf_name,
+                                    "device", pf_file, "uevent"))
+            vf_pcis_list.append(re.search(r'PCI_SLOT_NAME=(.*)',
+                                          vf_info, re.MULTILINE).group(1))
+    return vf_pcis_list
+
+
+def if_up_interface(device):
+    logger.info("Running /sbin/ifup %s" % device)
+    try:
+        processutils.execute('/sbin/ifup', device)
+    except processutils.ProcessExecutionError:
+        logger.error("Failed to ifup  %s" % device)
+        raise
 
 
 def configure_sriov_vf():

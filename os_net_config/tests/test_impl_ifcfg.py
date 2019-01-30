@@ -1279,10 +1279,12 @@ NETMASK=255.255.255.0
 
         pf = objects.SriovPF(name='nic3', numvfs=10)
 
-        def test_update_sriov_pf_map(name, numvfs, noop, promisc=None):
+        def test_update_sriov_pf_map(name, numvfs, noop, promisc=None,
+                                     link_mode='legacy'):
             self.assertEqual(name, 'eth2')
             self.assertEqual(numvfs, 10)
             self.assertEqual(promisc, None)
+            self.assertEqual(link_mode, 'legacy')
         self.stub_out('os_net_config.utils.update_sriov_pf_map',
                       test_update_sriov_pf_map)
         self.provider.add_sriov_pf(pf)
@@ -1302,10 +1304,12 @@ BOOTPROTO=none
 
         pf = objects.SriovPF(name='nic3', numvfs=10, promisc=True)
 
-        def test_update_sriov_pf_map(name, numvfs, noop, promisc=None):
+        def test_update_sriov_pf_map(name, numvfs, noop, promisc=None,
+                                     link_mode='legacy'):
             self.assertEqual(name, 'eth2')
             self.assertEqual(numvfs, 10)
             self.assertTrue(promisc)
+            self.assertEqual(link_mode, 'legacy')
         self.stub_out('os_net_config.utils.update_sriov_pf_map',
                       test_update_sriov_pf_map)
         self.provider.add_sriov_pf(pf)
@@ -1325,10 +1329,12 @@ BOOTPROTO=none
 
         pf = objects.SriovPF(name='nic3', numvfs=10, promisc=False)
 
-        def test_update_sriov_pf_map(name, numvfs, noop, promisc=None):
+        def test_update_sriov_pf_map(name, numvfs, noop, promisc=None,
+                                     link_mode='legacy'):
             self.assertEqual(name, 'eth2')
             self.assertEqual(numvfs, 10)
             self.assertFalse(promisc)
+            self.assertEqual(link_mode, 'legacy')
         self.stub_out('os_net_config.utils.update_sriov_pf_map',
                       test_update_sriov_pf_map)
         self.provider.add_sriov_pf(pf)
