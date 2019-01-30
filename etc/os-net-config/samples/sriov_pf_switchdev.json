@@ -1,0 +1,84 @@
+{
+    "network_config": [
+        {
+            "type": "sriov_pf",
+            "name": "p2p1",
+            "numvfs": 10,
+            "use_dhcp": false,
+            "promisc": true,
+            "link_mode": "switchdev"
+        },
+        {
+            "type": "ovs_bridge",
+            "name": "br-pfs",
+            "members": [
+                {
+                    "type": "sriov_pf",
+                    "name": "p2p2",
+                    "numvfs": 10,
+                    "promisc": true,
+                    "use_dhcp": false,
+                    "link_mode": "switchdev"
+                }
+            ],
+            "use_dhcp": true
+        },
+        {
+            "type": "ovs_bridge",
+            "name": "br-bond",
+            "use_dhcp": true,
+            "members": [
+                {
+                    "type": "ovs_bond",
+                    "name": "bond_pf",
+                    "ovs_options": "bond_mode=active-backup",
+                    "members": [
+                        {
+                            "type": "sriov_pf",
+                            "name": "p5p1",
+                            "numvfs": 10,
+                            "primary": true,
+                            "promisc": true,
+                            "use_dhcp": false,
+                            "link_mode": "switchdev"
+                        },
+                        {
+                            "type": "sriov_pf",
+                            "name": "p5p2",
+                            "numvfs": 10,
+                            "promisc": true,
+                            "use_dhcp": false,
+                            "link_mode": "switchdev"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "linux_bond",
+            "name": "bond_lnx",
+            "use_dhcp": true,
+            "bonding_options": "mode=active-backup",
+            "members": [
+                {
+                    "type": "sriov_pf",
+                    "name": "p6p1",
+                    "numvfs": 10,
+                    "primary": true,
+                    "promisc": true,
+                    "use_dhcp": false,
+                    "link_mode": "switchdev"
+                },
+                {
+                    "type": "sriov_pf",
+                    "name": "p6p2",
+                    "numvfs": 10,
+                    "promisc": true,
+                    "use_dhcp": false,
+                    "link_mode": "switchdev"
+
+                }
+            ]
+        }
+    ]
+}

@@ -33,6 +33,11 @@ definitions:
     sriov_vf_state_string:
         type: string
         pattern: "^(auto|enable|disable)$"
+    sriov_link_mode_or_param:
+        oneOf:
+          - type: string
+            pattern: "^(legacy|switchdev)$"
+          - $ref: "#/definitions/param"
     # MAC address type
     mac_address_string:
         type: string
@@ -344,6 +349,8 @@ definitions:
                 $ref: "#/definitions/bool_or_param"
             domain:
                 $ref: "#/definitions/domain_name_string"
+            link_mode:
+                $ref: "#/definitions/sriov_link_mode_or_param"
         required:
           - type
           - name

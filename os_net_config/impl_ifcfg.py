@@ -933,7 +933,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         data = self._add_common(sriov_pf)
         logger.debug('sriov pf data: %s' % data)
         utils.update_sriov_pf_map(sriov_pf.name, sriov_pf.numvfs,
-                                  self.noop, promisc=sriov_pf.promisc)
+                                  self.noop, promisc=sriov_pf.promisc,
+                                  link_mode=sriov_pf.link_mode)
         self.interface_data[sriov_pf.name] = data
 
     def add_sriov_vf(self, sriov_vf):
