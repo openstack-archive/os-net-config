@@ -744,7 +744,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         self.bridge_data[bridge.name] = data
         if bridge.routes:
             self._add_routes(bridge.name, bridge.routes)
-        if bridge.routes:
+        if bridge.rules:
             self._add_rules(bridge.name, bridge.rules)
 
     def add_ovs_user_bridge(self, bridge):
