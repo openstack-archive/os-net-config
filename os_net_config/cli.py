@@ -133,6 +133,16 @@ def configure_logger(verbose=False, debug=False):
                         level=log_level)
 
 
+def check_configure_sriov(obj):
+    configure_sriov = False
+    for member in obj.members:
+        if isinstance(member, objects.SriovPF):
+            configure_sriov = True
+        elif hasattr(member, "members") and member.members is not None:
+            configure_sriov = check_configure_sriov(member)
+    return configure_sriov
+
+
 def main(argv=sys.argv):
     opts = parse_opts(argv)
     configure_logger(opts.verbose, opts.debug)
@@ -263,6 +273,10 @@ def main(argv=sys.argv):
         if isinstance(obj, objects.SriovPF):
             configure_sriov = True
             provider.add_object(obj)
+        elif hasattr(obj, 'members') and obj.members is not None:
+            if check_configure_sriov(obj):
+                configure_sriov = True
+                provider.add_object(obj)
 
     if configure_sriov:
         # Apply the ifcfgs for PFs now, so that NM_CONTROLLED=no is applied
