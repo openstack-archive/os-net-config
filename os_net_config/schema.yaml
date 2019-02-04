@@ -414,6 +414,7 @@ definitions:
                       - $ref: "#/definitions/ovs_tunnel"
                       - $ref: "#/definitions/ovs_patch_port"
                       - $ref: "#/definitions/sriov_vf"
+                      - $ref: "#/definitions/sriov_pf"
             ovs_options:
                 $ref: "#/definitions/ovs_options_string_or_param"
             ovs_extra:
@@ -520,6 +521,7 @@ definitions:
                       - $ref: "#/definitions/interface"
                       - $ref: "#/definitions/sriov_vf"
                       - $ref: "#/definitions/vlan"
+                      - $ref: "#/definitions/sriov_pf"
                 minItems: 1
             ovs_options:
                 $ref: "#/definitions/ovs_options_string_or_param"
@@ -1005,6 +1007,7 @@ definitions:
                       - $ref: "#/definitions/interface"
                       - $ref: "#/definitions/vlan"
                       - $ref: "#/definitions/sriov_vf"
+                      - $ref: "#/definitions/sriov_pf"
             bonding_options:
                 $ref: "#/definitions/bonding_options"
             # common options:
