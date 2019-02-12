@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    A key called "domain" is now available for interfaces. This allows the
+    setting of a domain for an ifcfg configuration, which will aide DNS search.
