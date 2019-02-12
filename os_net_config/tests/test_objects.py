@@ -248,6 +248,17 @@ class TestInterface(base.TestCase):
         interface1 = objects.object_from_json(json.loads(data))
         self.assertEqual(["1.2.3.4"], interface1.dns_servers)
 
+    def test_from_json_domain(self):
+        data = """{
+"type": "interface",
+"name": "em1",
+"use_dhcp": true,
+"domain": "openstack.local"
+}
+"""
+        interface1 = objects.object_from_json(json.loads(data))
+        self.assertEqual("openstack.local", interface1.domain)
+
     def test_from_json_dhcp_nic1(self):
         def dummy_mapped_nics(nic_mapping=None):
             return {"nic1": "em3"}
