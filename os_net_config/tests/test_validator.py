@@ -144,6 +144,35 @@ class TestBaseTypes(base.TestCase):
         self.assertTrue(v.is_valid("fe80::1/64"))
         self.assertFalse(v.is_valid("193.168.0.1"))
 
+    def test_domain_name_string(self):
+        schema = validator.get_schema_for_defined_type("domain_name_string")
+        v = jsonschema.Draft4Validator(schema)
+        self.assertTrue(v.is_valid('localdomain'))
+        self.assertTrue(v.is_valid('openstack.local'))
+        self.assertTrue(v.is_valid('999.local'))
+        self.assertTrue(v.is_valid('_foo.bar'))
+        self.assertTrue(v.is_valid('_foo.bar.domain'))
+        self.assertTrue(v.is_valid('trailing.dot.domain.'))
+        self.assertTrue(v.is_valid('.'))
+        self.assertFalse(v.is_valid('.com'))
+        self.assertFalse(v.is_valid('..'))
+        self.assertFalse(v.is_valid('foo..bar'))
+        # Label too long
+        domain = ('123456789-123456789-123456789-123456789-123456789-'
+                  '123456789-1234.com')
+        self.assertFalse(v.is_valid(domain))
+        domain = ('123456789-123456789-123456789-123456789-123456789-'
+                  '123456789-12345678')
+        self.assertFalse(v.is_valid(domain))
+        domain = ('123456789.123456789.123456789.123456789.123456789.'
+                  '123456789.123456789.123456789.123456789.123456789.'
+                  '123456789.123456789.123456789.123456789.123456789.'
+                  '123456789.123456789.123456789.123456789.123456789.'
+                  '123456789.123456789.123456789.123456789.123456789.'
+                  'aa.com')
+        self.assertEqual(len(domain), 256)
+        self.assertFalse(v.is_valid(domain))
+
 
 class TestDerivedTypes(base.TestCase):
 
@@ -216,6 +245,7 @@ class TestDeviceTypes(base.TestCase):
             "defroute": False,
             "dhclient_args": "--foobar",
             "dns_servers": ["1.2.3.4"],
+            "domain": "openstack.local",
             "mtu": 1501,
             "ethtool_opts": "speed 1000 duplex full",
             "hotplug": True,
