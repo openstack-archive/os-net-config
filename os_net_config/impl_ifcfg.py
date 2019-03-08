@@ -1562,11 +1562,14 @@ class IfcfgNetConfig(os_net_config.NetConfig):
 
             for interface in apply_routes:
                 logger.debug('Applying routes for interface %s' % interface[0])
-                commands = self.iproute2_route_commands(interface[0],
-                                                        interface[1])
+                filename = self.root_dir + route_config_path(interface[0])
+                commands = self.iproute2_route_commands(filename, interface[1])
                 for command in commands:
+                    args = command.split()
                     try:
-                        self.execute('Running ip %s' % command, ipcmd, command)
+                        if len(args) > 0:
+                            self.execute('Running ip %s' % command, ipcmd,
+                                         *args)
                     except Exception as e:
                         logger.warning("Error in 'ip %s', restarting %s:\n%s" %
                                        (command, interface[0], str(e)))
