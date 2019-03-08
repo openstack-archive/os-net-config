@@ -1786,6 +1786,8 @@ class TestIfcfgNetConfigApply(base.TestCase):
         expected_commands = ['addr add 192.168.1.2/24 dev em1',
                              'addr del 192.168.0.2/23 dev em1',
                              'link set dev em1 mtu 1500',
+                             'route del default via 192.168.1.1 dev em1',
+                             'route del 172.19.0.0/24 via 192.168.1.1 dev em1',
                              'route add default via 192.168.0.1 dev em1',
                              'route add 172.19.0.0/24 via 192.168.0.1 dev em1']
 
