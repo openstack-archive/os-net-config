@@ -34,6 +34,7 @@ from oslo_concurrency import processutils
 
 logger = logging.getLogger(__name__)
 _SYS_CLASS_NET = '/sys/class/net'
+_UDEV_RULE_FILE = '/etc/udev/rules.d/70-persistent-net.rules'
 # Create a queue for passing the udev network events
 vf_queue = Queue.Queue()
 
@@ -122,6 +123,8 @@ def configure_sriov_pf():
                     if os.path.exists(vf_pci_path):
                         with open(MLNX_UNBIND_FILE_PATH, 'w') as f:
                             f.write("%s" % vf_pci)
+                # Adding a udev rule to save the sriov_pf name
+                add_udev_rule_for_sriov_pf(item['name'])
                 configure_switchdev(item['name'])
                 if_up_interface(item['name'])
 
@@ -154,6 +157,34 @@ def _wait_for_vf_creation(pf_name, numvfs):
             logger.info("Timeout in the creation of VFs for PF %s" % pf_name)
             return
     logger.info("Required VFs are created for PF %s" % pf_name)
+
+
+def add_udev_rule_for_sriov_pf(pf_name):
+    pf_pci = get_pf_pci(pf_name)
+    udev_data_line = 'SUBSYSTEM=="net", ACTION=="add", DRIVERS=="?*", '\
+                     'KERNELS=="%s", NAME="%s"\n' % (pf_pci, pf_name)
+    add_udev_rule(udev_data_line, _UDEV_RULE_FILE)
+
+
+def add_udev_rule(udev_data, udev_file):
+    if not os.path.exists(udev_file):
+        with open(udev_file, "w") as f:
+            f.write(udev_data)
+        reload_udev_rules()
+    else:
+        file_data = get_file_data(udev_file)
+        if udev_data not in file_data:
+            with open(udev_file, "a") as f:
+                f.write(udev_data)
+            reload_udev_rules()
+
+
+def reload_udev_rules():
+    try:
+        processutils.execute('/usr/sbin/udevadm', 'control', '--reload-rules')
+    except processutils.ProcessExecutionError:
+        logger.error("Failed to reload udev rules")
+        raise
 
 
 def configure_switchdev(pf_name):
