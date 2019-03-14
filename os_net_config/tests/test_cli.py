@@ -221,14 +221,14 @@ class TestCli(base.TestCase):
                                            '-c %s' % ivs_yaml)
         self.assertEqual('', stderr)
         contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
-        sriov_config_yaml = yaml.load(contents)
+        sriov_config_yaml = yaml.safe_load(contents)
         os.remove(sriov_config._SRIOV_CONFIG_FILE)
         stdout_json, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
                                            '--exit-on-validation-errors '
                                            '-c %s' % ivs_json)
         self.assertEqual('', stderr)
         contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
-        sriov_config_json = yaml.load(contents)
+        sriov_config_json = yaml.safe_load(contents)
         sanity_devices = ['DEVICE=p2p1',
                           'DEVICE=p2p1_5',
                           'DEVICE=p2p1_1',
@@ -252,14 +252,14 @@ class TestCli(base.TestCase):
                                            '-c %s' % ivs_yaml)
         self.assertEqual('', stderr)
         contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
-        sriov_config_yaml = yaml.load(contents)
+        sriov_config_yaml = yaml.safe_load(contents)
         os.remove(sriov_config._SRIOV_CONFIG_FILE)
         stdout_json, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
                                            '--exit-on-validation-errors '
                                            '-c %s' % ivs_json)
         self.assertEqual('', stderr)
         contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
-        sriov_config_json = yaml.load(contents)
+        sriov_config_json = yaml.safe_load(contents)
         sanity_devices = ['DEVICE=p2p1',
                           'DEVICE=p2p1_5',
                           'DEVICE=br-vfs',
@@ -340,7 +340,7 @@ class TestCli(base.TestCase):
                                       '--exit-on-validation-errors '
                                       '-m %s' % mapping_report)
         self.assertEqual('', stderr)
-        stdout_list = yaml.load(stdout)
+        stdout_list = yaml.safe_load(stdout)
         self.assertEqual(stdout_list['nic1'], 'em1')
         self.assertEqual(stdout_list['nic2'], 'em2')
         self.assertEqual(stdout_list['nic3'], 'em4')
@@ -357,7 +357,7 @@ class TestCli(base.TestCase):
                                       '--exit-on-validation-errors '
                                       '-m %s' % mapping_report)
         self.assertEqual('', stderr)
-        stdout_list = yaml.load(stdout)
+        stdout_list = yaml.safe_load(stdout)
         self.assertNotIn('em1', stdout_list.keys())
         self.assertNotIn('em1', stdout_list.values())
         self.assertEqual(stdout_list['em2'], 'em2')

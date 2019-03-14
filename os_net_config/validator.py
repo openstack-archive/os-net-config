@@ -24,7 +24,7 @@ import yaml
 def get_os_net_config_schema():
     """Returns the schema for os_net_config's config files."""
     schema_string = pkg_resources.resource_string(__name__, "schema.yaml")
-    return yaml.load(schema_string)
+    return yaml.safe_load(schema_string)
 
 
 def get_schema_for_defined_type(defined_type):

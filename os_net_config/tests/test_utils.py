@@ -121,7 +121,7 @@ class TestUtils(base.TestCase):
     def test_update_sriov_pf_map_new(self):
         utils.update_sriov_pf_map('eth1', 10, False)
         contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
-        sriov_pf_map = yaml.load(contents) if contents else []
+        sriov_pf_map = yaml.safe_load(contents) if contents else []
         self.assertEqual(1, len(sriov_pf_map))
         test_sriov_pf_map = [{'device_type': 'pf', 'link_mode': 'legacy',
                               'name': 'eth1', 'numvfs': 10}]
@@ -130,7 +130,7 @@ class TestUtils(base.TestCase):
     def test_update_sriov_pf_map_new_with_promisc(self):
         utils.update_sriov_pf_map('eth1', 10, False, promisc='off')
         contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
-        sriov_pf_map = yaml.load(contents) if contents else []
+        sriov_pf_map = yaml.safe_load(contents) if contents else []
         self.assertEqual(1, len(sriov_pf_map))
         test_sriov_pf_map = [{'device_type': 'pf', 'link_mode': 'legacy',
                               'name': 'eth1', 'numvfs': 10, 'promisc': 'off'}]
@@ -146,7 +146,7 @@ class TestUtils(base.TestCase):
                      'name': 'eth1', 'numvfs': 20}]
         contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
 
-        pf_map = yaml.load(contents) if contents else []
+        pf_map = yaml.safe_load(contents) if contents else []
         self.assertEqual(1, len(pf_map))
         self.assertListEqual(pf_final, pf_map)
 
@@ -160,14 +160,14 @@ class TestUtils(base.TestCase):
                      'name': 'eth1', 'numvfs': 20, 'promisc': 'on'}]
         contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
 
-        pf_map = yaml.load(contents) if contents else []
+        pf_map = yaml.safe_load(contents) if contents else []
         self.assertEqual(1, len(pf_map))
         self.assertListEqual(pf_final, pf_map)
 
     def test_update_sriov_vf_map_minimal_new(self):
         utils.update_sriov_vf_map('eth1', 2, 'eth1_2')
         contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
-        sriov_vf_map = yaml.load(contents) if contents else []
+        sriov_vf_map = yaml.safe_load(contents) if contents else []
         self.assertEqual(1, len(sriov_vf_map))
         test_sriov_vf_map = [{'device_type': 'vf', 'name': 'eth1_2',
                               'device': {"name": "eth1", "vfid": 2}}]
@@ -178,7 +178,7 @@ class TestUtils(base.TestCase):
                                   spoofcheck="on", trust="on", state="enable",
                                   macaddr="AA:BB:CC:DD:EE:FF", promisc="off")
         contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
-        sriov_vf_map = yaml.load(contents) if contents else []
+        sriov_vf_map = yaml.safe_load(contents) if contents else []
         self.assertEqual(1, len(sriov_vf_map))
         test_sriov_vf_map = [{'device_type': 'vf', 'name': 'eth1_2',
                               'device': {'name': 'eth1', 'vfid': 2},
@@ -206,7 +206,7 @@ class TestUtils(base.TestCase):
                      'promisc': 'off'}]
         contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
 
-        vf_map = yaml.load(contents) if contents else []
+        vf_map = yaml.safe_load(contents) if contents else []
         self.assertEqual(1, len(vf_map))
         self.assertListEqual(vf_final, vf_map)
 
@@ -232,7 +232,7 @@ class TestUtils(base.TestCase):
                      'promisc': 'on'}]
         contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
 
-        vf_map = yaml.load(contents) if contents else []
+        vf_map = yaml.safe_load(contents) if contents else []
         self.assertEqual(1, len(vf_map))
         self.assertListEqual(vf_final, vf_map)
 
@@ -446,7 +446,7 @@ class TestUtils(base.TestCase):
                                'vfio-pci')
         contents = utils.get_file_data(utils._DPDK_MAPPING_FILE)
 
-        dpdk_map = yaml.load(contents) if contents else []
+        dpdk_map = yaml.safe_load(contents) if contents else []
         self.assertEqual(1, len(dpdk_map))
         dpdk_test = [{'name': 'eth1', 'pci_address': '0000:03:00.0',
                       'mac_address': '01:02:03:04:05:06',
@@ -463,7 +463,7 @@ class TestUtils(base.TestCase):
                                'vfio-pci')
         contents = utils.get_file_data(utils._DPDK_MAPPING_FILE)
 
-        dpdk_map = yaml.load(contents) if contents else []
+        dpdk_map = yaml.safe_load(contents) if contents else []
         self.assertEqual(1, len(dpdk_map))
         self.assertListEqual(dpdk_test, dpdk_map)
 
@@ -482,7 +482,7 @@ class TestUtils(base.TestCase):
         except IOError:
             pass
 
-        dpdk_map = yaml.load(contents) if contents else []
+        dpdk_map = yaml.safe_load(contents) if contents else []
         self.assertEqual(1, len(dpdk_map))
         self.assertListEqual(dpdk_test, dpdk_map)
 
@@ -702,6 +702,6 @@ dpdk {
                      {'name': 'eth2', 'pci_address': '0000:00:09.1',
                       'mac_address': '01:02:03:04:05:07',
                       'driver': 'vfio-pci'}]
-        dpdk_map = yaml.load(contents) if contents else []
+        dpdk_map = yaml.safe_load(contents) if contents else []
         self.assertEqual(2, len(dpdk_map))
         self.assertListEqual(dpdk_test, dpdk_map)

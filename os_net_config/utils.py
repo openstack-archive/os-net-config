@@ -220,7 +220,7 @@ def _ordered_nics(check_active):
     # after it is bound to DPDK driver.
     contents = get_file_data(_DPDK_MAPPING_FILE)
     if contents:
-        dpdk_map = yaml.load(contents)
+        dpdk_map = yaml.safe_load(contents)
         for item in dpdk_map:
             nic = item['name']
             if _is_embedded_nic(nic):
@@ -402,13 +402,13 @@ def _update_dpdk_map(ifname, pci_address, mac_address, driver):
 
 def _get_dpdk_map():
     contents = get_file_data(_DPDK_MAPPING_FILE)
-    dpdk_map = yaml.load(contents) if contents else []
+    dpdk_map = yaml.safe_load(contents) if contents else []
     return dpdk_map
 
 
 def _get_dpdk_mac_address(name):
     contents = get_file_data(_DPDK_MAPPING_FILE)
-    dpdk_map = yaml.load(contents) if contents else []
+    dpdk_map = yaml.safe_load(contents) if contents else []
     for item in dpdk_map:
         if item['name'] == name:
             return item['mac_address']
@@ -440,7 +440,7 @@ def update_sriov_pf_map(ifname, numvfs, noop, promisc=None,
 
 def _get_sriov_map():
     contents = get_file_data(sriov_config._SRIOV_CONFIG_FILE)
-    sriov_map = yaml.load(contents) if contents else []
+    sriov_map = yaml.safe_load(contents) if contents else []
     return sriov_map
 
 

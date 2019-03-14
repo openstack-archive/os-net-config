@@ -83,7 +83,7 @@ def get_file_data(filename):
 
 def _get_sriov_map():
     contents = get_file_data(_SRIOV_CONFIG_FILE)
-    sriov_map = yaml.load(contents) if contents else []
+    sriov_map = yaml.safe_load(contents) if contents else []
     return sriov_map
 
 
