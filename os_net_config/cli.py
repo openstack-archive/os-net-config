@@ -181,7 +181,7 @@ def main(argv=sys.argv):
     if os.path.exists(opts.mapping_file):
         logger.info('Using mapping file at: %s' % opts.mapping_file)
         with open(opts.mapping_file) as cf:
-            iface_map = yaml.load(cf.read())
+            iface_map = yaml.safe_load(cf.read())
             iface_mapping = iface_map.get("interface_mapping")
             logger.debug('interface_mapping JSON: %s' % str(iface_mapping))
             persist_mapping = opts.persist_mapping
@@ -231,7 +231,7 @@ def main(argv=sys.argv):
     if os.path.exists(opts.config_file):
         try:
             with open(opts.config_file) as cf:
-                iface_array = yaml.load(cf.read()).get("network_config")
+                iface_array = yaml.safe_load(cf.read()).get("network_config")
                 logger.debug('network_config JSON: %s' % str(iface_array))
         except IOError:
             logger.error("Error reading file: %s" % opts.config_file)

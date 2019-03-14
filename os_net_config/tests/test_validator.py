@@ -399,7 +399,7 @@ class TestSampleFiles(base.TestCase):
         for sample_file in sample_files:
             with open(sample_file, 'r') as f:
                 try:
-                    config = yaml.load(f.read()).get("network_config")
+                    config = yaml.safe_load(f.read()).get("network_config")
                 except Exception:
                     continue
                 if not config:

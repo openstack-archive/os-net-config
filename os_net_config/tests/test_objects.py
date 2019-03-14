@@ -401,7 +401,7 @@ class TestBridge(base.TestCase):
         self.assertEqual("br-foo", interface1.bridge_name)
 
         contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
-        vf_map = yaml.load(contents) if contents else []
+        vf_map = yaml.safe_load(contents) if contents else []
         self.assertListEqual(vf_final, vf_map)
 
     def test_ovs_bond_with_vf_default(self):
@@ -458,7 +458,7 @@ class TestBridge(base.TestCase):
         self.assertEqual("br-foo", bond.bridge_name)
 
         contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
-        vf_map = yaml.load(contents) if contents else []
+        vf_map = yaml.safe_load(contents) if contents else []
         self.assertListEqual(vf_final, vf_map)
 
     def test_ovs_bond_with_vf_custom(self):
@@ -513,7 +513,7 @@ class TestBridge(base.TestCase):
         objects.object_from_json(json.loads(data))
 
         contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
-        vf_map = yaml.load(contents) if contents else []
+        vf_map = yaml.safe_load(contents) if contents else []
         self.assertListEqual(vf_final, vf_map)
 
     def test_ovs_bridge_with_vf_param_provided(self):
@@ -553,7 +553,7 @@ class TestBridge(base.TestCase):
         self.assertEqual("br-foo", interface1.bridge_name)
 
         contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
-        vf_map = yaml.load(contents) if contents else []
+        vf_map = yaml.safe_load(contents) if contents else []
         self.assertListEqual(vf_final, vf_map)
 
     def test_ovs_user_bridge_with_vf_default(self):
@@ -596,7 +596,7 @@ class TestBridge(base.TestCase):
         self.assertEqual("br-foo", dpdk_interface.bridge_name)
 
         contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
-        vf_map = yaml.load(contents) if contents else []
+        vf_map = yaml.safe_load(contents) if contents else []
         self.assertListEqual(vf_final, vf_map)
 
     def test_ovs_user_bridge_with_param_set(self):
@@ -642,7 +642,7 @@ class TestBridge(base.TestCase):
         self.assertEqual("br-foo", dpdk_interface.bridge_name)
 
         contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
-        vf_map = yaml.load(contents) if contents else []
+        vf_map = yaml.safe_load(contents) if contents else []
         self.assertListEqual(vf_final, vf_map)
 
     def test_from_json_dhcp_with_nic1(self):
@@ -1148,7 +1148,7 @@ class TestLinuxBond(base.TestCase):
         self.assertEqual("em2", interface2.device)
 
         contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
-        vf_map = yaml.load(contents) if contents else []
+        vf_map = yaml.safe_load(contents) if contents else []
         self.assertListEqual(vf_final, vf_map)
 
     def test_linux_bond_with_vf_param_provided(self):
@@ -1197,7 +1197,7 @@ class TestLinuxBond(base.TestCase):
 
         objects.object_from_json(json.loads(data))
         contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
-        vf_map = yaml.load(contents) if contents else []
+        vf_map = yaml.safe_load(contents) if contents else []
         self.assertListEqual(vf_final, vf_map)
 
 
