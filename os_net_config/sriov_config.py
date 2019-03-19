@@ -125,6 +125,7 @@ def configure_sriov_pf():
                             f.write("%s" % vf_pci)
                 # Adding a udev rule to save the sriov_pf name
                 add_udev_rule_for_sriov_pf(item['name'])
+                add_udev_rule_for_vf_representors()
                 configure_switchdev(item['name'])
                 if_up_interface(item['name'])
 
@@ -163,6 +164,13 @@ def add_udev_rule_for_sriov_pf(pf_name):
     pf_pci = get_pf_pci(pf_name)
     udev_data_line = 'SUBSYSTEM=="net", ACTION=="add", DRIVERS=="?*", '\
                      'KERNELS=="%s", NAME="%s"\n' % (pf_pci, pf_name)
+    add_udev_rule(udev_data_line, _UDEV_RULE_FILE)
+
+
+def add_udev_rule_for_vf_representors():
+    udev_data_line = 'SUBSYSTEM=="net", ACTION=="add", ATTR{phys_switch_id}'\
+                     '!="", ATTR{phys_port_name}=="pf*vf*", '\
+                     'NAME="$attr{phys_port_name}"\n'
     add_udev_rule(udev_data_line, _UDEV_RULE_FILE)
 
 
