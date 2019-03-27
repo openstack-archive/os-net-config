@@ -169,7 +169,7 @@ definitions:
 
     ovs_options_string:
         type: string
-        pattern: "^((?:[a-zA-Z][a-zA-Z0-9: _-]*)=(?:[a-zA-Z0-9._-]+)[ ]*)+$"
+        pattern: "^((?:[a-zA-Z][a-zA-Z0-9: _-]*)=(?:[a-zA-Z0-9:._-]+)[ ]*)+$"
     ovs_options_string_or_param:
         oneOf:
           - $ref: "#/definitions/ovs_options_string"
@@ -398,6 +398,10 @@ definitions:
                 $ref: "#/definitions/bool_or_param"
             onboot:
                 $ref: "#/definitions/bool_or_param"
+            ovs_options:
+                $ref: "#/definitions/ovs_options_string_or_param"
+            ovs_extra:
+                $ref: "#/definitions/ovs_extra_or_param"
         required:
           - type
           - vlan_id

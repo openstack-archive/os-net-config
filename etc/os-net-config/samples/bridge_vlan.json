@@ -11,6 +11,10 @@
                 {
                     "type": "vlan",
                     "vlan_id": 16,
+                    "ovs_options": "mac=00:11:22:33:44:55",
+                    "ovs_extra": [
+                        "foo=bar"
+                    ],
                     "addresses": [{
                         "ip_netmask": "192.0.2.1/24"
                     }]

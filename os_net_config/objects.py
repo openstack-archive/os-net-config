@@ -429,7 +429,7 @@ class Vlan(_BaseOpts):
                  addresses=None, routes=None, mtu=None, primary=False,
                  nic_mapping=None, persist_mapping=False, defroute=True,
                  dhclient_args=None, dns_servers=None, nm_controlled=False,
-                 onboot=True):
+                 onboot=True, ovs_options=None, ovs_extra=None):
         addresses = addresses or []
         routes = routes or []
         dns_servers = dns_servers or []
@@ -439,6 +439,9 @@ class Vlan(_BaseOpts):
                                    persist_mapping, defroute, dhclient_args,
                                    dns_servers, nm_controlled, onboot)
         self.vlan_id = int(vlan_id)
+        self.ovs_options = ovs_options
+        ovs_extra = ovs_extra or []
+        self.ovs_extra = format_ovs_extra(self, ovs_extra)
         mapped_nic_names = mapped_nics(nic_mapping)
         if device in mapped_nic_names:
             self.device = mapped_nic_names[device]
@@ -451,7 +454,12 @@ class Vlan(_BaseOpts):
         device = json.get('device')
         vlan_id = _get_required_field(json, 'vlan_id', 'Vlan')
         opts = _BaseOpts.base_opts_from_json(json)
-        return Vlan(device, vlan_id, *opts)
+        ovs_options = json.get('ovs_options')
+        ovs_extra = json.get('ovs_extra', [])
+        if not isinstance(ovs_extra, list):
+            ovs_extra = [ovs_extra]
+        return Vlan(device, vlan_id, *opts, ovs_options=ovs_options,
+                    ovs_extra=ovs_extra)
 
 
 class IvsInterface(_BaseOpts):

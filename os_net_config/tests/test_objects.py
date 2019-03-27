@@ -330,6 +330,14 @@ class TestVlan(base.TestCase):
         self.assertEqual(16, vlan.vlan_id)
         self.assertTrue(vlan.use_dhcp)
 
+    def test_from_json_ovs_options_extra(self):
+        data = '{"type": "vlan", "device": "em1", "vlan_id": 16,' \
+               '"use_dhcp": true, "ovs_options": "foo",' \
+               '"ovs_extra": ["bar","baz"]}'
+        vlan = objects.object_from_json(json.loads(data))
+        self.assertEqual("foo", vlan.ovs_options)
+        self.assertEqual(["bar", "baz"], vlan.ovs_extra)
+
 
 class TestBridge(base.TestCase):
 
