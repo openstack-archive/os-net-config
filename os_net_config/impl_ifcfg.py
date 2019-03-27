@@ -364,6 +364,10 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                     data += "PHYSDEV=%s\n" % base_opt.device
                 elif base_opt.linux_bond_name:
                     data += "PHYSDEV=%s\n" % base_opt.linux_bond_name
+            else:
+                if base_opt.ovs_options:
+                    data += "OVS_OPTIONS=\"%s\"\n" % base_opt.ovs_options
+                ovs_extra.extend(base_opt.ovs_extra)
         elif isinstance(base_opt, objects.IvsInterface):
             data += "TYPE=IVSIntPort\n"
         elif isinstance(base_opt, objects.NfvswitchInternal):
