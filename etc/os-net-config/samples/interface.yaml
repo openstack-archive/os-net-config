@@ -3,6 +3,7 @@ network_config:
     type: interface
     name: em1
     use_dhcp: false
+    use_dhcpv6: false
     addresses:
     -
       ip_netmask: 192.0.2.1/24

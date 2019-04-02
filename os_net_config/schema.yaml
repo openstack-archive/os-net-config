@@ -257,7 +257,7 @@ definitions:
             # common options:
             use_dhcp:
                 $ref: "#/definitions/bool_or_param"
-            use_dhcp6:
+            use_dhcpv6:
                 $ref: "#/definitions/bool_or_param"
             addresses:
                 $ref: "#/definitions/list_of_address"
@@ -323,7 +323,7 @@ definitions:
             # common options:
             use_dhcp:
                 $ref: "#/definitions/bool_or_param"
-            use_dhcp6:
+            use_dhcpv6:
                 $ref: "#/definitions/bool_or_param"
             addresses:
                 $ref: "#/definitions/list_of_address"
@@ -387,7 +387,7 @@ definitions:
             # common options:
             use_dhcp:
                 $ref: "#/definitions/bool_or_param"
-            use_dhcp6:
+            use_dhcpv6:
                 $ref: "#/definitions/bool_or_param"
             addresses:
                 $ref: "#/definitions/list_of_address"
@@ -433,7 +433,7 @@ definitions:
             # common options:
             use_dhcp:
                 $ref: "#/definitions/bool_or_param"
-            use_dhcp6:
+            use_dhcpv6:
                 $ref: "#/definitions/bool_or_param"
             addresses:
                 $ref: "#/definitions/list_of_address"
@@ -492,7 +492,7 @@ definitions:
             # common options:
             use_dhcp:
                 $ref: "#/definitions/bool_or_param"
-            use_dhcp6:
+            use_dhcpv6:
                 $ref: "#/definitions/bool_or_param"
             addresses:
                 $ref: "#/definitions/list_of_address"
@@ -551,7 +551,7 @@ definitions:
             # common options:
             use_dhcp:
                 $ref: "#/definitions/bool_or_param"
-            use_dhcp6:
+            use_dhcpv6:
                 $ref: "#/definitions/bool_or_param"
             addresses:
                 $ref: "#/definitions/list_of_address"
@@ -606,7 +606,7 @@ definitions:
             # common options:
             use_dhcp:
                 $ref: "#/definitions/bool_or_param"
-            use_dhcp6:
+            use_dhcpv6:
                 $ref: "#/definitions/bool_or_param"
             addresses:
                 $ref: "#/definitions/list_of_address"
@@ -658,7 +658,7 @@ definitions:
             # common options:
             use_dhcp:
                 $ref: "#/definitions/bool_or_param"
-            use_dhcp6:
+            use_dhcpv6:
                 $ref: "#/definitions/bool_or_param"
             addresses:
                 $ref: "#/definitions/list_of_address"
@@ -709,7 +709,7 @@ definitions:
             # common options:
             use_dhcp:
                 $ref: "#/definitions/bool_or_param"
-            use_dhcp6:
+            use_dhcpv6:
                 $ref: "#/definitions/bool_or_param"
             addresses:
                 $ref: "#/definitions/list_of_address"
@@ -761,7 +761,7 @@ definitions:
             # common options:
             use_dhcp:
                 $ref: "#/definitions/bool_or_param"
-            use_dhcp6:
+            use_dhcpv6:
                 $ref: "#/definitions/bool_or_param"
             addresses:
                 $ref: "#/definitions/list_of_address"
@@ -821,7 +821,7 @@ definitions:
             # common options:
             use_dhcp:
                 $ref: "#/definitions/bool_or_param"
-            use_dhcp6:
+            use_dhcpv6:
                 $ref: "#/definitions/bool_or_param"
             addresses:
                 $ref: "#/definitions/list_of_address"
@@ -867,7 +867,7 @@ definitions:
             # common options:
             use_dhcp:
                 $ref: "#/definitions/bool_or_param"
-            use_dhcp6:
+            use_dhcpv6:
                 $ref: "#/definitions/bool_or_param"
             addresses:
                 $ref: "#/definitions/list_of_address"
@@ -912,7 +912,7 @@ definitions:
             # common options:
             use_dhcp:
                 $ref: "#/definitions/bool_or_param"
-            use_dhcp6:
+            use_dhcpv6:
                 $ref: "#/definitions/bool_or_param"
             addresses:
                 $ref: "#/definitions/list_of_address"
@@ -969,7 +969,7 @@ definitions:
             # common options:
             use_dhcp:
                 $ref: "#/definitions/bool_or_param"
-            use_dhcp6:
+            use_dhcpv6:
                 $ref: "#/definitions/bool_or_param"
             addresses:
                 $ref: "#/definitions/list_of_address"
@@ -1028,7 +1028,7 @@ definitions:
             # common options:
             use_dhcp:
                 $ref: "#/definitions/bool_or_param"
-            use_dhcp6:
+            use_dhcpv6:
                 $ref: "#/definitions/bool_or_param"
             addresses:
                 $ref: "#/definitions/list_of_address"
@@ -1073,7 +1073,7 @@ definitions:
             # common options:
             use_dhcp:
                 $ref: "#/definitions/bool_or_param"
-            use_dhcp6:
+            use_dhcpv6:
                 $ref: "#/definitions/bool_or_param"
             addresses:
                 $ref: "#/definitions/list_of_address"
@@ -1125,7 +1125,7 @@ definitions:
             # common options:
             use_dhcp:
                 $ref: "#/definitions/bool_or_param"
-            use_dhcp6:
+            use_dhcpv6:
                 $ref: "#/definitions/bool_or_param"
             addresses:
                 $ref: "#/definitions/list_of_address"
@@ -1175,7 +1175,7 @@ definitions:
             # common options:
             use_dhcp:
                 $ref: "#/definitions/bool_or_param"
-            use_dhcp6:
+            use_dhcpv6:
                 $ref: "#/definitions/bool_or_param"
             addresses:
                 $ref: "#/definitions/list_of_address"
@@ -1221,7 +1221,7 @@ definitions:
             # common options:
             use_dhcp:
                 $ref: "#/definitions/bool_or_param"
-            use_dhcp6:
+            use_dhcpv6:
                 $ref: "#/definitions/bool_or_param"
             addresses:
                 $ref: "#/definitions/list_of_address"
@@ -1266,7 +1266,7 @@ definitions:
             # common options:
             use_dhcp:
                 $ref: "#/definitions/bool_or_param"
-            use_dhcp6:
+            use_dhcpv6:
                 $ref: "#/definitions/bool_or_param"
             addresses:
                 $ref: "#/definitions/list_of_address"
@@ -1314,7 +1314,7 @@ definitions:
             # common options:
             use_dhcp:
                 $ref: "#/definitions/bool_or_param"
-            use_dhcp6:
+            use_dhcpv6:
                 $ref: "#/definitions/bool_or_param"
             addresses:
                 $ref: "#/definitions/list_of_address"
@@ -1360,7 +1360,7 @@ definitions:
             # common options:
             use_dhcp:
                 $ref: "#/definitions/bool_or_param"
-            use_dhcp6:
+            use_dhcpv6:
                 $ref: "#/definitions/bool_or_param"
             addresses:
                 $ref: "#/definitions/list_of_address"
@@ -1405,7 +1405,7 @@ definitions:
             # common options:
             use_dhcp:
                 $ref: "#/definitions/bool_or_param"
-            use_dhcp6:
+            use_dhcpv6:
                 $ref: "#/definitions/bool_or_param"
             addresses:
                 $ref: "#/definitions/list_of_address"

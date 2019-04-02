@@ -160,6 +160,12 @@ class TestInterface(base.TestCase):
         self.assertEqual("em1", interface.name)
         self.assertTrue(interface.use_dhcp)
 
+    def test_from_json_dhcpv6(self):
+        data = '{"type": "interface", "name": "em1", "use_dhcpv6": true}'
+        interface = objects.object_from_json(json.loads(data))
+        self.assertEqual("em1", interface.name)
+        self.assertTrue(interface.use_dhcpv6)
+
     def test_from_json_dotted_vlan(self):
         def dummy_mapped_nics(nic_mapping=None):
             return {"nic1": "em3"}
