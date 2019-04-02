@@ -335,6 +335,10 @@ _VLAN_NO_IP = _BASE_VLAN + "BOOTPROTO=none\n"
 _VLAN_OVS = _BASE_VLAN_OVS + "DEVICETYPE=ovs\nBOOTPROTO=none\n"
 
 
+_VLAN_OVS_EXTRA = _BASE_VLAN_OVS + "OVS_OPTIONS=\"foo\"\nDEVICETYPE=ovs\n" + \
+                                   "BOOTPROTO=none\nOVS_EXTRA=\"bar -- baz\"\n"
+
+
 _VLAN_OVS_BRIDGE = _BASE_VLAN_OVS + """DEVICETYPE=ovs
 TYPE=OVSIntPort
 OVS_BRIDGE=br-ctlplane
@@ -1054,6 +1058,14 @@ class TestIfcfgNetConfig(base.TestCase):
         vlan.ovs_port = True
         self.provider.add_vlan(vlan)
         self.assertEqual(_VLAN_OVS, self.get_vlan_config('vlan5'))
+
+    def test_add_vlan_ovs_options(self):
+        vlan = objects.Vlan('em1', 5)
+        vlan.ovs_port = True
+        vlan.ovs_options = 'foo'
+        vlan.ovs_extra = ['bar', 'baz']
+        self.provider.add_vlan(vlan)
+        self.assertEqual(_VLAN_OVS_EXTRA, self.get_vlan_config('vlan5'))
 
     def test_add_vlan_mtu_1500(self):
         vlan = objects.Vlan('em1', 5, mtu=1500)
