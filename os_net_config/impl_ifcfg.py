@@ -610,7 +610,10 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 if len(base_opt.dns_servers) > 2:
                     logger.warning('ifcfg format supports max 2 resolvers.')
         if base_opt.domain:
-            data += "DOMAIN=%s\n" % base_opt.domain
+            if type(base_opt.domain) == list:
+                data += "DOMAIN=\"%s\"\n" % ' '.join(base_opt.domain)
+            else:
+                data += "DOMAIN=%s\n" % base_opt.domain
         return data
 
     def _add_routes(self, interface_name, routes=[]):
