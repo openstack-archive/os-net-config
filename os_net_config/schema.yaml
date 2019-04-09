@@ -117,6 +117,14 @@ definitions:
         pattern: >-
           ^(?=^.{1,255}$)(?!.*\.\..*)(.{1,63}\.)+(.{0,63}\.?)|(?!\.)(?!.*\.\..*)(^.{1,63}$)|(^\.$)$
 
+    list_of_domain_name_string_or_domain_name_string:
+        oneOf:
+          - type: array
+            items:
+                $ref: "#/definitions/domain_name_string"
+            minItems: 0
+          - $ref: "#/definitions/domain_name_string"
+
     # os-net-config derived types
     address:
         type: object
@@ -243,7 +251,7 @@ definitions:
             onboot:
                 $ref: "#/definitions/bool_or_param"
             domain:
-                $ref: "#/definitions/domain_name_string"
+                $ref: "#/definitions/list_of_domain_name_string_or_domain_name_string"
         required:
           - type
           - name
@@ -292,7 +300,7 @@ definitions:
             link_mode:
                 $ref: "#/definitions/sriov_link_mode_or_param"
             domain:
-                $ref: "#/definitions/domain_name_string"
+                $ref: "#/definitions/list_of_domain_name_string_or_domain_name_string"
         required:
           - type
           - name
@@ -352,7 +360,7 @@ definitions:
             onboot:
                 $ref: "#/definitions/bool_or_param"
             domain:
-                $ref: "#/definitions/domain_name_string"
+                $ref: "#/definitions/list_of_domain_name_string_or_domain_name_string"
         required:
           - type
           - device
@@ -400,7 +408,7 @@ definitions:
             ovs_extra:
                 $ref: "#/definitions/ovs_extra_or_param"
             domain:
-                $ref: "#/definitions/domain_name_string"
+                $ref: "#/definitions/list_of_domain_name_string_or_domain_name_string"
         required:
           - type
           - vlan_id
@@ -457,7 +465,7 @@ definitions:
             onboot:
                 $ref: "#/definitions/bool_or_param"
             domain:
-                $ref: "#/definitions/domain_name_string"
+                $ref: "#/definitions/list_of_domain_name_string_or_domain_name_string"
         required:
           - type
           - name
@@ -514,7 +522,7 @@ definitions:
             onboot:
                 $ref: "#/definitions/bool_or_param"
             domain:
-                $ref: "#/definitions/domain_name_string"
+                $ref: "#/definitions/list_of_domain_name_string_or_domain_name_string"
         required:
           - type
           - name
@@ -567,7 +575,7 @@ definitions:
             onboot:
                 $ref: "#/definitions/bool_or_param"
             domain:
-                $ref: "#/definitions/domain_name_string"
+                $ref: "#/definitions/list_of_domain_name_string_or_domain_name_string"
         required:
           - type
           - name
@@ -617,7 +625,7 @@ definitions:
             onboot:
                 $ref: "#/definitions/bool_or_param"
             domain:
-                $ref: "#/definitions/domain_name_string"
+                $ref: "#/definitions/list_of_domain_name_string_or_domain_name_string"
         required:
           - type
           - name
@@ -666,7 +674,7 @@ definitions:
             onboot:
                 $ref: "#/definitions/bool_or_param"
             domain:
-                $ref: "#/definitions/domain_name_string"
+                $ref: "#/definitions/list_of_domain_name_string_or_domain_name_string"
         required:
           - type
           - name
@@ -716,7 +724,7 @@ definitions:
             onboot:
                 $ref: "#/definitions/bool_or_param"
             domain:
-                $ref: "#/definitions/domain_name_string"
+                $ref: "#/definitions/list_of_domain_name_string_or_domain_name_string"
         required:
           - type
           - name
@@ -774,7 +782,7 @@ definitions:
             onboot:
                 $ref: "#/definitions/bool_or_param"
             domain:
-                $ref: "#/definitions/domain_name_string"
+                $ref: "#/definitions/list_of_domain_name_string_or_domain_name_string"
         required:
           - type
           - name
@@ -818,7 +826,7 @@ definitions:
             onboot:
                 $ref: "#/definitions/bool_or_param"
             domain:
-                $ref: "#/definitions/domain_name_string"
+                $ref: "#/definitions/list_of_domain_name_string_or_domain_name_string"
         required:
           - type
           - name
@@ -861,7 +869,7 @@ definitions:
             onboot:
                 $ref: "#/definitions/bool_or_param"
             domain:
-                $ref: "#/definitions/domain_name_string"
+                $ref: "#/definitions/list_of_domain_name_string_or_domain_name_string"
             members:
                 type: array
                 items:
@@ -1013,7 +1021,7 @@ definitions:
             onboot:
                 $ref: "#/definitions/bool_or_param"
             domain:
-                $ref: "#/definitions/domain_name_string"
+                $ref: "#/definitions/list_of_domain_name_string_or_domain_name_string"
         required:
           - type
           - name
@@ -1063,7 +1071,7 @@ definitions:
             onboot:
                 $ref: "#/definitions/bool_or_param"
             domain:
-                $ref: "#/definitions/domain_name_string"
+                $ref: "#/definitions/list_of_domain_name_string_or_domain_name_string"
         required:
           - type
           - name
@@ -1111,7 +1119,7 @@ definitions:
             onboot:
                 $ref: "#/definitions/bool_or_param"
             domain:
-                $ref: "#/definitions/domain_name_string"
+                $ref: "#/definitions/list_of_domain_name_string_or_domain_name_string"
         required:
           - type
           - name
@@ -1155,7 +1163,7 @@ definitions:
             onboot:
                 $ref: "#/definitions/bool_or_param"
             domain:
-                $ref: "#/definitions/domain_name_string"
+                $ref: "#/definitions/list_of_domain_name_string_or_domain_name_string"
         required:
           - type
           - members
@@ -1198,7 +1206,7 @@ definitions:
             onboot:
                 $ref: "#/definitions/bool_or_param"
             domain:
-                $ref: "#/definitions/domain_name_string"
+                $ref: "#/definitions/list_of_domain_name_string_or_domain_name_string"
         required:
           - type
           - vlan_id
@@ -1244,7 +1252,7 @@ definitions:
             onboot:
                 $ref: "#/definitions/bool_or_param"
             domain:
-                $ref: "#/definitions/domain_name_string"
+                $ref: "#/definitions/list_of_domain_name_string_or_domain_name_string"
         required:
           - type
           - options
@@ -1288,7 +1296,7 @@ definitions:
             onboot:
                 $ref: "#/definitions/bool_or_param"
             domain:
-                $ref: "#/definitions/domain_name_string"
+                $ref: "#/definitions/list_of_domain_name_string_or_domain_name_string"
         required:
           - type
           - vlan_id
@@ -1331,7 +1339,7 @@ definitions:
             onboot:
                 $ref: "#/definitions/bool_or_param"
             domain:
-                $ref: "#/definitions/domain_name_string"
+                $ref: "#/definitions/list_of_domain_name_string_or_domain_name_string"
         required:
           - type
           - name
