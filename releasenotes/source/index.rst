@@ -6,5 +6,6 @@ os-net-config Release Notes
    :maxdepth: 1
 
    unreleased
+   stein
    rocky
    queens
