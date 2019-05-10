@@ -22,8 +22,14 @@ sys.path.insert(0, os.path.abspath('../..'))
 extensions = [
     'sphinx.ext.autodoc',
     #'sphinx.ext.intersphinx',
-    'oslosphinx'
+    'openstackdocstheme'
 ]
+
+# openstackdocstheme options
+repository_name = 'openstack/os-net-config'
+bug_project = 'os-net-config'
+bug_tag = ''
+html_theme = 'openstackdocs'
 
 # autodoc generation is a bit aggressive and a nuisance when doing heavy
 # text edit cycles.
