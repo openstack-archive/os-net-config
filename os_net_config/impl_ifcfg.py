@@ -564,7 +564,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 data += "BOOTPROTO=dhcp\n"
             elif not base_opt.addresses:
                 data += "BOOTPROTO=none\n"
-        if isinstance(base_opt, objects.Interface):
+        if (isinstance(base_opt, objects.Interface) or
+                isinstance(base_opt, objects.SriovPF)):
             if base_opt.ethtool_opts:
                 data += "ETHTOOL_OPTS=\"%s\"\n" % base_opt.ethtool_opts
 
