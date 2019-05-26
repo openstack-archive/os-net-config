@@ -1322,6 +1322,7 @@ class TestIbInterface(base.TestCase):
         data = '{"type": "ib_interface", "name": "ib0", "use_dhcp": true}'
         ib_interface = objects.object_from_json(json.loads(data))
         self.assertEqual("ib0", ib_interface.name)
+        self.assertIsNone(ib_interface.ethtool_opts)
         self.assertTrue(ib_interface.use_dhcp)
 
     def test_from_json_defroute(self):
@@ -1337,6 +1338,15 @@ class TestIbInterface(base.TestCase):
         ib_interface2 = objects.object_from_json(json.loads(data))
         self.assertTrue(ib_interface1.defroute)
         self.assertFalse(ib_interface2.defroute)
+
+    def test_from_json_ethtool_opts(self):
+        data = """{
+        "type": "ib_interface",
+        "name": "ib0",
+        "ethtool_opts": "speed 1000 duplex full"
+        }"""
+        ib_ifc = objects.object_from_json(json.loads(data))
+        self.assertEqual("speed 1000 duplex full", ib_ifc.ethtool_opts)
 
     def test_from_json_dhclient_args(self):
         data = """{
