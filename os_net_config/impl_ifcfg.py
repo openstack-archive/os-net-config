@@ -374,8 +374,6 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             data += "TYPE=NFVSWITCHIntPort\n"
         elif isinstance(base_opt, objects.IbInterface):
             data += "TYPE=Infiniband\n"
-            if base_opt.ethtool_opts:
-                data += "ETHTOOL_OPTS=\"%s\"\n" % base_opt.ethtool_opts
         elif re.match('\w+\.\d+$', base_opt.name):
             data += "VLAN=yes\n"
         if base_opt.linux_bond_name:
@@ -564,10 +562,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 data += "BOOTPROTO=dhcp\n"
             elif not base_opt.addresses:
                 data += "BOOTPROTO=none\n"
-        if (isinstance(base_opt, objects.Interface) or
-                isinstance(base_opt, objects.SriovPF)):
-            if base_opt.ethtool_opts:
-                data += "ETHTOOL_OPTS=\"%s\"\n" % base_opt.ethtool_opts
+        if hasattr(base_opt, 'ethtool_opts') and base_opt.ethtool_opts:
+            data += "ETHTOOL_OPTS=\"%s\"\n" % base_opt.ethtool_opts
 
         if base_opt.mtu:
             data += "MTU=%i\n" % base_opt.mtu
