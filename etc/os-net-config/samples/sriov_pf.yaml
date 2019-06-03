@@ -14,6 +14,8 @@ network_config:
     # Allow all the traffic received. It might be needed when one of its VF
     # is attached to a ovs bridge. Default: true
     promisc: true
+    # Set ethtool options (optional)
+    ethtool_opts: "speed 1000 duplex full"
 
   -
     type: sriov_pf
