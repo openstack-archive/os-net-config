@@ -5,7 +5,8 @@
             "name": "p2p1",
             "numvfs": 10,
             "use_dhcp": false,
-            "promisc": true
+            "promisc": true,
+            "ethtool_opts": "speed 1000 duplex full"
         },
         {
             "type": "sriov_pf",
