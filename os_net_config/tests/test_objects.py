@@ -122,7 +122,7 @@ class TestAddress(base.TestCase):
                           {})
         data = '{"ip_netmask": false}'
         json_data = json.loads(data)
-        self.assertRaises(objects.InvalidConfigException,
+        self.assertRaises(TypeError,
                           objects.Address.from_json,
                           json_data)
 
@@ -1753,6 +1753,61 @@ class TestSriovVF(base.TestCase):
 
     def tearDown(self):
         super(TestSriovVF, self).tearDown()
+
+    def test_from_json_zero_vfid(self):
+        def test_get_vf_devname(device, vfid):
+            return device + '_' + str(vfid)
+
+        def test_get_pci_address(ifname, noop):
+            return '0000:79:10.2'
+
+        self.stub_out('os_net_config.utils.get_vf_devname',
+                      test_get_vf_devname)
+        self.stub_out('os_net_config.utils.get_pci_address',
+                      test_get_pci_address)
+        data = '{"type": "sriov_vf", "device": "em1", "vfid": 0}'
+        vf = objects.object_from_json(json.loads(data))
+        self.assertEqual("em1", vf.device)
+        self.assertEqual(0, vf.vfid)
+        self.assertEqual("em1_0", vf.name)
+
+    def test_from_json_invalid_vfid(self):
+        def test_get_vf_devname(device, vfid):
+            return device + '_' + str(vfid)
+
+        def test_get_pci_address(ifname, noop):
+            return '0000:79:10.2'
+
+        self.stub_out('os_net_config.utils.get_vf_devname',
+                      test_get_vf_devname)
+        self.stub_out('os_net_config.utils.get_pci_address',
+                      test_get_pci_address)
+        data = '{"type": "sriov_vf", "device": "em1", "vfid": "0"}'
+        err = self.assertRaises(objects.InvalidConfigException,
+                                objects.object_from_json,
+                                json.loads(data))
+        expected = 'SriovVF JSON objects require \'vfid\' to be configured ' \
+                   'as %s' % (str(int))
+        self.assertIn(expected, six.text_type(err))
+
+    def test_from_json_no_vfid(self):
+        def test_get_vf_devname(device, vfid):
+            return device + '_' + str(vfid)
+
+        def test_get_pci_address(ifname, noop):
+            return '0000:79:10.2'
+
+        self.stub_out('os_net_config.utils.get_vf_devname',
+                      test_get_vf_devname)
+        self.stub_out('os_net_config.utils.get_pci_address',
+                      test_get_pci_address)
+        data = '{"type": "sriov_vf", "device": "em1"}'
+        err = self.assertRaises(objects.InvalidConfigException,
+                                objects.object_from_json,
+                                json.loads(data))
+        expected = 'SriovVF JSON objects require \'vfid\' to be configured ' \
+                   'as %s' % (str(int))
+        self.assertIn(expected, six.text_type(err))
 
     def test_from_json_vfid(self):
         def test_get_vf_devname(device, vfid):
