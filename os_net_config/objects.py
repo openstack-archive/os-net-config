@@ -91,11 +91,16 @@ def object_from_json(json):
         return SriovVF.from_json(json)
 
 
-def _get_required_field(json, name, object_name):
+def _get_required_field(json, name, object_name, datatype=None):
     field = json.get(name)
-    if not field:
-        msg = '%s JSON objects require \'%s\' to be configured.' \
-              % (object_name, name)
+    if not datatype:
+        if field is None:
+            msg = '%s JSON objects require \'%s\' to be configured.' \
+                  % (object_name, name)
+            raise InvalidConfigException(msg)
+    elif not isinstance(field, datatype):
+        msg = '%s JSON objects require \'%s\' to be configured as %s'\
+              % (object_name, name, str(datatype))
         raise InvalidConfigException(msg)
     return field
 
@@ -1394,7 +1399,7 @@ class SriovVF(_BaseOpts):
     @staticmethod
     def from_json(json):
         # Get the VF id
-        vfid = _get_required_field(json, 'vfid', 'SriovVF')
+        vfid = _get_required_field(json, 'vfid', 'SriovVF', datatype=int)
         # Get the PF device name
         device = _get_required_field(json, 'device', 'SriovVF')
         opts = _BaseOpts.base_opts_from_json(json)
