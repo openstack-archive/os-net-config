@@ -940,6 +940,10 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                                   self.noop, promisc=sriov_pf.promisc,
                                   link_mode=sriov_pf.link_mode)
         self.interface_data[sriov_pf.name] = data
+        if sriov_pf.routes:
+            self._add_routes(sriov_pf.name, sriov_pf.routes)
+        if sriov_pf.rules:
+            self._add_rules(sriov_pf.name, sriov_pf.rules)
 
     def add_sriov_vf(self, sriov_vf):
         """Add a SriovVF object to the net config object
