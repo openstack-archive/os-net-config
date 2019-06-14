@@ -1824,6 +1824,7 @@ class TestSriovPF(base.TestCase):
         self.assertEqual("off", pf.promisc)
         self.assertFalse(pf.use_dhcp)
         self.assertEqual("legacy", pf.link_mode)
+        self.assertIsNone(pf.ethtool_opts)
 
     def test_from_json_numvfs_nic1(self):
         def dummy_mapped_nics(nic_mapping=None):
@@ -1871,6 +1872,13 @@ class TestSriovPF(base.TestCase):
                                 json.loads(data))
         expected = 'Expecting link_mode to match legacy/switchdev'
         self.assertIn(expected, six.text_type(err))
+
+    def test_from_json_ethtool_opts(self):
+        data = '{"type": "sriov_pf", "name": "em1", "numvfs": 16, ' \
+               '"use_dhcp": false, "promisc": false, ' \
+               '"ethtool_opts": "speed 1000 duplex full"}'
+        pf_ifc = objects.object_from_json(json.loads(data))
+        self.assertEqual("speed 1000 duplex full", pf_ifc.ethtool_opts)
 
 
 class TestSriovVF(base.TestCase):
