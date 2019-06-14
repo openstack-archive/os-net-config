@@ -328,6 +328,8 @@ definitions:
                 $ref: "#/definitions/bool_or_param"
             hotplug:
                 $ref: "#/definitions/bool_or_param"
+            ethtool_opts:
+                $ref: "#/definitions/string_or_param"
             # common options:
             use_dhcp:
                 $ref: "#/definitions/bool_or_param"

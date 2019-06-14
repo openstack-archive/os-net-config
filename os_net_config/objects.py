@@ -1411,7 +1411,7 @@ class SriovPF(_BaseOpts):
                  primary=False, nic_mapping=None, persist_mapping=False,
                  defroute=True, dhclient_args=None, dns_servers=None,
                  nm_controlled=False, onboot=True, domain=None, members=None,
-                 promisc=None, link_mode='legacy'):
+                 promisc=None, link_mode='legacy', ethtool_opts=None):
         addresses = addresses or []
         routes = routes or []
         rules = rules or []
@@ -1429,6 +1429,7 @@ class SriovPF(_BaseOpts):
             self.name = name
         self.promisc = promisc
         self.link_mode = link_mode
+        self.ethtool_opts = ethtool_opts
 
     @staticmethod
     def get_on_off(config):
@@ -1447,12 +1448,13 @@ class SriovPF(_BaseOpts):
         promisc = json.get('promisc', True)
         promisc = SriovPF.get_on_off(promisc)
         link_mode = json.get('link_mode', 'legacy')
+        ethtool_opts = json.get('ethtool_opts', None)
         if link_mode not in ['legacy', 'switchdev']:
             msg = 'Expecting link_mode to match legacy/switchdev'
             raise InvalidConfigException(msg)
         opts = _BaseOpts.base_opts_from_json(json)
         return SriovPF(name, numvfs, *opts, promisc=promisc,
-                       link_mode=link_mode)
+                       link_mode=link_mode, ethtool_opts=ethtool_opts)
 
 
 class OvsDpdkBond(_BaseOpts):
