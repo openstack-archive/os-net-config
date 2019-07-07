@@ -181,9 +181,10 @@ def _wait_for_vf_creation(pf_name, numvfs):
                                     % (vf_name, pf_name))
                         vf_count = vf_count + 1
                 else:
-                    logger.error("Unable to parse event %s" % event["device"])
+                    logger.warning("Unable to parse event %s"
+                                   % event["device"])
             else:
-                logger.error("%s is not a directory" % pf_path)
+                logger.warning("%s is not a directory" % pf_path)
         except Queue.Empty:
             logger.info("Timeout in the creation of VFs for PF %s" % pf_name)
             return
