@@ -113,7 +113,16 @@ def get_numvfs(ifname):
         raise SRIOVNumvfsException(msg)
 
 
-def configure_sriov_pf():
+def restart_ovs_and_pfs_netdevs():
+    sriov_map = _get_sriov_map()
+    processutils.execute('/usr/bin/systemctl', 'restart', 'openvswitch')
+    for item in sriov_map:
+        if item['device_type'] == 'pf':
+            if_down_interface(item['name'])
+            if_up_interface(item['name'])
+
+
+def configure_sriov_pf(execution_from_cli=False, restart_openvswitch=False):
     # Create a context for pyudev and observe udev events for network
     context = pyudev.Context()
     monitor = pyudev.Monitor.from_netlink(context)
@@ -169,13 +178,23 @@ def configure_sriov_pf():
                 trigger_udev_rule = add_udev_rule_for_vf_representors(
                     item['name']) or trigger_udev_rule
 
-                if_up_interface(item['name'])
+                # Moving the sriov-PFs to switchdev mode will put the netdev
+                # interfaces in down state.
+                # In case we are running during initial deployment,
+                # bring the interfaces up.
+                # In case we are running as part of the sriov_config service
+                # after reboot, net config scripts, which run after
+                # sriov_config service will bring the interfaces up.
+                if execution_from_cli:
+                    if_up_interface(item['name'])
 
     # Trigger udev rules if there is new rules written
     if trigger_udev_rule:
         trigger_udev_rules()
 
     observer.stop()
+    if restart_openvswitch:
+        restart_ovs_and_pfs_netdevs()
 
 
 def _wait_for_vf_creation(pf_name, numvfs):
@@ -391,6 +410,15 @@ def get_vf_pcis_list(pf_name):
             vf_pcis_list.append(re.search(r'PCI_SLOT_NAME=(.*)',
                                           vf_info, re.MULTILINE).group(1))
     return vf_pcis_list
+
+
+def if_down_interface(device):
+    logger.info("Running /sbin/ifdown %s" % device)
+    try:
+        processutils.execute('/sbin/ifdown', device)
+    except processutils.ProcessExecutionError:
+        logger.error("Failed to ifdown  %s" % device)
+        raise
 
 
 def if_up_interface(device):
