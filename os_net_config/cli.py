@@ -30,6 +30,7 @@ from os_net_config import validator
 from os_net_config import version
 
 logger = logging.getLogger(__name__)
+_SYSTEM_CTL_CONFIG_FILE = '/etc/sysctl.d/os-net-sysctl.conf'
 
 
 def parse_opts(argv):
@@ -143,13 +144,32 @@ def check_configure_sriov(obj):
     return configure_sriov
 
 
+def disable_ipv6_for_netdevs(net_devices):
+    sysctl_conf = ""
+    for net_device in net_devices:
+        sysctl_conf += "net.ipv6.conf.%s.disable_ipv6 = 1\n" % net_device
+    utils.write_config(_SYSTEM_CTL_CONFIG_FILE, sysctl_conf)
+
+
+def get_sriovpf_member_of_bond_ovs_port(obj):
+    net_devs_list = []
+    if isinstance(obj, objects.OvsBridge):
+        for member in obj.members:
+            if isinstance(member, objects.LinuxBond):
+                for child_member in member.members:
+                    if isinstance(child_member, objects.SriovPF):
+                        if child_member.link_mode == 'switchdev':
+                            net_devs_list.append(child_member.name)
+    return net_devs_list
+
+
 def main(argv=sys.argv):
     opts = parse_opts(argv)
     configure_logger(opts.verbose, opts.debug)
     logger.info('Using config file at: %s' % opts.config_file)
     iface_array = []
     configure_sriov = False
-
+    sriovpf_member_of_bond_ovs_port_list = []
     provider = None
     if opts.provider:
         if opts.provider == 'ifcfg':
@@ -278,6 +298,18 @@ def main(argv=sys.argv):
                 configure_sriov = True
                 provider.add_object(obj)
 
+                sriovpf_member_of_bond_ovs_port_list.extend(
+                    get_sriovpf_member_of_bond_ovs_port(obj))
+
+    # After reboot, shared_block for pf interface in switchdev mode will be
+    # missing in case IPv6 is enabled on the slaves of the bond and that bond
+    # is an ovs port. This is due to the fact that OVS assumes another entity
+    # manages the slaves.
+    # So as a workaround for that case we are disabling IPv6 over pfs so that
+    # OVS creates the shared_blocks ingress
+    if sriovpf_member_of_bond_ovs_port_list:
+        disable_ipv6_for_netdevs(sriovpf_member_of_bond_ovs_port_list)
+
     if configure_sriov:
         # Apply the ifcfgs for PFs now, so that NM_CONTROLLED=no is applied
         # for each of the PFs before configuring the numvfs for the PF device.
@@ -288,7 +320,9 @@ def main(argv=sys.argv):
         pf_files_changed = provider.apply(cleanup=opts.cleanup,
                                           activate=not opts.no_activate)
         if not opts.noop:
-            utils.configure_sriov_pfs()
+            utils.configure_sriov_pfs(
+                execution_from_cli=True,
+                restart_openvswitch=bool(sriovpf_member_of_bond_ovs_port_list))
 
     for iface_json in iface_array:
         # All objects other than the sriov_pf will be added here.

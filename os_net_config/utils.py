@@ -537,9 +537,10 @@ def _configure_sriov_config_service():
     processutils.execute('systemctl', 'enable', 'sriov_config')
 
 
-def configure_sriov_pfs():
+def configure_sriov_pfs(execution_from_cli=False, restart_openvswitch=False):
     logger.info("Configuring PFs now")
-    sriov_config.configure_sriov_pf()
+    sriov_config.configure_sriov_pf(execution_from_cli=execution_from_cli,
+                                    restart_openvswitch=restart_openvswitch)
     _configure_sriov_config_service()
 
 
