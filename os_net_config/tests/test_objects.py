@@ -1179,12 +1179,13 @@ class TestLinuxBond(base.TestCase):
 ]
 }
 """
-        bridge = objects.object_from_json(json.loads(data))
-        self.assertEqual("bond1", bridge.name)
-        self.assertTrue(bridge.use_dhcp)
-        interface1 = bridge.members[0]
+        bond = objects.object_from_json(json.loads(data))
+        self.assertEqual("bond1", bond.name)
+        self.assertTrue(bond.use_dhcp)
+        self.assertIsNone(bond.ethtool_opts)
+        interface1 = bond.members[0]
         self.assertEqual("em1", interface1.name)
-        interface2 = bridge.members[1]
+        interface2 = bond.members[1]
         self.assertEqual("em2", interface2.name)
 
     def test_from_json_dhcp_with_nic1_nic2(self):
@@ -1209,12 +1210,12 @@ class TestLinuxBond(base.TestCase):
 ]
 }
 """
-        bridge = objects.object_from_json(json.loads(data))
-        self.assertEqual("bond1", bridge.name)
-        self.assertTrue(bridge.use_dhcp)
-        interface1 = bridge.members[0]
+        bond = objects.object_from_json(json.loads(data))
+        self.assertEqual("bond1", bond.name)
+        self.assertTrue(bond.use_dhcp)
+        interface1 = bond.members[0]
         self.assertEqual("em1", interface1.name)
-        interface2 = bridge.members[1]
+        interface2 = bond.members[1]
         self.assertEqual("em2", interface2.name)
 
     def test_linux_bond_with_vf_default(self):
@@ -1337,6 +1338,39 @@ class TestLinuxBond(base.TestCase):
         contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
         vf_map = yaml.safe_load(contents) if contents else []
         self.assertListEqual(vf_final, vf_map)
+
+    def test_linux_bond_with_ethtool_opts(self):
+        data = """{
+"type": "linux_bond",
+"name": "bond1",
+"use_dhcp": true,
+"ethtool_opts": "-K ${DEVICE} tx-gre-csum-segmentation off",
+"members": [
+    {
+    "type": "interface",
+    "name": "em1",
+    "ethtool_opts": "-K ${DEVICE} tx-gre-csum-segmentation off"
+    },
+    {
+    "type": "interface",
+    "name": "em2",
+    "ethtool_opts": "-K ${DEVICE} tx-gre-csum-segmentation off"
+    }
+]
+}
+"""
+        bond = objects.object_from_json(json.loads(data))
+        self.assertEqual("bond1", bond.name)
+        self.assertEqual("-K ${DEVICE} tx-gre-csum-segmentation off",
+                         bond.ethtool_opts)
+        interface1 = bond.members[0]
+        interface2 = bond.members[1]
+        self.assertEqual("em1", interface1.name)
+        self.assertEqual("em2", interface2.name)
+        self.assertEqual("-K ${DEVICE} tx-gre-csum-segmentation off",
+                         interface1.ethtool_opts)
+        self.assertEqual("-K ${DEVICE} tx-gre-csum-segmentation off",
+                         interface2.ethtool_opts)
 
 
 class TestOvsTunnel(base.TestCase):
