@@ -1234,6 +1234,31 @@ ETHTOOL_OPTS=\"speed 1000 duplex full\"
                              "ETHTOOL_OPTS=\"speed 1000 duplex full\"\n"))
         self.assertEqual(ib_config, self.get_interface_config('ib0'))
 
+    def test_linux_bond_with_ethtool_opts(self):
+        interface1 = objects.Interface(
+            'em1',
+            ethtool_opts='-K ${DEVICE} tx-gre-csum-segmentation off')
+        interface2 = objects.Interface(
+            'em2',
+            ethtool_opts='-K ${DEVICE} tx-gre-csum-segmentation off')
+        bond = objects.LinuxBond(
+            'bond0', use_dhcp=True,
+            members=[interface1, interface2],
+            ethtool_opts='-K ${DEVICE} tx-gre-csum-segmentation off')
+        self.provider.add_linux_bond(bond)
+        self.provider.add_interface(interface1)
+        self.provider.add_interface(interface2)
+        bond_config = "".join(
+            (_LINUX_BOND_DHCP,
+             "ETHTOOL_OPTS=\"-K ${DEVICE} tx-gre-csum-segmentation off\"\n"))
+        interface_config = "".join(
+            (_LINUX_BOND_INTERFACE,
+             "ETHTOOL_OPTS=\"-K ${DEVICE} tx-gre-csum-segmentation off\"\n"))
+        self.assertEqual(bond_config,
+                         self.get_linux_bond_config('bond0'))
+        self.assertEqual(interface_config,
+                         self.get_interface_config('em1'))
+
     def test_interface_single_dns_server(self):
         interface1 = objects.Interface('em1', dns_servers=['1.2.3.4'])
         self.provider.add_interface(interface1)

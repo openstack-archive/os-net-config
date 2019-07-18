@@ -975,7 +975,7 @@ class LinuxBond(_BaseOpts):
                  members=None, bonding_options=None, nic_mapping=None,
                  persist_mapping=False, defroute=True, dhclient_args=None,
                  dns_servers=None, nm_controlled=False, onboot=True,
-                 domain=None):
+                 domain=None, ethtool_opts=None):
         addresses = addresses or []
         routes = routes or []
         rules = rules or []
@@ -988,6 +988,7 @@ class LinuxBond(_BaseOpts):
                                         nm_controlled, onboot, domain)
         self.members = members
         self.bonding_options = bonding_options
+        self.ethtool_opts = ethtool_opts
         for member in self.members:
             if isinstance(member, SriovVF):
                 LinuxBond.update_vf_config(member)
@@ -1029,6 +1030,7 @@ class LinuxBond(_BaseOpts):
          onboot, domain) = _BaseOpts.base_opts_from_json(
              json, include_primary=False)
         bonding_options = json.get('bonding_options')
+        ethtool_opts = json.get('ethtool_opts', None)
 
         members = _update_members(json, nic_mapping, persist_mapping)
 
@@ -1040,7 +1042,7 @@ class LinuxBond(_BaseOpts):
                          persist_mapping=persist_mapping, defroute=defroute,
                          dhclient_args=dhclient_args, dns_servers=dns_servers,
                          nm_controlled=nm_controlled, onboot=onboot,
-                         domain=domain)
+                         domain=domain, ethtool_opts=ethtool_opts)
 
 
 class OvsBond(_BaseOpts):
