@@ -311,6 +311,10 @@ class NetConfig(object):
     def ifdown(self, interface, iftype='interface'):
         msg = 'running ifdown on %s: %s' % (iftype, interface)
         self.execute(msg, '/sbin/ifdown', interface, check_exit_code=False)
+        if utils.is_active_nic(interface):
+            msg = '%s %s is up, trying with ip command' % (iftype, interface)
+            self.execute(msg, '/sbin/ip',
+                         'link', 'set', 'dev', interface, 'down')
 
     def ifup(self, interface, iftype='interface'):
         """Run 'ifup' on the specified interface
