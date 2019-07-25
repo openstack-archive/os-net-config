@@ -1969,6 +1969,10 @@ class TestIfcfgNetConfigApply(base.TestCase):
         self.assertEqual(_ROUTES, route_data)
 
     def test_sriov_pf_network_apply(self):
+        def get_numvfs_stub(pf_name):
+            return 0
+        self.stub_out('os_net_config.sriov_config.get_numvfs',
+                      get_numvfs_stub)
         route1 = objects.Route('192.168.1.1', default=True,
                                route_options="metric 10")
         route2 = objects.Route('192.168.1.1', '172.19.0.0/24')

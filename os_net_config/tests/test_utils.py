@@ -119,6 +119,10 @@ class TestUtils(base.TestCase):
         shutil.rmtree(tmpdir)
 
     def test_update_sriov_pf_map_new(self):
+        def get_numvfs_stub(pf_name):
+            return 0
+        self.stub_out('os_net_config.sriov_config.get_numvfs',
+                      get_numvfs_stub)
         utils.update_sriov_pf_map('eth1', 10, False)
         contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
         sriov_pf_map = yaml.safe_load(contents) if contents else []
@@ -127,7 +131,32 @@ class TestUtils(base.TestCase):
                               'name': 'eth1', 'numvfs': 10}]
         self.assertListEqual(test_sriov_pf_map, sriov_pf_map)
 
+    def test_update_sriov_pf_map_with_same_numvfs(self):
+        def get_numvfs_stub(pf_name):
+            return 10
+        self.stub_out('os_net_config.sriov_config.get_numvfs',
+                      get_numvfs_stub)
+        utils.update_sriov_pf_map('eth1', 10, False)
+        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        sriov_pf_map = yaml.safe_load(contents) if contents else []
+        self.assertEqual(1, len(sriov_pf_map))
+        test_sriov_pf_map = [{'device_type': 'pf', 'link_mode': 'legacy',
+                              'name': 'eth1', 'numvfs': 10}]
+        self.assertListEqual(test_sriov_pf_map, sriov_pf_map)
+
+    def test_update_sriov_pf_map_with_diff_numvfs(self):
+        def get_numvfs_stub(pf_name):
+            return 12
+        self.stub_out('os_net_config.sriov_config.get_numvfs',
+                      get_numvfs_stub)
+        self.assertRaises(sriov_config.SRIOVNumvfsException,
+                          utils.update_sriov_pf_map, 'eth1', 10, False)
+
     def test_update_sriov_pf_map_new_with_promisc(self):
+        def get_numvfs_stub(pf_name):
+            return 0
+        self.stub_out('os_net_config.sriov_config.get_numvfs',
+                      get_numvfs_stub)
         utils.update_sriov_pf_map('eth1', 10, False, promisc='off')
         contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
         sriov_pf_map = yaml.safe_load(contents) if contents else []
@@ -137,27 +166,28 @@ class TestUtils(base.TestCase):
         self.assertListEqual(test_sriov_pf_map, sriov_pf_map)
 
     def test_update_sriov_pf_map_exist(self):
+        def get_numvfs_stub(pf_name):
+            return 10
+        self.stub_out('os_net_config.sriov_config.get_numvfs',
+                      get_numvfs_stub)
         pf_initial = [{'device_type': 'pf', 'link_mode': 'legacy',
                        'name': 'eth1', 'numvfs': 10}]
         utils.write_yaml_config(sriov_config._SRIOV_CONFIG_FILE, pf_initial)
-
-        utils.update_sriov_pf_map('eth1', 20, False)
-        pf_final = [{'device_type': 'pf', 'link_mode': 'legacy',
-                     'name': 'eth1', 'numvfs': 20}]
-        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
-
-        pf_map = yaml.safe_load(contents) if contents else []
-        self.assertEqual(1, len(pf_map))
-        self.assertListEqual(pf_final, pf_map)
+        self.assertRaises(sriov_config.SRIOVNumvfsException,
+                          utils.update_sriov_pf_map, 'eth1', 20, False)
 
     def test_update_sriov_pf_map_exist_with_promisc(self):
+        def get_numvfs_stub(pf_name):
+            return 10
+        self.stub_out('os_net_config.sriov_config.get_numvfs',
+                      get_numvfs_stub)
         pf_initial = [{'device_type': 'pf', 'link_mode': 'legacy',
                        'name': 'eth1', 'numvfs': 10, 'promisc': 'on'}]
         utils.write_yaml_config(sriov_config._SRIOV_CONFIG_FILE, pf_initial)
 
-        utils.update_sriov_pf_map('eth1', 20, False)
+        utils.update_sriov_pf_map('eth1', 10, False, promisc='off')
         pf_final = [{'device_type': 'pf', 'link_mode': 'legacy',
-                     'name': 'eth1', 'numvfs': 20, 'promisc': 'on'}]
+                     'name': 'eth1', 'numvfs': 10, 'promisc': 'off'}]
         contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
 
         pf_map = yaml.safe_load(contents) if contents else []
