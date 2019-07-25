@@ -102,6 +102,17 @@ def _get_sriov_map():
     return sriov_map
 
 
+def get_numvfs(ifname):
+    try:
+        sriov_numvfs_path = os.path.join(_SYS_CLASS_NET, ifname,
+                                         "device/sriov_numvfs")
+        with open(sriov_numvfs_path, 'r') as f:
+            return int(f.read())
+    except IOError:
+        msg = ("Unable to read numvfs for %s" % ifname)
+        raise SRIOVNumvfsException(msg)
+
+
 def configure_sriov_pf():
     # Create a context for pyudev and observe udev events for network
     context = pyudev.Context()
@@ -118,8 +129,13 @@ def configure_sriov_pf():
         if item['device_type'] == 'pf':
             _pf_interface_up(item)
             try:
-                sriov_numvfs_path = ("/sys/class/net/%s/device/sriov_numvfs"
-                                     % item['name'])
+                sriov_numvfs_path = os.path.join(_SYS_CLASS_NET, item['name'],
+                                                 "device/sriov_numvfs")
+                curr_numvfs = get_numvfs(item['name'])
+                if curr_numvfs == item['numvfs']:
+                    logger.info("Numvfs already configured for %s"
+                                % item['name'])
+                    continue
                 with open(sriov_numvfs_path, 'w') as f:
                     f.write("%d" % item['numvfs'])
             except IOError as exc:
