@@ -478,6 +478,36 @@ class TestUtils(base.TestCase):
                           utils.bind_dpdk_interfaces, 'eth2', 'vfio-pci',
                           False)
 
+    def test_bind_dpdk_interfaces_same_driver(self):
+        mocked_open = mock.mock_open(read_data='DRIVER=vfio-pci\n')
+        self.stub_out('os_net_config.utils.open', mocked_open)
+        mocked_logger = mock.Mock()
+        self.stub_out('os_net_config.utils.logger.info', mocked_logger)
+        try:
+            utils.bind_dpdk_interfaces('eth1', 'vfio-pci', False)
+        except utils.OvsDpdkBindException:
+            self.fail("Received OvsDpdkBindException unexpectedly")
+        msg = "Driver (vfio-pci) is already bound to the device (eth1)"
+        mocked_logger.assert_called_with(msg)
+
+    def test_get_interface_driver(self):
+        mocked_open = mock.mock_open(read_data='DRIVER=vfio-pci\n')
+        self.stub_out('os_net_config.utils.open', mocked_open)
+        driver = utils.get_interface_driver('eth1')
+        self.assertEqual(driver, 'vfio-pci')
+
+    def test_get_interface_driver_fail_none(self):
+        mocked_open = mock.mock_open(read_data='')
+        self.stub_out('os_net_config.utils.open', mocked_open)
+        driver = utils.get_interface_driver('eth1')
+        self.assertFalse(driver)
+
+    def test_get_interface_driver_fail_empty(self):
+        mocked_open = mock.mock_open(read_data='DRIVER\n')
+        self.stub_out('os_net_config.utils.open', mocked_open)
+        driver = utils.get_interface_driver('eth1')
+        self.assertFalse(driver)
+
     def test__update_dpdk_map_new(self):
         utils._update_dpdk_map('eth1', '0000:03:00.0', '01:02:03:04:05:06',
                                'vfio-pci')
