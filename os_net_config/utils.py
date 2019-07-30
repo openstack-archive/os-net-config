@@ -251,6 +251,11 @@ def diff(filename, data):
 
 
 def bind_dpdk_interfaces(ifname, driver, noop):
+    iface_driver = get_interface_driver(ifname)
+    if iface_driver == driver:
+        logger.info("Driver (%s) is already bound to the device (%s)" %
+                    (driver, ifname))
+        return
     pci_address = get_pci_address(ifname, noop)
     if not noop:
         if pci_address:
@@ -358,6 +363,20 @@ def get_device_id(ifname):
                   'r') as f:
             out = f.read().strip()
         return out
+    except IOError:
+        return
+
+
+def get_interface_driver(ifname):
+    try:
+        uevent = '%s/%s/device/uevent' % (_SYS_CLASS_NET, ifname)
+        with open(uevent, 'r') as f:
+            out = f.read().strip()
+            for line in out.split('\n'):
+                if 'DRIVER' in line:
+                    driver = line.split('=')
+                    if len(driver) == 2:
+                        return driver[1]
     except IOError:
         return
 
