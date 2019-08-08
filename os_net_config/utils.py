@@ -417,6 +417,10 @@ def _get_dpdk_mac_address(name):
 def update_sriov_pf_map(ifname, numvfs, noop, promisc=None,
                         link_mode='legacy'):
     if not noop:
+        cur_numvfs = sriov_config.get_numvfs(ifname)
+        if cur_numvfs > 0 and cur_numvfs != numvfs:
+            msg = ("Can't change the numvfs for %s" % ifname)
+            raise sriov_config.SRIOVNumvfsException(msg)
         sriov_map = _get_sriov_map()
         for item in sriov_map:
             if item['device_type'] == 'pf' and item['name'] == ifname:
