@@ -457,7 +457,8 @@ class Interface(_BaseOpts):
                  routes=None, rules=None, mtu=None, primary=False,
                  nic_mapping=None, persist_mapping=False, defroute=True,
                  dhclient_args=None, dns_servers=None, nm_controlled=False,
-                 onboot=True, domain=None, ethtool_opts=None, hotplug=False):
+                 onboot=True, domain=None, ethtool_opts=None, hotplug=False,
+                 linkdelay=None):
         addresses = addresses or []
         routes = routes or []
         rules = rules or []
@@ -469,6 +470,7 @@ class Interface(_BaseOpts):
                                         nm_controlled, onboot, domain)
         self.ethtool_opts = ethtool_opts
         self.hotplug = hotplug
+        self.linkdelay = linkdelay
 
     @staticmethod
     def from_json(json):
@@ -476,8 +478,9 @@ class Interface(_BaseOpts):
         hotplug = strutils.bool_from_string(str(json.get('hotplug', False)))
         opts = _BaseOpts.base_opts_from_json(json)
         ethtool_opts = json.get('ethtool_opts', None)
+        linkdelay = json.get('linkdelay', None)
         return Interface(name, *opts, ethtool_opts=ethtool_opts,
-                         hotplug=hotplug)
+                         hotplug=hotplug, linkdelay=linkdelay)
 
 
 class Vlan(_BaseOpts):
