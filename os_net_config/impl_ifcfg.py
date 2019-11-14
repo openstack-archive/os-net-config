@@ -376,6 +376,9 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             data += "TYPE=Infiniband\n"
         elif re.match('\w+\.\d+$', base_opt.name):
             data += "VLAN=yes\n"
+        elif isinstance(base_opt, objects.Interface):
+            if base_opt.linkdelay:
+                data += "LINKDELAY=%s\n" % base_opt.linkdelay
         if base_opt.linux_bond_name:
             data += "MASTER=%s\n" % base_opt.linux_bond_name
             data += "SLAVE=yes\n"

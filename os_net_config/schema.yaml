@@ -291,6 +291,8 @@ definitions:
                 $ref: "#/definitions/bool_or_param"
             domain:
                 $ref: "#/definitions/list_of_domain_name_string_or_domain_name_string"
+            linkdelay:
+                $ref: "#/definitions/int_or_param"
         required:
           - type
           - name
