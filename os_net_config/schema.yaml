@@ -494,6 +494,7 @@ definitions:
                       - $ref: "#/definitions/interface"
                       - $ref: "#/definitions/vlan"
                       - $ref: "#/definitions/linux_bond"
+                      - $ref: "#/definitions/linux_team"
                       - $ref: "#/definitions/ovs_bond"
                       - $ref: "#/definitions/ovs_tunnel"
                       - $ref: "#/definitions/ovs_patch_port"
