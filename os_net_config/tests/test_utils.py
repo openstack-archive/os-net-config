@@ -584,6 +584,44 @@ class TestUtils(base.TestCase):
     def test_interface_mac_raises(self):
         self.assertRaises(IOError, utils.interface_mac, 'ens20f2p3')
 
+    def test_get_dpdk_devargs_mlnx(self):
+        def test_execute(name, dummy1, dummy2=None, dummy3=None):
+            if 'ethtool' in name:
+                out = _PCI_OUTPUT
+                return out, None
+
+        def test_get_stored_pci_address(ifname, noop):
+            return "0000:00:07.0"
+
+        self.stub_out('oslo_concurrency.processutils.execute', test_execute)
+        self.stub_out('os_net_config.utils.get_stored_pci_address',
+                      test_get_stored_pci_address)
+        tmpdir = tempfile.mkdtemp()
+        self.stub_out('os_net_config.utils._SYS_CLASS_NET', tmpdir)
+        nic = 'p4p1'
+        nic_path = os.path.join(tmpdir, nic)
+        os.makedirs(nic_path)
+        os.makedirs(os.path.join(nic_path, 'device'))
+        # Testing standard Mellanox Connect-X cards
+        with open(os.path.join(nic_path, 'operstate'), 'w') as f:
+            f.write('up')
+        with open(os.path.join(nic_path, 'address'), 'w') as f:
+            f.write('00:0f:21:69:39:14')
+        with open(os.path.join(nic_path, 'device', 'vendor'), 'w') as f:
+            f.write('0x15b3')
+        self.assertEqual(utils.get_dpdk_devargs(nic, False),
+                         '0000:00:19.0')
+        # now testing the Mellanox CX3
+        with open(os.path.join(nic_path, 'device', 'device'), 'w') as f:
+            f.write('0x1007')
+        self.assertEqual(utils.get_dpdk_devargs(nic, False),
+                         'class=eth,mac=00:0f:21:69:39:14')
+        with open(os.path.join(nic_path, 'device', 'vendor'), 'w') as f:
+            f.write('0x15b4')
+        self.assertEqual(utils.get_dpdk_devargs(nic, False),
+                         '0000:00:07.0')
+        shutil.rmtree(tmpdir)
+
     def test_is_active_nic_for_sriov_vf(self):
 
         tmpdir = tempfile.mkdtemp()

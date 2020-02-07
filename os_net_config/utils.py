@@ -105,14 +105,14 @@ def get_file_data(filename):
 
 def interface_mac(name):
     try:  # If the iface is part of a Linux bond, the real MAC is only here.
-        with open('/sys/class/net/%s/bonding_slave/perm_hwaddr' % name,
+        with open(_SYS_CLASS_NET + '/%s/bonding_slave/perm_hwaddr' % name,
                   'r') as f:
             return f.read().rstrip()
     except IOError:
         pass  # Iface is not part of a bond, continue
 
     try:
-        with open('/sys/class/net/%s/address' % name, 'r') as f:
+        with open(_SYS_CLASS_NET + '/%s/address' % name, 'r') as f:
             return f.read().rstrip()
     except IOError:
         # If the interface is bound to a DPDK driver, get the mac address from
@@ -385,13 +385,23 @@ def get_dpdk_devargs(ifname, noop):
     if not noop:
         vendor_id = get_vendor_id(ifname)
         device_id = get_device_id(ifname)
-        if vendor_id == "0x15b3" and device_id == "0x1007":
-            # Some NICs (i.e. Mellanox ConnectX-3) have only one PCI address
-            # associated with multiple ports. Using a PCI device won’t work.
-            # Instead, we should use "class=eth,mac=<MAC>"
-            dpdk_devargs = "class=eth,mac=%s" % interface_mac(ifname)
+        if vendor_id == "0x15b3":
+            logger.info("Getting devargs for Mellanox cards")
+            if device_id == "0x1007":
+                # Some NICs (i.e. Mellanox ConnectX-3) have only one PCI
+                # address associated with multiple ports. Using a PCI
+                # device won’t work. Instead, we should use
+                # "class=eth,mac=<MAC>"
+                dpdk_devargs = "class=eth,mac=%s" % interface_mac(ifname)
+            elif is_active_nic(ifname):
+                # Other Mellanox devices are active and they are not stored
+                # in dpdk_mapping.yaml file, so we need to get their pci
+                # address with ethtool.
+                dpdk_devargs = get_pci_address(ifname, noop)
         else:
+            logger.info("Getting stored PCI address as devarg")
             dpdk_devargs = get_stored_pci_address(ifname, noop)
+        logger.debug("Devargs found: %s" % (dpdk_devargs))
         return dpdk_devargs
 
 
