@@ -1,0 +1,20 @@
+{
+  "network_config": [
+    {
+      "type": "ib_interface",
+      "name": "ib0",
+      "use_dhcp": false
+    },
+    {
+      "type": "ib_child_interface",
+      "parent": "ib0",
+      "pkey_id": "100",
+      "use_dhcp": false,
+      "addresses": [
+        {
+          "ip_netmask": "10.20.30.40/24"
+        }
+      ]
+    }
+  ]
+}

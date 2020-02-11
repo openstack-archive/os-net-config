@@ -1,0 +1,18 @@
+network_config:
+  # Note(abdallahyas): a parent InfiniBand interface is needed to be up for
+  # the IPoIB pkey interface to work. The ib0 interface here is just there
+  # to make sure that it is up, it can be configured separately.
+
+  -
+    type: ib_interface
+    name: ib0
+    use_dhcp: false
+
+  -
+    type: ib_child_interface
+    parent: ib0
+    pkey_id: "100"
+    use_dhcp: false
+    addresses:
+      -
+        ip_netmask: 10.20.30.40/24

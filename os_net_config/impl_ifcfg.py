@@ -25,7 +25,6 @@ import os_net_config
 from os_net_config import objects
 from os_net_config import utils
 
-
 logger = logging.getLogger(__name__)
 
 # Import the raw NetConfig object so we can call its methods
@@ -134,6 +133,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         self.nfvswitch_intiface_data = {}
         self.nfvswitch_options = None
         self.vlan_data = {}
+        self.ib_childs_data = {}
         self.route_data = {}
         self.route6_data = {}
         self.route_table_data = {}
@@ -374,6 +374,11 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             data += "TYPE=NFVSWITCHIntPort\n"
         elif isinstance(base_opt, objects.IbInterface):
             data += "TYPE=Infiniband\n"
+        elif isinstance(base_opt, objects.IbChildInterface):
+            data += "TYPE=Infiniband\n"
+            data += "PKEY=yes\n"
+            data += "PHYSDEV=%s\n" % base_opt.parent
+            data += "PKEY_ID=%s\n" % base_opt.pkey_id
         elif re.match('\w+\.\d+$', base_opt.name):
             data += "VLAN=yes\n"
         elif isinstance(base_opt, objects.Interface):
@@ -887,6 +892,22 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                         % (ib_interface.hwname, ib_interface.name))
             self.renamed_interfaces[ib_interface.hwname] = ib_interface.name
 
+    def add_ib_child_interface(self, ib_child_interface):
+        """Add an InfiniBand child interface object to the net config object.
+
+        :param ib_child_interface: The InfiniBand child
+         interface object to add.
+        """
+        logger.info('adding ib_child_interface: %s' % ib_child_interface.name)
+        data = self._add_common(ib_child_interface)
+        logger.debug('ib_child_interface data: %s' % data)
+        self.ib_childs_data[ib_child_interface.name] = data
+        if ib_child_interface.routes:
+            self._add_routes(ib_child_interface.name,
+                             ib_child_interface.routes)
+        if ib_child_interface.rules:
+            self._add_rules(ib_child_interface.name, ib_child_interface.rules)
+
     def add_ovs_dpdk_port(self, ovs_dpdk_port):
         """Add a OvsDpdkPort object to the net config object.
 
@@ -1153,6 +1174,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         logger.info('applying network configs...')
         restart_interfaces = []
         restart_vlans = []
+        restart_ib_childs = []
         restart_bridges = []
         restart_linux_bonds = []
         restart_linux_teams = []
@@ -1514,6 +1536,51 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             if utils.diff(vlan_rule_path, rule_data):
                 update_files[vlan_rule_path] = rule_data
 
+        for ib_child_name, ib_child_data in self.ib_childs_data.items():
+            route_data = self.route_data.get(ib_child_name, '')
+            route6_data = self.route6_data.get(ib_child_name, '')
+            rule_data = self.rule_data.get(ib_child_name, '')
+            ib_child_path = self.root_dir + ifcfg_config_path(ib_child_name)
+            ib_child_route_path = \
+                self.root_dir + route_config_path(ib_child_name)
+            ib_child_route6_path = \
+                self.root_dir + route6_config_path(ib_child_name)
+            ib_child_rule_path = \
+                self.root_dir + route_rule_config_path(ib_child_name)
+            all_file_names.append(ib_child_path)
+            all_file_names.append(ib_child_route_path)
+            all_file_names.append(ib_child_route6_path)
+            all_file_names.append(ib_child_rule_path)
+            restarts_concatenated = itertools.chain(restart_interfaces,
+                                                    restart_bridges,
+                                                    restart_linux_bonds,
+                                                    restart_linux_teams)
+            if (self.parse_ifcfg(ib_child_data).get('PHYSDEV') in
+                    restarts_concatenated):
+                if ib_child_name not in restart_ib_childs:
+                    restart_ib_childs.append(ib_child_name)
+                update_files[ib_child_path] = ib_child_data
+            elif utils.diff(ib_child_path, ib_child_data):
+                if self.ifcfg_requires_restart(ib_child_path, ib_child_data):
+                    restart_ib_childs.append(ib_child_name)
+                else:
+                    apply_interfaces.append(
+                        (ib_child_name, ib_child_path, ib_child_data))
+                update_files[ib_child_path] = ib_child_data
+            else:
+                logger.info('No changes required for the ib child interface: '
+                            '%s' % ib_child_name)
+            if utils.diff(ib_child_route_path, route_data):
+                update_files[ib_child_route_path] = route_data
+                if ib_child_name not in restart_ib_childs:
+                    apply_routes.append((ib_child_name, route_data))
+            if utils.diff(ib_child_route6_path, route6_data):
+                update_files[ib_child_route6_path] = route6_data
+                if ib_child_name not in restart_ib_childs:
+                    apply_routes.append((ib_child_name, route6_data))
+            if utils.diff(ib_child_rule_path, rule_data):
+                update_files[ib_child_rule_path] = rule_data
+
         if self.vpp_interface_data or self.vpp_bond_data:
             vpp_path = self.root_dir + vpp_config_path()
             vpp_config = utils.generate_vpp_config(vpp_path, vpp_interfaces,
@@ -1591,6 +1658,9 @@ class IfcfgNetConfig(os_net_config.NetConfig):
 
             for vlan in restart_vlans:
                 self.ifdown(vlan)
+
+            for ib_child in restart_ib_childs:
+                self.ifdown(ib_child)
 
             for interface in restart_interfaces:
                 self.ifdown(interface)
@@ -1690,6 +1760,9 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                     self.ifup(nfvswitch_interface)
                 for nfvswitch_internal in nfvswitch_internal_ifaces:
                     self.ifup(nfvswitch_internal)
+
+            for ib_child in restart_ib_childs:
+                self.ifup(ib_child)
 
             for vlan in restart_vlans:
                 self.ifup(vlan)

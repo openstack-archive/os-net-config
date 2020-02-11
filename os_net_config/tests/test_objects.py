@@ -1597,6 +1597,67 @@ class TestIbInterface(base.TestCase):
         self.assertEqual("metric 10", route1.route_options)
 
 
+class TestIbChildInterface(base.TestCase):
+
+    def test_ib_child_interface_name(self):
+        ib_child_interface = objects.IbChildInterface('foo', pkey_id=100)
+        self.assertEqual("foo.8064", ib_child_interface.name)
+        self.assertEqual("foo", ib_child_interface.parent)
+
+    def test_ib_child_interface_pkey_id_valid(self):
+        ib_child_interface = objects.IbChildInterface('foo', pkey_id=100)
+        self.assertEqual(100, ib_child_interface.pkey_id)
+
+    def test_ib_child_interface_pkek_id_str(self):
+        data = '{"type": "ib_child_interface", ' \
+               '"parent": "foo", "pkey_id": "100"}'
+        ib_child_interface = \
+            objects.IbChildInterface.from_json(json.loads(data))
+        self.assertEqual(100, ib_child_interface.pkey_id)
+
+    def test_ib_child_interface_pkey_id_str_hexa(self):
+        data = '{"type": "ib_child_interface", ' \
+               '"parent": "foo", "pkey_id": "0x64"}'
+        ib_child_interface = \
+            objects.IbChildInterface.from_json(json.loads(data))
+        self.assertEqual(100, ib_child_interface.pkey_id)
+
+    def test_ib_child_interface_pkey_id_str_invalid_base(self):
+        data = '{"type": "ib_child_interface", ' \
+               '"parent": "foo", "pkey_id": "0b01100100"}'
+        self.assertRaises(objects.InvalidConfigException,
+                          objects.object_from_json,
+                          json.loads(data))
+
+    def test_ib_child_interface_nm_controlled_true(self):
+        data = '{"type": "ib_child_interface", ' \
+               '"parent": "foo", "pkey_id": "100"}'
+        ib_child_interface = \
+            objects.IbChildInterface.from_json(json.loads(data))
+        self.assertEqual(True, ib_child_interface.nm_controlled)
+
+    def test_ib_child_interface_pkey_id_zero(self):
+        data = '{"type": "ib_child_interface", ' \
+               '"parent": "foo", "pkey_id": "0"}'
+        self.assertRaises(objects.InvalidConfigException,
+                          objects.object_from_json,
+                          json.loads(data))
+
+    def test_ib_child_interface_pkey_id_managment(self):
+        data = '{"type": "ib_child_interface", ' \
+               '"parent": "foo", "pkey_id": "0x7fff"}'
+        self.assertRaises(objects.InvalidConfigException,
+                          objects.object_from_json,
+                          json.loads(data))
+
+    def test_ib_child_interface_pkey_id_max(self):
+        data = '{"type": "ib_child_interface", ' \
+               '"parent": "foo", "pkey_id": "0x8001"}'
+        self.assertRaises(objects.InvalidConfigException,
+                          objects.object_from_json,
+                          json.loads(data))
+
+
 class TestNicMapping(base.TestCase):
 
     # We want to test the function, not the dummy..

@@ -98,6 +98,8 @@ class NetConfig(object):
             self.add_ovs_patch_port(obj)
         elif isinstance(obj, objects.IbInterface):
             self.add_ib_interface(obj)
+        elif isinstance(obj, objects.IbChildInterface):
+            self.add_ib_child_interface(obj)
         elif isinstance(obj, objects.OvsDpdkPort):
             self.add_ovs_dpdk_port(obj)
         elif isinstance(obj, objects.OvsDpdkBond):
@@ -214,6 +216,14 @@ class NetConfig(object):
         :param interface: The InfiniBand Interface object to add.
         """
         raise NotImplementedError("add_ib_interface is not implemented.")
+
+    def add_ib_child_interface(self, ib_child_interface):
+        """Add an InfiniBand child interface object to the net config object.
+
+        :param ib_child_interface: The InfiniBand child
+        interface object to add.
+        """
+        raise NotImplementedError("add_ib_child_interface is not implemented.")
 
     def add_ovs_dpdk_port(self, ovs_dpdk_port):
         """Add a OvsDpdkPort object to the net config object.

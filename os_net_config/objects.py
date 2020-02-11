@@ -73,6 +73,8 @@ def object_from_json(json):
         return OvsPatchPort.from_json(json)
     elif obj_type == "ib_interface":
         return IbInterface.from_json(json)
+    elif obj_type == "ib_child_interface":
+        return IbChildInterface.from_json(json)
     elif obj_type == "ovs_dpdk_port":
         return OvsDpdkPort.from_json(json)
     elif obj_type == "ovs_dpdk_bond":
@@ -1242,6 +1244,55 @@ class IbInterface(_BaseOpts):
         ethtool_opts = json.get('ethtool_opts', None)
         opts = _BaseOpts.base_opts_from_json(json)
         return IbInterface(name, *opts, ethtool_opts=ethtool_opts)
+
+
+class IbChildInterface(_BaseOpts):
+    """Base class for InfiniBand child network interfaces."""
+
+    def __init__(self, parent, pkey_id, use_dhcp=False, use_dhcpv6=False,
+                 addresses=None, routes=None, rules=None, mtu=None,
+                 primary=False, nic_mapping=None, persist_mapping=False,
+                 defroute=True, dhclient_args=None, dns_servers=None,
+                 nm_controlled=True, onboot=True, domain=None):
+        addresses = addresses or []
+        routes = routes or []
+        rules = rules or []
+        dns_servers = dns_servers or []
+        self.pkey_id = pkey_id
+        self.parent = parent
+        full_pkey_id = 0x8000 | pkey_id
+        name = "%s.%04x" % (parent, full_pkey_id)
+        nm_controlled = True
+        super(IbChildInterface, self).__init__(name, use_dhcp, use_dhcpv6,
+                                               addresses, routes, rules, mtu,
+                                               primary, nic_mapping,
+                                               persist_mapping, defroute,
+                                               dhclient_args, dns_servers,
+                                               nm_controlled, onboot, domain)
+
+    @staticmethod
+    def from_json(json):
+        parent = _get_required_field(json, 'parent', 'IbChildInterface')
+        pkey_id = _get_required_field(json, 'pkey_id', 'IbChildInterface')
+        if type(pkey_id) == str:
+            try:
+                pkey_id = int(pkey_id)
+            except ValueError:
+                try:
+                    pkey_id = int(pkey_id, base=16)
+                except Exception:
+                    # Note (Abdallahyas): We do not care for other
+                    # bases other than decimal and hexa
+                    msg = "pkey only support decimal and hex bases, not int"
+                    raise InvalidConfigException(msg)
+        else:
+            msg = "Invalid pkey type: got %s" % type(pkey_id)
+            raise InvalidConfigException(msg)
+        if (pkey_id < 0x0001 or pkey_id >= 0x7fff):
+            msg = "Invalid pkey value 0x%X" % pkey_id
+            raise InvalidConfigException(msg)
+        opts = _BaseOpts.base_opts_from_json(json)
+        return IbChildInterface(parent, pkey_id, *opts)
 
 
 class OvsDpdkPort(_BaseOpts):
