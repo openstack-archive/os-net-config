@@ -142,6 +142,14 @@ _IFCFG_ROUTES2 = """default via 192.0.1.1 dev eth0
 192.0.1.1/24 via 192.0.3.1 dev eth1
 """
 
+_IFCFG_RULES1 = """to 192.168.2.0/24 table main priority 500
+from 192.168.2.0/24 table 200 priority 501
+"""
+
+_IFCFG_RULES2 = """to 192.168.1.0/24 table main priority 500
+from 192.168.1.0/24 table 200 priority 501
+"""
+
 _V4_IFCFG_MAPPED = _V4_IFCFG.replace('em1', 'nic1') + "HWADDR=a1:b2:c3:d4:e5\n"
 
 
@@ -2181,6 +2189,24 @@ class TestIfcfgNetConfigApply(base.TestCase):
                          'route add 192.0.1.1/24 via 192.0.3.1 dev eth1']
         commands = self.provider.iproute2_route_commands(interface_filename,
                                                          _IFCFG_ROUTES2)
+        self.assertTrue(commands == command_list1)
+
+    def test_ifcfg_rule_commands(self):
+
+        tmpdir = tempfile.mkdtemp()
+        interface = "eth0"
+        rule_filename = tmpdir + '/rule-' + interface
+        file = open(rule_filename, 'w')
+        file.write(_IFCFG_RULES1)
+        file.close()
+
+        # Changing only the rules should delete and add rules
+        command_list1 = ['rule del to 192.168.2.0/24 table main priority 500',
+                         'rule del from 192.168.2.0/24 table 200 priority 501',
+                         'rule add to 192.168.1.0/24 table main priority 500',
+                         'rule add from 192.168.1.0/24 table 200 priority 501']
+        commands = self.provider.iproute2_rule_commands(rule_filename,
+                                                        _IFCFG_RULES2)
         self.assertTrue(commands == command_list1)
 
     def test_ifcfg_ipmtu_commands(self):
