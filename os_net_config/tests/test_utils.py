@@ -14,12 +14,12 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import mock
 import os
 import os.path
 import random
 import shutil
 import tempfile
+from unittest import mock
 import yaml
 
 from os_net_config import objects
