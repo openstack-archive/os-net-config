@@ -659,7 +659,9 @@ class OvsBridge(_BaseOpts):
                                   spoofcheck=iface.spoofcheck,
                                   trust=iface.trust, state=iface.state,
                                   macaddr=iface.macaddr, promisc=iface.promisc,
-                                  pci_address=iface.pci_address)
+                                  pci_address=iface.pci_address,
+                                  min_tx_rate=iface.min_tx_rate,
+                                  max_tx_rate=iface.max_tx_rate)
 
     @staticmethod
     def from_json(json):
@@ -1027,7 +1029,9 @@ class LinuxBond(_BaseOpts):
                                   spoofcheck=iface.spoofcheck,
                                   trust=iface.trust, state=iface.state,
                                   macaddr=iface.macaddr, promisc=iface.promisc,
-                                  pci_address=iface.pci_address)
+                                  pci_address=iface.pci_address,
+                                  min_tx_rate=iface.min_tx_rate,
+                                  max_tx_rate=iface.max_tx_rate)
 
     @staticmethod
     def from_json(json):
@@ -1111,7 +1115,9 @@ class OvsBond(_BaseOpts):
                                   vlan_id=iface.vlan_id, qos=iface.qos,
                                   spoofcheck=iface.spoofcheck,
                                   trust=iface.trust, state=iface.state,
-                                  macaddr=iface.macaddr, promisc=iface.promisc)
+                                  macaddr=iface.macaddr, promisc=iface.promisc,
+                                  min_tx_rate=iface.min_tx_rate,
+                                  max_tx_rate=iface.max_tx_rate)
 
     @staticmethod
     def from_json(json):
@@ -1337,7 +1343,9 @@ class OvsDpdkPort(_BaseOpts):
                                   spoofcheck=iface.spoofcheck,
                                   trust=iface.trust, state=iface.state,
                                   macaddr=iface.macaddr, promisc=iface.promisc,
-                                  pci_address=iface.pci_address)
+                                  pci_address=iface.pci_address,
+                                  min_tx_rate=iface.min_tx_rate,
+                                  max_tx_rate=iface.max_tx_rate)
 
     @staticmethod
     def from_json(json):
@@ -1411,7 +1419,7 @@ class SriovVF(_BaseOpts):
                  defroute=True, dhclient_args=None, dns_servers=None,
                  nm_controlled=False, onboot=True, domain=None, vlan_id=0,
                  qos=0, spoofcheck=None, trust=None, state=None, macaddr=None,
-                 promisc=None):
+                 promisc=None, min_tx_rate=0, max_tx_rate=0):
         addresses = addresses or []
         routes = routes or []
         rules = rules or []
@@ -1432,6 +1440,8 @@ class SriovVF(_BaseOpts):
         self.device = device
         self.vlan_id = int(vlan_id)
         self.qos = int(qos)
+        self.min_tx_rate = int(min_tx_rate)
+        self.max_tx_rate = int(max_tx_rate)
         self.spoofcheck = spoofcheck
         self.trust = trust
         self.state = state
@@ -1449,7 +1459,9 @@ class SriovVF(_BaseOpts):
                                   state=state,
                                   macaddr=macaddr,
                                   promisc=promisc,
-                                  pci_address=pci_address)
+                                  pci_address=pci_address,
+                                  min_tx_rate=min_tx_rate,
+                                  max_tx_rate=max_tx_rate)
 
     @staticmethod
     def get_on_off(config):
@@ -1472,6 +1484,13 @@ class SriovVF(_BaseOpts):
         if qos != 0 and vlan_id == 0:
             msg = "Vlan tag not set for QOS - VF: %s:%d" % (device, vfid)
             raise InvalidConfigException(msg)
+        min_tx_rate = json.get('min_tx_rate', 0)
+        max_tx_rate = json.get('max_tx_rate', 0)
+        if max_tx_rate > 0 and min_tx_rate > max_tx_rate:
+            msg = ("vf %s:%d: min_tx_rate(%d) > max_tx_rate(%d)" %
+                   (device, vfid, min_tx_rate, max_tx_rate))
+            raise InvalidConfigException(msg)
+
         spoofcheck = SriovVF.get_on_off(json.get('spoofcheck'))
         trust = SriovVF.get_on_off(json.get('trust'))
         promisc = SriovVF.get_on_off(json.get('promisc'))
@@ -1482,7 +1501,8 @@ class SriovVF(_BaseOpts):
         macaddr = json.get('macaddr')
         return SriovVF(device, vfid, *opts, vlan_id=vlan_id, qos=qos,
                        spoofcheck=spoofcheck, trust=trust, state=state,
-                       macaddr=macaddr, promisc=promisc)
+                       macaddr=macaddr, promisc=promisc,
+                       min_tx_rate=min_tx_rate, max_tx_rate=max_tx_rate)
 
 
 class SriovPF(_BaseOpts):

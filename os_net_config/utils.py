@@ -478,7 +478,7 @@ def _get_sriov_map():
 
 
 def _set_vf_fields(vf_name, vlan_id, qos, spoofcheck, trust, state, macaddr,
-                   promisc, pci_address):
+                   promisc, pci_address, min_tx_rate, max_tx_rate):
     vf_configs = {}
     vf_configs['name'] = vf_name
     if vlan_id != 0:
@@ -489,6 +489,8 @@ def _set_vf_fields(vf_name, vlan_id, qos, spoofcheck, trust, state, macaddr,
         vf_configs['qos'] = qos
     else:
         vf_configs['qos'] = None
+    vf_configs['min_tx_rate'] = min_tx_rate
+    vf_configs['max_tx_rate'] = max_tx_rate
     vf_configs['spoofcheck'] = spoofcheck
     vf_configs['trust'] = trust
     vf_configs['state'] = state
@@ -506,7 +508,8 @@ def _clear_empty_values(vf_config):
 
 def update_sriov_vf_map(pf_name, vfid, vf_name, vlan_id=0, qos=0,
                         spoofcheck=None, trust=None, state=None, macaddr=None,
-                        promisc=None, pci_address=None):
+                        promisc=None, pci_address=None,
+                        min_tx_rate=0, max_tx_rate=0):
     sriov_map = _get_sriov_map()
     for item in sriov_map:
         if (item['device_type'] == 'vf' and
@@ -514,7 +517,7 @@ def update_sriov_vf_map(pf_name, vfid, vf_name, vlan_id=0, qos=0,
            item['device'].get('vfid') == vfid):
             item.update(_set_vf_fields(vf_name, vlan_id, qos, spoofcheck,
                                        trust, state, macaddr, promisc,
-                                       pci_address))
+                                       pci_address, min_tx_rate, max_tx_rate))
             _clear_empty_values(item)
             break
     else:
@@ -523,7 +526,7 @@ def update_sriov_vf_map(pf_name, vfid, vf_name, vlan_id=0, qos=0,
         new_item['device'] = {"name": pf_name, "vfid": vfid}
         new_item.update(_set_vf_fields(vf_name, vlan_id, qos, spoofcheck,
                                        trust, state, macaddr, promisc,
-                                       pci_address))
+                                       pci_address, min_tx_rate, max_tx_rate))
         _clear_empty_values(new_item)
         sriov_map.append(new_item)
 

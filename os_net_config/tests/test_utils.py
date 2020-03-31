@@ -200,6 +200,7 @@ class TestUtils(base.TestCase):
         sriov_vf_map = yaml.safe_load(contents) if contents else []
         self.assertEqual(1, len(sriov_vf_map))
         test_sriov_vf_map = [{'device_type': 'vf', 'name': 'eth1_2',
+                              'min_tx_rate': 0, 'max_tx_rate': 0,
                               'device': {"name": "eth1", "vfid": 2}}]
         self.assertListEqual(test_sriov_vf_map, sriov_vf_map)
 
@@ -207,13 +208,14 @@ class TestUtils(base.TestCase):
         utils.update_sriov_vf_map('eth1', 2, 'eth1_2', vlan_id=10, qos=5,
                                   spoofcheck="on", trust="on", state="enable",
                                   macaddr="AA:BB:CC:DD:EE:FF", promisc="off",
-                                  pci_address="0000:80:00.1")
+                                  pci_address="0000:80:00.1", max_tx_rate=10)
         contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
         sriov_vf_map = yaml.safe_load(contents) if contents else []
         self.assertEqual(1, len(sriov_vf_map))
         test_sriov_vf_map = [{'device_type': 'vf', 'name': 'eth1_2',
                               'device': {'name': 'eth1', 'vfid': 2},
                               'vlan_id': 10, 'qos': 5,
+                              'min_tx_rate': 0, 'max_tx_rate': 10,
                               'spoofcheck': 'on', 'trust': 'on',
                               'state': 'enable',
                               'macaddr': 'AA:BB:CC:DD:EE:FF',
@@ -229,10 +231,11 @@ class TestUtils(base.TestCase):
         utils.update_sriov_vf_map('eth1', 2, 'eth1_2', vlan_id=10, qos=5,
                                   spoofcheck="on", trust="on", state="enable",
                                   macaddr="AA:BB:CC:DD:EE:FF", promisc="off",
-                                  pci_address="0000:80:00.1")
+                                  pci_address="0000:80:00.1", max_tx_rate=10)
         vf_final = [{'device_type': 'vf', 'name': 'eth1_2',
                      'device': {'name': 'eth1', 'vfid': 2},
                      'vlan_id': 10, 'qos': 5,
+                     'min_tx_rate': 0, 'max_tx_rate': 10,
                      'spoofcheck': 'on', 'trust': 'on',
                      'state': 'enable',
                      'macaddr': 'AA:BB:CC:DD:EE:FF',
@@ -248,6 +251,7 @@ class TestUtils(base.TestCase):
         vf_initial = [{'device_type': 'vf', 'name': 'eth1_2',
                        'device': {'name': 'eth1', 'vfid': 2},
                        'vlan_id': 10, 'qos': 5,
+                       'min_tx_rate': 0, 'max_tx_rate': 00,
                        'spoofcheck': 'on', 'trust': 'on',
                        'state': 'enable',
                        'macaddr': 'AA:BB:CC:DD:EE:FF',
@@ -258,10 +262,11 @@ class TestUtils(base.TestCase):
         utils.update_sriov_vf_map('eth1', 2, 'eth1_2', vlan_id=100, qos=15,
                                   spoofcheck="off", trust="off", state="auto",
                                   macaddr="BB:BB:CC:DD:EE:FF", promisc="on",
-                                  pci_address="0000:80:00.1")
+                                  pci_address="0000:80:00.1", max_tx_rate=40)
         vf_final = [{'device_type': 'vf', 'name': 'eth1_2',
                      'device': {'name': 'eth1', 'vfid': 2},
                      'vlan_id': 100, 'qos': 15,
+                     'min_tx_rate': 0, 'max_tx_rate': 40,
                      'spoofcheck': 'off', 'trust': 'off',
                      'state': 'auto',
                      'macaddr': 'BB:BB:CC:DD:EE:FF',
