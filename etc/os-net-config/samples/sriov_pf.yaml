@@ -46,6 +46,13 @@ network_config:
     # specified priority bits in the VLAN tag. Requires vlan_id
     # Default value is 0.
     qos: 2
+    # change the allowed minimum transmit bandwidth, in Mbps, for the specified VF.
+    # Minimum TXRATE should be always <= Maximum TXRATE.
+    # Setting this parameter to 0 disables rate limiting.
+    min_tx_rate: 10
+    # change the allowed maximum transmit bandwidth, in Mbps, for the specified VF.
+    # Setting this parameter to 0 disables rate limiting.
+    max_tx_rate: 100
     # MAC spoofing is a method of altering the MAC address
     # The MAC address anti-spoofing when enabled protects from malicious MAC
     # address spoofing. It should be disabled for 802.3ad bonds.

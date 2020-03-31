@@ -254,9 +254,12 @@ class TestSriovConfig(base.TestCase):
                       "vfid": 1}, "promisc": "on", "vlan_id": 101,
                       "qos": 5, "macaddr": "AA:BB:CC:DD:EE:FF",
                       "spoofcheck": "on", "state": "auto", "trust": "on",
+                      "min_tx_rate": 0, "max_tx_rate": 100,
                       "name": "p2p1_1"}]
         exp_cmds = ["ip link set dev p2p1 vf 1 mac AA:BB:CC:DD:EE:FF",
                     "ip link set dev p2p1 vf 1 vlan 101 qos 5",
+                    "ip link set dev p2p1 vf 1 min_tx_rate 0",
+                    "ip link set dev p2p1 vf 1 max_tx_rate 100",
                     "ip link set dev p2p1_1 promisc on",
                     "ip link set dev p2p1 vf 1 spoofchk on",
                     "ip link set dev p2p1 vf 1 state auto",

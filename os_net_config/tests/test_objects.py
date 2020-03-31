@@ -462,6 +462,7 @@ class TestBridge(base.TestCase):
         vf_final = [{'device_type': 'vf', 'name': 'em1_1',
                      'device': {'name': 'em1', 'vfid': 1},
                      'vlan_id': 111, 'qos': 1,
+                     'min_tx_rate': 0, 'max_tx_rate': 0,
                      'spoofcheck': 'off', 'trust': 'on',
                      'promisc': 'on', 'pci_address': '0000:79:10.2'}]
 
@@ -518,11 +519,13 @@ class TestBridge(base.TestCase):
         vf_final = [{'device_type': 'vf', 'name': 'em1_1',
                      'device': {'name': 'em1', 'vfid': 1},
                      'vlan_id': 111, 'qos': 1,
+                     'min_tx_rate': 0, 'max_tx_rate': 0,
                      'spoofcheck': 'off', 'trust': 'on',
                      'promisc': 'on'},
                     {'device_type': 'vf', 'name': 'em2_1',
                      'device': {'name': 'em2', 'vfid': 1},
                      'vlan_id': 111, 'qos': 1,
+                     'min_tx_rate': 0, 'max_tx_rate': 0,
                      'spoofcheck': 'off', 'trust': 'on',
                      'promisc': 'on'}]
 
@@ -587,11 +590,13 @@ class TestBridge(base.TestCase):
         vf_final = [{'device_type': 'vf', 'name': 'em1_1',
                      'device': {'name': 'em1', 'vfid': 1},
                      'vlan_id': 111, 'qos': 1,
+                     'min_tx_rate': 0, 'max_tx_rate': 0,
                      'spoofcheck': 'on', 'trust': 'off',
                      'promisc': 'off'},
                     {'device_type': 'vf', 'name': 'em2_1',
                      'device': {'name': 'em2', 'vfid': 1},
                      'vlan_id': 111, 'qos': 1,
+                     'min_tx_rate': 0, 'max_tx_rate': 0,
                      'spoofcheck': 'on', 'trust': 'off',
                      'promisc': 'off'}]
 
@@ -632,6 +637,7 @@ class TestBridge(base.TestCase):
         vf_final = [{'device_type': 'vf', 'name': 'em1_1',
                      'device': {'name': 'em1', 'vfid': 1},
                      'vlan_id': 111, 'qos': 1,
+                     'min_tx_rate': 0, 'max_tx_rate': 0,
                      'pci_address': '0000:79:10.2',
                      'spoofcheck': 'off', 'trust': 'off',
                      'promisc': 'off'}]
@@ -681,6 +687,7 @@ class TestBridge(base.TestCase):
         vf_final = [{'device_type': 'vf', 'name': 'em1_1',
                      'device': {'name': 'em1', 'vfid': 1},
                      'vlan_id': 111, 'qos': 1,
+                     'min_tx_rate': 0, 'max_tx_rate': 0,
                      'spoofcheck': 'off', 'trust': 'on',
                      'pci_address': '0000:79:10.2'
                      }]
@@ -723,6 +730,8 @@ class TestBridge(base.TestCase):
                 "vfid": 1,
                 "vlan_id": 111,
                 "qos": 1,
+                "min_tx_rate": 100,
+                "max_tx_rate": 500,
                 "spoofcheck": false,
                 "trust": false,
                 "promisc": false
@@ -734,6 +743,7 @@ class TestBridge(base.TestCase):
         vf_final = [{'device_type': 'vf', 'name': 'em1_1',
                      'device': {'name': 'em1', 'vfid': 1},
                      'vlan_id': 111, 'qos': 1,
+                     'min_tx_rate': 100, 'max_tx_rate': 500,
                      'spoofcheck': 'off', 'trust': 'off',
                      'pci_address': '0000:79:10.2'
                      }]
@@ -1229,6 +1239,7 @@ class TestLinuxBond(base.TestCase):
     "vfid": 1,
     "vlan_id": 111,
     "qos": 1,
+    "max_tx_rate": 10,
     "primary": true
     },
     {
@@ -1236,19 +1247,22 @@ class TestLinuxBond(base.TestCase):
     "device": "em2",
     "vfid": 1,
     "vlan_id": 111,
-    "qos": 1
+    "qos": 1,
+    "max_tx_rate": 10
 }]
 }
 """
         vf_final = [{'device_type': 'vf', 'name': 'em1_1',
                      'device': {'name': 'em1', 'vfid': 1},
                      'vlan_id': 111, 'qos': 1,
+                     'min_tx_rate': 0, 'max_tx_rate': 10,
                      'pci_address': '0000:79:10.1',
                      'spoofcheck': 'on', 'trust': 'on',
                      'promisc': 'off'},
                     {'device_type': 'vf', 'name': 'em2_1',
                      'device': {'name': 'em2', 'vfid': 1},
                      'vlan_id': 111, 'qos': 1,
+                     'min_tx_rate': 0, 'max_tx_rate': 10,
                      'pci_address': '0000:79:10.2',
                      'spoofcheck': 'on', 'trust': 'on',
                      'promisc': 'off'}]
@@ -1310,12 +1324,14 @@ class TestLinuxBond(base.TestCase):
         vf_final = [{'device_type': 'vf', 'name': 'em1_1',
                      'device': {'name': 'em1', 'vfid': 1},
                      'vlan_id': 111, 'qos': 1,
+                     'min_tx_rate': 0, 'max_tx_rate': 0,
                      'pci_address': '0000:79:10.1',
                      'spoofcheck': 'off', 'trust': 'off',
                      'promisc': 'off'},
                     {'device_type': 'vf', 'name': 'em2_1',
                      'device': {'name': 'em2', 'vfid': 1},
                      'vlan_id': 111, 'qos': 1,
+                     'min_tx_rate': 0, 'max_tx_rate': 0,
                      'pci_address': '0000:79:10.2',
                      'spoofcheck': 'off', 'trust': 'off',
                      'promisc': 'off'}]

@@ -520,6 +520,12 @@ def configure_sriov_vf():
                 if 'qos' in item:
                     vlan_cmd = vlan_cmd + ('qos', str(item['qos']))
                 run_ip_config_cmd(*vlan_cmd)
+            if 'max_tx_rate' in item:
+                cmd = base_cmd + ('max_tx_rate', str(item['max_tx_rate']))
+                run_ip_config_cmd(*cmd)
+            if 'min_tx_rate' in item:
+                cmd = base_cmd + ('min_tx_rate', str(item['min_tx_rate']))
+                run_ip_config_cmd(*cmd)
             if 'spoofcheck' in item:
                 cmd = base_cmd + ('spoofchk', item['spoofcheck'])
                 run_ip_config_cmd(*cmd)

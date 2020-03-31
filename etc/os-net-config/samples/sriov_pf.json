@@ -26,6 +26,8 @@
           ],
           "vlan_id": 100,
           "qos": 2,
+          "min_tx_rate": 10,
+          "max_tx_rate": 100,
           "spoofcheck": true,
           "macaddr": "00:78:90:80:cc:30",
           "trust": true,
@@ -44,6 +46,8 @@
                     "promisc": true,
                     "vlan_id": 116,
                     "qos": 3,
+                    "min_tx_rate": 0,
+                    "max_tx_rate": 0,
                     "spoofcheck": false
                 }
             ],
@@ -65,6 +69,8 @@
                             "vfid": 2,
                             "vlan_id": 112,
                             "qos": 4,
+                            "min_tx_rate": 0,
+                            "max_tx_rate": 0,
                             "primary": true,
                             "trust": true,
                             "promisc": true,
@@ -76,6 +82,8 @@
                             "vfid": 2,
                             "vlan_id": 112,
                             "qos": 4,
+                            "min_tx_rate": 0,
+                            "max_tx_rate": 0,
                             "trust": true,
                             "promisc": true,
                             "spoofcheck": false
@@ -96,6 +104,8 @@
                     "vfid": 3,
                     "vlan_id": 113,
                     "qos": 5,
+                    "min_tx_rate": 0,
+                    "max_tx_rate": 0,
                     "spoofcheck": true,
                     "trust": true,
                     "promisc": false,
@@ -107,6 +117,8 @@
                     "vfid": 3,
                     "vlan_id": 113,
                     "qos": 5,
+                    "min_tx_rate": 0,
+                    "max_tx_rate": 0,
                     "spoofcheck": true,
                     "trust": true,
                     "promisc": false

@@ -384,6 +384,10 @@ definitions:
                 $ref: "#/definitions/int_or_param"
             qos:
                 $ref: "#/definitions/int_or_param"
+            min_tx_rate:
+                $ref: "#/definitions/int_or_param"
+            max_tx_rate:
+                $ref: "#/definitions/int_or_param"
             hotplug:
                 $ref: "#/definitions/bool_or_param"
             spoofcheck:
