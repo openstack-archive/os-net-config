@@ -1154,6 +1154,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         restart_vlans = []
         restart_bridges = []
         restart_linux_bonds = []
+        start_linux_bonds = []
         restart_linux_teams = []
         restart_vpp = False
         apply_interfaces = []
@@ -1161,6 +1162,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         apply_routes = []
         update_files = {}
         all_file_names = []
+        linux_bond_children = {}
         ivs_uplinks = []  # ivs physical uplinks
         ivs_interfaces = []  # ivs internal ports
         nfvswitch_interfaces = []       # nfvswitch physical interfaces
@@ -1406,11 +1408,12 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             all_file_names.append(bond_route_path)
             all_file_names.append(bond_route6_path)
             all_file_names.append(bond_rule_path)
+            children = self.child_members(bond_name)
+            linux_bond_children[bond_name] = children
             if utils.diff(bond_path, bond_data):
                 if self.ifcfg_requires_restart(bond_path, bond_data):
                     restart_linux_bonds.append(bond_name)
                     # Avoid duplicate interface being added to the restart list
-                    children = self.child_members(bond_name)
                     for child in children:
                         if child not in restart_interfaces:
                             restart_interfaces.append(child)
@@ -1593,6 +1596,10 @@ class IfcfgNetConfig(os_net_config.NetConfig):
 
             for interface in restart_interfaces:
                 self.ifdown(interface)
+                for bond in linux_bond_children:
+                    if interface in linux_bond_children[bond]:
+                        if bond not in restart_linux_bonds:
+                            start_linux_bonds.append(bond)
 
             for linux_bond in restart_linux_bonds:
                 self.ifdown(linux_bond)
@@ -1662,6 +1669,10 @@ class IfcfgNetConfig(os_net_config.NetConfig):
 
             for interface in restart_interfaces:
                 self.ifup(interface)
+
+            for linux_bond in start_linux_bonds:
+                if linux_bond not in restart_linux_bonds:
+                    restart_linux_bonds.append(linux_bond)
 
             for linux_bond in restart_linux_bonds:
                 self.ifup(linux_bond)
