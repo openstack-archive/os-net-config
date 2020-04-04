@@ -2335,14 +2335,46 @@ class TestIfcfgNetConfigApply(base.TestCase):
         self.assertIn('em2', self.ifup_interface_names)
         self.assertIn('vlan10', self.ifup_interface_names)
 
+    def test_linux_bond_ifup_on_child_restart(self):
+        # if a bond slave is restarted then ifup should be called on the bond
+        self.ifup_interface_names = []
+        interface1 = objects.Interface('em1')
+        bond = objects.LinuxBond('bond0', members=[interface1])
+        self.provider.add_linux_bond(bond)
+        self.provider.add_interface(interface1)
+        self.provider.apply()
+        self.assertIn('em1', self.ifup_interface_names)
+        self.assertIn('bond0', self.ifup_interface_names)
+
+        self.ifup_interface_names = []
+        # changing mtu should not require a restart of em1 (or the bond)
+        interface1.mtu = 9000
+        self.provider.linuxbond_data = {}
+        self.provider.interface_data = {}
+        self.provider.add_linux_bond(bond)
+        self.provider.add_interface(interface1)
+        self.provider.apply()
+        self.assertNotIn('em1', self.ifup_interface_names)
+        self.assertNotIn('bond0', self.ifup_interface_names)
+
+        # changing nm_controlled should require a restart of em1 (and the bond)
+        interface1.nm_controlled = True
+        self.provider.add_interface(interface1)
+        self.provider.apply()
+        self.assertIn('em1', self.ifup_interface_names)
+        self.assertIn('bond0', self.ifup_interface_names)
+
     def test_restart_interface_counts(self):
         interface = objects.Interface('em1')
-        self.provider.add_interface(interface)
         interface2 = objects.Interface('em2')
+        bond = objects.LinuxBond('bond0', members=[interface, interface2])
+        self.provider.add_bond(bond)
+        self.provider.add_interface(interface)
         self.provider.add_interface(interface2)
         self.provider.apply()
         self.assertEqual(1, self.ifup_interface_names.count("em1"))
         self.assertEqual(1, self.ifup_interface_names.count("em2"))
+        self.assertEqual(1, self.ifup_interface_names.count("bond0"))
 
     def test_vlan_apply(self):
         vlan = objects.Vlan('em1', 5)
