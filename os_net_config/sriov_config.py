@@ -113,7 +113,7 @@ def get_numvfs(ifname):
                                          "device/sriov_numvfs")
         with open(sriov_numvfs_path, 'r') as f:
             return int(f.read())
-    except IOError as exc:
+    except IOError:
         msg = ("Unable to read numvfs for %s" % ifname)
         raise SRIOVNumvfsException(msg)
 
@@ -591,7 +591,7 @@ def main(argv=sys.argv):
     configure_logger(opts.verbose, opts.debug)
 
     if opts.numvfs:
-        if re.match("^\w+:\d+$", opts.numvfs):
+        if re.match(r"^\w+:\d+$", opts.numvfs):
             device_name, numvfs = opts.numvfs.split(':')
             _write_numvfs(device_name, int(numvfs))
         else:

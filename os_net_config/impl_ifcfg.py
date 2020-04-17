@@ -47,7 +47,7 @@ def ifcfg_config_path(name):
 
 
 def remove_ifcfg_config(ifname):
-    if re.match('[\w-]+$', ifname):
+    if re.match(r'[\w-]+$', ifname):
         ifcfg_file = ifcfg_config_path(ifname)
         if os.path.exists(ifcfg_file):
             os.remove(ifcfg_file)
@@ -430,7 +430,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             data += "PKEY=yes\n"
             data += "PHYSDEV=%s\n" % base_opt.parent
             data += "PKEY_ID=%s\n" % base_opt.pkey_id
-        elif re.match('\w+\.\d+$', base_opt.name):
+        elif re.match(r'\w+\.\d+$', base_opt.name):
             data += "VLAN=yes\n"
         elif isinstance(base_opt, objects.Interface):
             if base_opt.linkdelay:
