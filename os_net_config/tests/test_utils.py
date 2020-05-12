@@ -550,6 +550,10 @@ class TestUtils(base.TestCase):
 
         tmpdir = tempfile.mkdtemp()
         self.stub_out('os_net_config.utils._SYS_CLASS_NET', tmpdir)
+        tmp_pci_dir = tempfile.mkdtemp()
+        self.stub_out('os_net_config.utils._SYS_BUS_PCI_DEV', tmp_pci_dir)
+        physfn_path = utils._SYS_BUS_PCI_DEV + '/0000:05:01.1/physfn'
+        os.makedirs(physfn_path)
 
         def test_is_available_nic(interface_name, check_active):
             return True
@@ -565,6 +569,8 @@ class TestUtils(base.TestCase):
                                'vfio-pci')
         utils._update_dpdk_map('p3p1', '0000:04:00.0', '01:02:03:04:05:07',
                                'igb_uio')
+        utils._update_dpdk_map('p3p0_0', '0000:05:01.1', 'AA:02:03:04:05:FF',
+                               'vfio-pci')
 
         nics = utils.ordered_active_nics()
 
@@ -580,6 +586,7 @@ class TestUtils(base.TestCase):
         self.assertEqual('z1', nics[9])
 
         shutil.rmtree(tmpdir)
+        shutil.rmtree(tmp_pci_dir)
 
     def test_interface_mac_raises(self):
         self.assertRaises(IOError, utils.interface_mac, 'ens20f2p3')
