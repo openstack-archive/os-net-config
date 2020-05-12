@@ -435,7 +435,7 @@ def configure_switchdev(pf_name):
 def run_ip_config_cmd(*cmd, **kwargs):
     logger.info("Running %s" % ' '.join(cmd))
     try:
-        processutils.execute(*cmd, **kwargs)
+        processutils.execute(*cmd, **kwargs, delay_on_retry=True, attempts=10)
     except processutils.ProcessExecutionError:
         logger.error("Failed to execute %s" % ' '.join(cmd))
         raise
