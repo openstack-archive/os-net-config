@@ -27,6 +27,7 @@ from oslo_concurrency import processutils
 
 logger = logging.getLogger(__name__)
 _SYS_CLASS_NET = '/sys/class/net'
+_SYS_BUS_PCI_DEV = '/sys/bus/pci/devices'
 # File to contain the DPDK mapped nics, as nic name will not be available after
 # binding driver, which is required for correct nic numbering.
 # Format of the file (list mapped nic's details):
@@ -149,6 +150,23 @@ def is_real_nic(interface_name):
         return False
 
 
+def _is_vf(pci_address):
+
+    # If DPDK drivers are bound on a VF, then the path _SYS_CLASS_NET
+    # wouldn't exist. Instead we look for the path
+    # /sys/bus/pci/devices/<PCI addr>/physfn to understand if the device
+    # is actually a VF. This path could be used by VFs not bound with
+    # DPDK drivers as well
+
+    vf_path_check = _SYS_BUS_PCI_DEV + '/%s/physfn' % pci_address
+    is_sriov_vf = os.path.isdir(vf_path_check)
+    if is_sriov_vf:
+        return True
+
+    # nic is not VF
+    return False
+
+
 def _is_available_nic(interface_name, check_active=True):
     try:
         if interface_name == 'lo':
@@ -222,8 +240,12 @@ def _ordered_nics(check_active):
     if contents:
         dpdk_map = yaml.safe_load(contents)
         for item in dpdk_map:
+            # If the DPDK drivers are bound to a VF, the same needs
+            # to be skipped for the NIC ordering
             nic = item['name']
-            if _is_embedded_nic(nic):
+            if _is_vf(item['pci_address']):
+                logger.info("%s is a VF, skipping it for NIC ordering" % nic)
+            elif _is_embedded_nic(nic):
                 logger.info("%s is an embedded DPDK bound nic" % nic)
                 embedded_nics.append(nic)
             else:
