@@ -26,9 +26,10 @@ extensions = [
 ]
 
 # openstackdocstheme options
-repository_name = 'openstack/os-net-config'
-bug_project = 'os-net-config'
-bug_tag = ''
+openstackdocs_repo_name = 'openstack/os-net-config'
+openstackdocs_auto_name = False
+openstackdocs_bug_project = 'os-net-config'
+openstackdocs_bug_tag = ''
 html_theme = 'openstackdocs'
 
 # autodoc generation is a bit aggressive and a nuisance when doing heavy
@@ -53,7 +54,7 @@ add_function_parentheses = True
 add_module_names = True
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = 'sphinx'
+pygments_style = 'native'
 
 # -- Options for HTML output --------------------------------------------------
 

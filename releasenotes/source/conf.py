@@ -58,6 +58,12 @@ master_doc = 'index'
 project = u'os-net-config Release Notes'
 copyright = u'2018, OpenStackFoundation'
 
+# openstackdocstheme options
+openstackdocs_repo_name = 'openstack/os-net-config'
+openstackdocs_auto_name = False
+openstackdocs_bug_project = 'os-net-config'
+openstackdocs_bug_tag = ''
+
 # Release notes are version independent
 # The full version, including alpha/beta/rc tags.
 release = ''
@@ -94,7 +100,7 @@ exclude_patterns = []
 # show_authors = False
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = 'sphinx'
+pygments_style = 'native'
 
 # A list of ignored prefixes for module index sorting.
 # modindex_common_prefix = []
