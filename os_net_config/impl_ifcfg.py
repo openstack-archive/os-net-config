@@ -464,7 +464,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         if isinstance(base_opt, objects.OvsBridge):
             data += "DEVICETYPE=ovs\n"
             data += "TYPE=OVSBridge\n"
-            if base_opt.use_dhcp:
+            if base_opt.use_dhcp or base_opt.use_dhcpv6:
                 data += "OVSBOOTPROTO=dhcp\n"
             if base_opt.members:
                 members = [member.name for member in base_opt.members]
@@ -481,7 +481,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         elif isinstance(base_opt, objects.OvsUserBridge):
             data += "DEVICETYPE=ovs\n"
             data += "TYPE=OVSUserBridge\n"
-            if base_opt.use_dhcp:
+            if base_opt.use_dhcp or base_opt.use_dhcpv6:
                 data += "OVSBOOTPROTO=dhcp\n"
             if base_opt.members:
                 members = [member.name for member in base_opt.members]
@@ -497,7 +497,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 self.bond_primary_ifaces[base_opt.name] = primary_name
             data += "DEVICETYPE=ovs\n"
             data += "TYPE=OVSBond\n"
-            if base_opt.use_dhcp:
+            if base_opt.use_dhcp or base_opt.use_dhcpv6:
                 data += "OVSBOOTPROTO=dhcp\n"
             if base_opt.members:
                 members = [member.name for member in base_opt.members]
