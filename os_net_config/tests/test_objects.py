@@ -835,7 +835,7 @@ class TestBridge(base.TestCase):
 """
         bridge = objects.object_from_json(json.loads(data))
         self.assertTrue(3 == len(bridge.ovs_extra))
-        self.assertItemsEqual(["bar",
+        self.assertCountEqual(["bar",
                                "set bridge br-foo fail_mode=standalone",
                                "del-controller br-foo"],
                               bridge.ovs_extra)
@@ -849,7 +849,7 @@ class TestBridge(base.TestCase):
 }
 """
         bridge = objects.object_from_json(json.loads(data))
-        self.assertItemsEqual(["bar",
+        self.assertCountEqual(["bar",
                                "set bridge br-foo fail_mode=standalone",
                                "del-controller br-foo"],
                               bridge.ovs_extra)

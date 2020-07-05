@@ -248,7 +248,7 @@ class TestCli(base.TestCase):
         for dev in sanity_devices:
             self.assertIn(dev, stdout_yaml)
         self.assertEqual(stdout_yaml, stdout_json)
-        self.assertItemsEqual(sriov_config_yaml, sriov_config_json)
+        self.assertCountEqual(sriov_config_yaml, sriov_config_json)
 
     def test_sriov_vf_with_dpdk_noop_output(self):
         def test_get_vf_devname(device, vfid):
@@ -285,7 +285,7 @@ class TestCli(base.TestCase):
         for dev in sanity_devices:
             self.assertIn(dev, stdout_yaml)
         self.assertEqual(stdout_yaml, stdout_json)
-        self.assertItemsEqual(sriov_config_yaml, sriov_config_json)
+        self.assertCountEqual(sriov_config_yaml, sriov_config_json)
 
     def test_ovs_dpdk_bond_noop_output(self):
         ivs_yaml = os.path.join(SAMPLE_BASE, 'ovs_dpdk_bond.yaml')
