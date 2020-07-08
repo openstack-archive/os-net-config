@@ -59,6 +59,10 @@ WantedBy=multi-user.target
 _VPP_EXEC_FILE = '/etc/vpp/vpp-exec'
 
 
+class InvalidInterfaceException(ValueError):
+    pass
+
+
 class OvsDpdkBindException(ValueError):
     pass
 
@@ -160,11 +164,13 @@ def _is_vf(pci_address):
 
     vf_path_check = _SYS_BUS_PCI_DEV + '/%s/physfn' % pci_address
     is_sriov_vf = os.path.isdir(vf_path_check)
-    if is_sriov_vf:
-        return True
+    return is_sriov_vf
 
-    # nic is not VF
-    return False
+
+def _is_vf_by_name(interface_name):
+    vf_path_check = _SYS_CLASS_NET + '/%s/device/physfn' % interface_name
+    is_sriov_vf = os.path.isdir(vf_path_check)
+    return is_sriov_vf
 
 
 def _is_available_nic(interface_name, check_active=True):
@@ -186,9 +192,7 @@ def _is_available_nic(interface_name, check_active=True):
         # the nic numbering. All the VFs will have a reference to the PF with
         # directory name as 'physfn', if this directory is present it should be
         # ignored.
-        vf_path_check = _SYS_CLASS_NET + '/%s/device/physfn' % interface_name
-        is_sriov_vf = os.path.isdir(vf_path_check)
-        if is_sriov_vf:
+        if _is_vf_by_name(interface_name):
             return False
 
         # nic is available
@@ -420,6 +424,14 @@ def get_dpdk_devargs(ifname, noop):
                 # in dpdk_mapping.yaml file, so we need to get their pci
                 # address with ethtool.
                 dpdk_devargs = get_pci_address(ifname, noop)
+            elif _is_vf_by_name(ifname):
+                # For Mellanox devices the VFs bound with DPDK shall
+                # be treated the same as VFs of other devices
+                dpdk_devargs = get_pci_address(ifname, noop)
+            else:
+                logger.error("Unable to get devargs for interface %s" % ifname)
+                msg = ("Unable to get devargs for interface %s" % ifname)
+                raise InvalidInterfaceException(msg)
         else:
             logger.info("Getting stored PCI address as devarg")
             dpdk_devargs = get_stored_pci_address(ifname, noop)
