@@ -320,9 +320,15 @@ def main(argv=sys.argv):
         pf_files_changed = provider.apply(cleanup=opts.cleanup,
                                           activate=not opts.no_activate)
         if not opts.noop:
+            restart_ovs = bool(sriovpf_member_of_bond_ovs_port_list)
+            # Avoid ovs restart for os-net-config re-runs, which will
+            # dirupt the offload configuration
+            if os.path.exists(utils._SRIOV_CONFIG_SERVICE_FILE):
+                restart_ovs = False
+
             utils.configure_sriov_pfs(
                 execution_from_cli=True,
-                restart_openvswitch=bool(sriovpf_member_of_bond_ovs_port_list))
+                restart_openvswitch=restart_ovs)
 
     for iface_json in iface_array:
         # All objects other than the sriov_pf will be added here.
