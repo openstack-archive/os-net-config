@@ -31,6 +31,7 @@ import sys
 import time
 import yaml
 
+from os_net_config import sriov_bind_config
 from oslo_concurrency import processutils
 
 logger = logging.getLogger(__name__)
@@ -40,6 +41,8 @@ _UDEV_LEGACY_RULE_FILE = '/etc/udev/rules.d/70-os-net-config-sriov.rules'
 _IFUP_LOCAL_FILE = '/sbin/ifup-local'
 _RESET_SRIOV_RULES_FILE = '/etc/udev/rules.d/70-tripleo-reset-sriov.rules'
 _ALLOCATE_VFS_FILE = '/etc/sysconfig/allocate_vfs'
+_MLNX_DRIVER = "mlx5_core"
+MLNX_VENDOR_ID = "0x15b3"
 
 MAX_RETRIES = 10
 PF_FUNC_RE = re.compile(r"\.(\d+)$", 0)
@@ -171,7 +174,7 @@ def configure_sriov_pf(execution_from_cli=False, restart_openvswitch=False):
 
     sriov_map = _get_sriov_map()
     MLNX_UNBIND_FILE_PATH = "/sys/bus/pci/drivers/mlx5_core/unbind"
-    MLNX_VENDOR_ID = "0x15b3"
+    mlnx_vfs_pcis_list = []
     trigger_udev_rule = False
 
     # Cleanup the previous config by puppet-tripleo
@@ -206,6 +209,7 @@ def configure_sriov_pf(execution_from_cli=False, restart_openvswitch=False):
             if (item.get('link_mode') == "switchdev" and
                     vendor_id == MLNX_VENDOR_ID):
                 vf_pcis_list = get_vf_pcis_list(item['name'])
+                mlnx_vfs_pcis_list += vf_pcis_list
                 for vf_pci in vf_pcis_list:
                     vf_pci_path = "/sys/bus/pci/devices/%s/driver" % vf_pci
                     if os.path.exists(vf_pci_path):
@@ -237,6 +241,14 @@ def configure_sriov_pf(execution_from_cli=False, restart_openvswitch=False):
                 # sriov_config service will bring the interfaces up.
                 if execution_from_cli:
                     if_up_interface(item['name'])
+
+    if mlnx_vfs_pcis_list:
+        sriov_bind_pcis_map = {_MLNX_DRIVER: mlnx_vfs_pcis_list}
+        if not execution_from_cli:
+            sriov_bind_config.update_sriov_bind_pcis_map(sriov_bind_pcis_map)
+        else:
+            sriov_bind_config.configure_sriov_bind_service()
+            sriov_bind_config.bind_vfs(sriov_bind_pcis_map)
 
     # Trigger udev rules if there is new rules written
     if trigger_udev_rule:
