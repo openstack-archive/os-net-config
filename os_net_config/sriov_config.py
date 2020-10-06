@@ -220,6 +220,8 @@ def configure_sriov_pf(execution_from_cli=False, restart_openvswitch=False):
                 trigger_udev_rule = add_udev_rule_for_sriov_pf(item['name'])\
                     or trigger_udev_rule
 
+                configure_smfs_software_steering(item['name'])
+
                 configure_switchdev(item['name'])
 
                 # Adding a udev rule to rename vf-representors
@@ -430,6 +432,17 @@ def configure_switchdev(pf_name):
     except processutils.ProcessExecutionError:
         logger.error("Failed to enable hw-tc-offload")
         raise
+
+
+def configure_smfs_software_steering(pf_name):
+    pf_pci = get_pf_pci(pf_name)
+    try:
+        processutils.execute('/usr/sbin/devlink', 'dev', 'param', 'set',
+                             'pci/%s' % pf_pci, 'name', 'flow_steering_mode',
+                             'value', 'smfs', 'cmode', 'runtime')
+        logger.info("Device pci/%s is set to smfs steering mode." % pf_pci)
+    except processutils.ProcessExecutionError:
+        logger.warning("Could not set pci/%s to smfs steering mode!")
 
 
 def run_ip_config_cmd(*cmd, **kwargs):
