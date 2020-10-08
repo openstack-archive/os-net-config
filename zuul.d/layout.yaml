@@ -6,6 +6,6 @@
       - openstack-python3-victoria-jobs
       - publish-openstack-docs-pti
       - release-notes-jobs-python3
-      - tripleo-multinode-container-minimal
+      - tripleo-multinode-container-minimal-pipeline
     gate:
       queue: tripleo
