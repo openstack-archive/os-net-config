@@ -1114,6 +1114,18 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             self._add_rules(contrail_vrouter_dpdk.name,
                             contrail_vrouter_dpdk.rules)
 
+    def add_linux_tap(self, linux_tap):
+        """Add a LinuxTap object to the net config object
+
+        :param linux_tap:
+           The LinuxTap object to add
+        """
+        logger.info('adding Linux TAP interface: %s'
+                    % linux_tap.name)
+        data = self._add_common(linux_tap)
+        data += "TYPE=Tap\n"
+        self.interface_data[linux_tap.name] = data
+
     def generate_ivs_config(self, ivs_uplinks, ivs_interfaces):
         """Generate configuration content for ivs."""
 

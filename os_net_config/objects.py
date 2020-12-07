@@ -91,6 +91,8 @@ def object_from_json(json):
         return SriovPF.from_json(json)
     elif obj_type == "sriov_vf":
         return SriovVF.from_json(json)
+    elif obj_type == "linux_tap":
+        return LinuxTap.from_json(json)
 
 
 def _get_required_field(json, name, object_name, datatype=None):
@@ -1848,3 +1850,37 @@ class ContrailVrouterDpdk(_BaseOpts):
                                    bond_mode=bond_mode,
                                    bond_policy=bond_policy, driver=driver,
                                    cpu_list=cpu_list, vlan_id=vlan_id)
+
+
+class LinuxTap(_BaseOpts):
+    """Base class for Linux tap Interface.
+
+    TAP, namely network TAP, simulates a link layer device and operates in
+    layer 2 carrying Ethernet frames.
+    A user space program may also pass packets into a TAP device. In this
+    case the TAP device delivers (or "injects") these packets to the
+    operating-system network stack thus emulating their reception from an
+    external source.
+    """
+    def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
+                 routes=None, rules=None, mtu=None, primary=False,
+                 nic_mapping=None, persist_mapping=False, defroute=True,
+                 dhclient_args=None, dns_servers=None, nm_controlled=False,
+                 onboot=True, domain=None, members=None):
+        super(LinuxTap, self).__init__(name, use_dhcp, use_dhcpv6,
+                                       addresses, routes, rules, mtu,
+                                       primary, nic_mapping,
+                                       persist_mapping, defroute,
+                                       dhclient_args, dns_servers,
+                                       nm_controlled, onboot, domain)
+
+    @staticmethod
+    def from_json(json):
+        name = _get_required_field(json, 'name', 'LinuxTap')
+
+        (_use_dhcp, _use_dhcpv6, _addresses, _routes, _rules, _mtu, _primary,
+         nic_mapping, persist_mapping, _defroute, _dhclient_args, _dns_servers,
+         _nm_controlled, _onboot,
+         _domain) = opts = _BaseOpts.base_opts_from_json(json)
+
+        return LinuxTap(name, *opts)
