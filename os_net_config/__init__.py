@@ -116,6 +116,8 @@ class NetConfig(object):
             self.add_contrail_vrouter(obj)
         elif isinstance(obj, objects.ContrailVrouterDpdk):
             self.add_contrail_vrouter_dpdk(obj)
+        elif isinstance(obj, objects.LinuxTap):
+            self.add_linux_tap(obj)
 
     def add_route_table(self, route_table):
         """Add a route table object to the net config object.
@@ -273,6 +275,15 @@ class NetConfig(object):
         """
         raise NotImplementedError(
             "add_contrail_vrouter_dpdk is not implemented.")
+
+    def add_linux_tap(self, linux_tap):
+        """Add a LinuxTap object to the net config object.
+
+        :param linux_tap:
+            The LinuxTap object to add.
+        """
+        raise NotImplementedError(
+            "add_linux_tap is not implemented.")
 
     def apply(self, cleanup=False):
         """Apply the network configuration.
