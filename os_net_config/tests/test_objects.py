@@ -2443,3 +2443,18 @@ class TestOvsRequiredObjects(base.TestCase):
         expected = 'OvsDpdkPort cannot be created as OpenvSwitch is not ' \
                    'installed.'
         self.assertIn(expected, six.text_type(err))
+
+
+class TestLinuxTap(base.TestCase):
+
+    def test_linux_tap_from_json(self):
+        data = """{
+"type": "linux_tap",
+"name": "tap0",
+"nm_controlled": false
+}
+"""
+
+        linux_tap = objects.object_from_json(json.loads(data))
+        self.assertEqual("tap0", linux_tap.name)
+        self.assertEqual(False, linux_tap.nm_controlled)
