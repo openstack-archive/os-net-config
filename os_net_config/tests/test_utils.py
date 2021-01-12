@@ -600,6 +600,30 @@ class TestUtils(base.TestCase):
         shutil.rmtree(tmpdir)
         shutil.rmtree(tmp_pci_dir)
 
+    def test_ordered_active_nics_with_dpdk_mapping_of_vf(self):
+        tmpdir = tempfile.mkdtemp()
+        self.stub_out('os_net_config.utils._SYS_CLASS_NET', tmpdir)
+        tmp_pci_dir = tempfile.mkdtemp()
+        self.stub_out('os_net_config.utils._SYS_BUS_PCI_DEV', tmp_pci_dir)
+        physfn_path = utils._SYS_BUS_PCI_DEV + '/0000:05:01.1/physfn'
+        os.makedirs(physfn_path)
+
+        def test_is_available_nic(interface_name, check_active):
+            return True
+        self.stub_out('os_net_config.utils._is_available_nic',
+                      test_is_available_nic)
+
+        utils._update_dpdk_map('eth2_0', '0000:06:01.1', 'AA:02:03:04:05:FE',
+                               'vfio-pci')
+        utils.update_sriov_vf_map('eth2', 0, 'eth2_0')
+
+        nics = utils.ordered_active_nics()
+
+        self.assertEqual(len(nics), 0)
+
+        shutil.rmtree(tmpdir)
+        shutil.rmtree(tmp_pci_dir)
+
     def test_interface_mac_raises(self):
         self.assertRaises(IOError, utils.interface_mac, 'ens20f2p3')
 
