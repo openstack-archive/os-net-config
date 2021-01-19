@@ -251,10 +251,12 @@ def _ordered_nics(check_active):
                 logger.info("%s is a VF, skipping it for NIC ordering" % nic)
             elif _is_embedded_nic(nic):
                 logger.info("%s is an embedded DPDK bound nic" % nic)
-                embedded_nics.append(nic)
+                if nic not in embedded_nics:
+                    embedded_nics.append(nic)
             else:
                 logger.info("%s is an DPDK bound nic" % nic)
-                nics.append(nic)
+                if nic not in nics:
+                    nics.append(nic)
     else:
         logger.info("No DPDK mapping available in path (%s)" %
                     _DPDK_MAPPING_FILE)
