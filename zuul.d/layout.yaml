@@ -6,5 +6,6 @@
       - publish-openstack-docs-pti
       - release-notes-jobs-python3
       - tripleo-multinode-container-minimal-pipeline
+      - tripleo-upgrades-ussuri-pipeline
     gate:
       queue: tripleo
