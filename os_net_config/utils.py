@@ -167,9 +167,15 @@ def _is_vf(pci_address):
     return is_sriov_vf
 
 
-def _is_vf_by_name(interface_name):
+def _is_vf_by_name(interface_name, check_mapping_file=False):
     vf_path_check = _SYS_CLASS_NET + '/%s/device/physfn' % interface_name
     is_sriov_vf = os.path.isdir(vf_path_check)
+    if not is_sriov_vf and check_mapping_file:
+        sriov_map = _get_sriov_map()
+        for item in sriov_map:
+            if (item['name'] == interface_name and
+                    item['device_type'] == 'vf'):
+                is_sriov_vf = True
     return is_sriov_vf
 
 
@@ -248,6 +254,8 @@ def _ordered_nics(check_active):
             # to be skipped for the NIC ordering
             nic = item['name']
             if _is_vf(item['pci_address']):
+                logger.info("%s is a VF, skipping it for NIC ordering" % nic)
+            elif _is_vf_by_name(nic, True):
                 logger.info("%s is a VF, skipping it for NIC ordering" % nic)
             elif _is_embedded_nic(nic):
                 logger.info("%s is an embedded DPDK bound nic" % nic)
