@@ -1,30 +1,25 @@
-========================
-Team and repository tags
-========================
-
-.. image:: https://governance.openstack.org/tc/badges/os-net-config.svg
-    :target: https://governance.openstack.org/tc/reference/tags/index.html
-
-.. Change things from this point on
-
 =============
 os-net-config
 =============
 
-host network configuration tool
+Team and repository tags
+------------------------
 
-An implementation of the 'network configuration' spec @
-https://review.opendev.org/#/c/97859/.
-The intention is for this code to be moved under the tripleo project in due course.
+.. image:: https://governance.openstack.org/tc/badges/os-net-config.svg
+    :target: https://governance.openstack.org/tc/reference/tags/index.html
 
-* Free software: Apache License (2.0)
+Overview
+--------
+
+``os-net-config`` is a host network configuration tool which supports multiple
+backend configuration providers.
+
+* Documentation: https://docs.openstack.org/os-net-config/latest
 * Source: https://opendev.org/openstack/os-net-config
 * Bugs: https://bugs.launchpad.net/os-net-config
+* Release Notes: https://docs.openstack.org/releasenotes/os-net-config
+* Free software: Apache License (2.0)
 
-Release Notes
--------------
-
-* https://docs.openstack.org/releasenotes/os-net-config
 
 Features
 --------
@@ -104,24 +99,4 @@ YAML Config Examples
             addresses:
               - 
                 ip_netmask: 192.0.2.1/24
-  
-  ..
-
-Provider Configuration
-----------------------
-Providers are use to apply (implement) the desired configuration on the
-host system. By default 3 providers are implemented:
-
-* Ifcfg: persistent network config format stored in
-  /etc/sysconfig/network-scripts
-
-* ENI: persistent network config format stored in /etc/network/interfaces
-
-* iproute2: non-persistent provider which implements the config using
-  iproute2, vconfig, etc... (implementation in progress)
-
-When using bin/os-net-config the provider is automatically selected based on
-the host systems perferred persistent network type (ifcfg or ENI). This can
-be customized via the `--provider` CLI option.
-
-
+                
