@@ -14,7 +14,8 @@ attributes are supported for that type.
 Common attributes
 -----------------
 
-The following attributes are used in many types:
+The following attributes are used in many types. See :ref:`multiple-nics` for
+examples.
 
 addresses
 =========
@@ -274,8 +275,9 @@ Will be appended to the ``OVS_OPTIONS`` value and the concatenated list of
 type: interface
 ---------------
 
-Configures a physical NIC. All of the :ref:`common-attributes` can be used with
-this type along with the following attributes:
+Configures a physical NIC. See :ref:`multiple-nics` for examples. All of the
+:ref:`common-attributes` can be used with this type along with the following
+attributes:
 
 ethtool_opts
 ============
@@ -311,9 +313,10 @@ Sets ``LINKDELAY`` to the delay value.
 type: ovs_bridge
 ----------------
 
-Configures an `Open vSwitch`_ bridge. All of the :ref:`common-attributes` and
-:ref:`ovs-attributes` can be used with this type. The ``members`` attribute
-contains a list of entries for interfaces to bridge typically of ``type``:
+Configures an `Open vSwitch`_ bridge. See :ref:`control-plane-bridge` for an
+example. All of the :ref:`common-attributes` and :ref:`ovs-attributes` can be
+used with this type. The ``members`` attribute contains a list of entries for
+interfaces to bridge typically of ``type``:
 
 - ``interface``
 - ``linux_bond``
@@ -332,9 +335,10 @@ or ``use_dhcpv6`` is ``true``, ``OVSBOOTPROTO=dhcp`` is set and
 type: ovs_bond
 --------------
 
-Configures an `Open vSwitch`_ bond. All of the :ref:`common-attributes` and
-:ref:`ovs-attributes` can be used with this type. The ``members`` attribute
-contains a list of entries for interfaces to be bonded.
+Configures an `Open vSwitch`_ bond. See :ref:`ovs-bond` for an example. All
+of the :ref:`common-attributes` and :ref:`ovs-attributes` can be used with
+this type. The ``members`` attribute contains a list of entries for
+interfaces to be bonded.
 
 ifcfg implementation
 ====================
@@ -346,8 +350,9 @@ or ``use_dhcpv6`` is ``true``, ``OVSBOOTPROTO=dhcp`` is set and
 type: vlan
 ----------
 
-Configures VLAN tagging for one VLAN. :ref:`common-attributes` are supported but
-generally only ``mtu``, ``addresses`` or ``routes`` are used.
+Configures VLAN tagging for one VLAN. See :ref:`bonds-with-vlans` for an
+example. :ref:`common-attributes` are supported but generally only ``mtu``,
+``addresses`` or ``routes`` are used.
 
 Other attributes for ``vlan`` are:
 
@@ -374,9 +379,9 @@ Sets ``VLAN=yes`` and ``PHYSDEV`` to the ``device`` value.
 type: linux_bridge
 ------------------
 
-Configures a `Linux bridge`_. All of the :ref:`common-attributes` can be used
-with this type. The ``members`` attribute contains a list of entries for
-interfaces to bridge.
+Configures a `Linux bridge`_. See :ref:`linux-bridge` for an example. All of
+the :ref:`common-attributes` can be used with this type. The ``members``
+attribute contains a list of entries for interfaces to bridge.
 
 ifcfg implementation
 ====================
@@ -387,9 +392,9 @@ interface which has ``primary: true`` will be used for the ``MACADDR`` value.
 type: linux_bond
 ----------------
 
-Configures a `Linux bond`_. All of the :ref:`common-attributes` can be used
-with this type. The ``members`` attribute contains a list of entries for
-interfaces to be bonded.
+Configures a `Linux bond`_. See :ref:`bonds-vlans-dpdk` for an example. All
+of the :ref:`common-attributes` can be used with this type. The ``members``
+attribute contains a list of entries for interfaces to be bonded.
 
 Extra bonding options are specified in the ``bonding_options`` string.
 
@@ -404,10 +409,10 @@ type: ovs_user_bridge
 ---------------------
 
 Configures an `Open vSwitch`_ bridge where the members are user ports. This
-is generally used to set up `DPDK vHost User Ports`_. All of the
-:ref:`common-attributes` and :ref:`ovs-attributes` can be used with this
-type. The ``members`` attribute usually contains a single ``type:
-ovs_dpdk_bond`` entry.
+is generally used to set up `DPDK vHost User Ports`_. See
+:ref:`bonds-vlans-dpdk` for an example. All of the :ref:`common-attributes`
+and :ref:`ovs-attributes` can be used with this type. The ``members``
+attribute usually contains a single ``type: ovs_dpdk_bond`` entry.
 
 ifcfg implementation
 ====================
@@ -422,11 +427,11 @@ values depending on the type of the member.
 type: ovs_dpdk_bond
 -------------------
 
-Configures an `Open vSwitch`_ bond for binding DPDK ports. All of the
-:ref:`common-attributes` and :ref:`ovs-attributes` can be used with this
-type. The ``members`` attribute contains a list of ``type: ovs_dpdk_port``
-ports to be bonded. The value for attribute ``rx_queue`` will determine the
-RX queue length.
+Configures an `Open vSwitch`_ bond for binding DPDK ports. See
+:ref:`bonds-vlans-dpdk` for an example. All of the :ref:`common-attributes`
+and :ref:`ovs-attributes` can be used with this type. The ``members``
+attribute contains a list of ``type: ovs_dpdk_port`` ports to be bonded. The
+value for attribute ``rx_queue`` will determine the RX queue length.
 
 ifcfg implementation
 ====================
@@ -439,11 +444,12 @@ type: ovs_dpdk_port
 -------------------
 
 Creates an Open vSwitch DPDK port, usually in the ``members`` of a ``type:
-ovs_dpdk_bond`` bond interface. All of the :ref:`common-attributes` and
-:ref:`ovs-attributes` can be used with this type. Each port must have a
-``members`` list with a single interface entry. A port can have its own
-``rx_queue`` specifed. The ``driver`` attribute can override the default
-kernel driver module of ``vfio-pci``.
+ovs_dpdk_bond`` bond interface. See :ref:`bonds-vlans-dpdk` for an example.
+All of the :ref:`common-attributes` and :ref:`ovs-attributes` can be used
+with this type. Each port must have a ``members`` list with a single
+interface entry. A port can have its own ``rx_queue`` specifed. The
+``driver`` attribute can override the default kernel driver module of
+``vfio-pci``.
 
 ifcfg implementation
 ====================

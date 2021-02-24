@@ -15,6 +15,7 @@ Contents:
    installation
    usage
    config
+   examples
    contributing
 
 Indices and tables
