@@ -14,6 +14,7 @@ Contents:
    readme
    installation
    usage
+   config
    contributing
 
 Indices and tables
