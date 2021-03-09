@@ -43,7 +43,7 @@ _DPDK_MAPPING_FILE = '/var/lib/os-net-config/dpdk_mapping.yaml'
 _SRIOV_CONFIG_SERVICE_FILE = "/etc/systemd/system/sriov_config.service"
 _SRIOV_CONFIG_DEVICE_CONTENT = """[Unit]
 Description=SR-IOV numvfs configuration
-After=systemd-udev-settle.service
+After=systemd-udev-settle.service openibd.service
 Before=openvswitch.service
 
 [Service]
