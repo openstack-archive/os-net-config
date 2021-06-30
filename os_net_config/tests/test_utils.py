@@ -128,7 +128,7 @@ class TestUtils(base.TestCase):
         sriov_pf_map = yaml.safe_load(contents) if contents else []
         self.assertEqual(1, len(sriov_pf_map))
         test_sriov_pf_map = [{'device_type': 'pf', 'link_mode': 'legacy',
-                              'name': 'eth1', 'numvfs': 10}]
+                              'name': 'eth1', 'numvfs': 10, 'vdpa': False}]
         self.assertListEqual(test_sriov_pf_map, sriov_pf_map)
 
     def test_update_sriov_pf_map_with_same_numvfs(self):
@@ -141,7 +141,7 @@ class TestUtils(base.TestCase):
         sriov_pf_map = yaml.safe_load(contents) if contents else []
         self.assertEqual(1, len(sriov_pf_map))
         test_sriov_pf_map = [{'device_type': 'pf', 'link_mode': 'legacy',
-                              'name': 'eth1', 'numvfs': 10}]
+                              'name': 'eth1', 'numvfs': 10, 'vdpa': False}]
         self.assertListEqual(test_sriov_pf_map, sriov_pf_map)
 
     def test_update_sriov_pf_map_with_diff_numvfs(self):
@@ -162,7 +162,21 @@ class TestUtils(base.TestCase):
         sriov_pf_map = yaml.safe_load(contents) if contents else []
         self.assertEqual(1, len(sriov_pf_map))
         test_sriov_pf_map = [{'device_type': 'pf', 'link_mode': 'legacy',
-                              'name': 'eth1', 'numvfs': 10, 'promisc': 'off'}]
+                              'name': 'eth1', 'numvfs': 10, 'promisc': 'off',
+                              'vdpa': False}]
+        self.assertListEqual(test_sriov_pf_map, sriov_pf_map)
+
+    def test_update_sriov_pf_map_new_with_vdpa(self):
+        def get_numvfs_stub(pf_name):
+            return 0
+        self.stub_out('os_net_config.sriov_config.get_numvfs',
+                      get_numvfs_stub)
+        utils.update_sriov_pf_map('eth1', 10, False, vdpa=True)
+        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        sriov_pf_map = yaml.safe_load(contents) if contents else []
+        self.assertEqual(1, len(sriov_pf_map))
+        test_sriov_pf_map = [{'device_type': 'pf', 'link_mode': 'legacy',
+                              'name': 'eth1', 'numvfs': 10, 'vdpa': True}]
         self.assertListEqual(test_sriov_pf_map, sriov_pf_map)
 
     def test_update_sriov_pf_map_exist(self):
@@ -182,12 +196,34 @@ class TestUtils(base.TestCase):
         self.stub_out('os_net_config.sriov_config.get_numvfs',
                       get_numvfs_stub)
         pf_initial = [{'device_type': 'pf', 'link_mode': 'legacy',
-                       'name': 'eth1', 'numvfs': 10, 'promisc': 'on'}]
+                       'name': 'eth1', 'numvfs': 10, 'promisc': 'on',
+                       'vdpa': False}]
         utils.write_yaml_config(sriov_config._SRIOV_CONFIG_FILE, pf_initial)
 
         utils.update_sriov_pf_map('eth1', 10, False, promisc='off')
         pf_final = [{'device_type': 'pf', 'link_mode': 'legacy',
-                     'name': 'eth1', 'numvfs': 10, 'promisc': 'off'}]
+                     'name': 'eth1', 'numvfs': 10, 'promisc': 'off',
+                     'vdpa': False}]
+        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+
+        pf_map = yaml.safe_load(contents) if contents else []
+        self.assertEqual(1, len(pf_map))
+        self.assertListEqual(pf_final, pf_map)
+
+    def test_update_sriov_pf_map_exist_with_vdpa(self):
+        def get_numvfs_stub(pf_name):
+            return 10
+        self.stub_out('os_net_config.sriov_config.get_numvfs',
+                      get_numvfs_stub)
+        pf_initial = [{'device_type': 'pf', 'link_mode': 'legacy',
+                       'name': 'eth1', 'numvfs': 10, 'promisc': 'on',
+                       'vdpa': False}]
+        utils.write_yaml_config(sriov_config._SRIOV_CONFIG_FILE, pf_initial)
+
+        utils.update_sriov_pf_map('eth1', 10, False, vdpa=True)
+        pf_final = [{'device_type': 'pf', 'link_mode': 'legacy',
+                     'name': 'eth1', 'numvfs': 10, 'promisc': 'on',
+                     'vdpa': True}]
         contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
 
         pf_map = yaml.safe_load(contents) if contents else []

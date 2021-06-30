@@ -1,0 +1,31 @@
+network_config:
+  # Since vDPA can't function without OVS Hardware Offload, the PFs have to
+  # be a member of an ovs_bridge.
+  - type: ovs_bridge
+    name: br-vdpa
+    use_dhcp: true
+    members:
+    # sriov_pf type shall be used to configure the PF's of vDPA devices.
+    # The numvfs configured for the PF's shall be set on the sriov_numvfs of the
+    # sysfs for the corresponding NIC and the persistence of the same across reboots
+    # shall be handled
+    -
+      type: sriov_pf
+      # nic name or nic number of the NIC that needs to be configured for vDPA
+      name: p2p1
+      # Flag this PF as a vDPA device
+      vdpa: true
+      # number of VFs required on the particular NIC
+      # Should be at least one when vdpa is true
+      numvfs: 10
+      # Dont set the IP address on the PF
+      use_dhcp: false
+      # Link mode for the PF has to be switchdev when vdpa is true
+      link_mode: switchdev
+    -
+      type: sriov_pf
+      name: p2p2
+      vdpa: true
+      numvfs: 10
+      use_dhcp: false
+      link_mode: switchdev

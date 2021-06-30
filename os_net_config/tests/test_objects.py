@@ -1984,6 +1984,26 @@ class TestSriovPF(base.TestCase):
         expected = 'Expecting link_mode to match legacy/switchdev'
         self.assertIn(expected, six.text_type(err))
 
+    def test_from_json_vdpa_link_mode_invalid(self):
+        data = '{"type": "sriov_pf", "name": "p6p1", "numvfs": 8,' \
+               '"use_dhcp": false, "promisc": false, "link_mode":' \
+               '"none_switchdev", "vdpa": true}'
+        err = self.assertRaises(objects.InvalidConfigException,
+                                objects.object_from_json,
+                                json.loads(data))
+        expected = 'Expecting link_mode to be switchdev when vdpa is enabled'
+        self.assertIn(expected, six.text_type(err))
+
+    def test_from_json_vdpa_no_numvfs(self):
+        data = '{"type": "sriov_pf", "name": "p6p1", "numvfs": 0,' \
+               '"use_dhcp": false, "promisc": false, "link_mode":' \
+               '"switchdev", "vdpa": true}'
+        err = self.assertRaises(objects.InvalidConfigException,
+                                objects.object_from_json,
+                                json.loads(data))
+        expected = 'Expecting to have at least 1 numvfs when vdpa is enabled'
+        self.assertIn(expected, six.text_type(err))
+
     def test_from_json_ethtool_opts(self):
         data = '{"type": "sriov_pf", "name": "em1", "numvfs": 16, ' \
                '"use_dhcp": false, "promisc": false, ' \

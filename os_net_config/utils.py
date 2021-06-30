@@ -488,7 +488,7 @@ def _get_dpdk_mac_address(name):
 
 
 def update_sriov_pf_map(ifname, numvfs, noop, promisc=None,
-                        link_mode='legacy'):
+                        link_mode='legacy', vdpa=False):
     if not noop:
         cur_numvfs = sriov_config.get_numvfs(ifname)
         if cur_numvfs > 0 and cur_numvfs != numvfs:
@@ -498,6 +498,7 @@ def update_sriov_pf_map(ifname, numvfs, noop, promisc=None,
         for item in sriov_map:
             if item['device_type'] == 'pf' and item['name'] == ifname:
                 item['numvfs'] = numvfs
+                item['vdpa'] = vdpa
                 if promisc is not None:
                     item['promisc'] = promisc
                 item['link_mode'] = link_mode
@@ -507,6 +508,7 @@ def update_sriov_pf_map(ifname, numvfs, noop, promisc=None,
             new_item['device_type'] = 'pf'
             new_item['name'] = ifname
             new_item['numvfs'] = numvfs
+            new_item['vdpa'] = vdpa
             if promisc is not None:
                 new_item['promisc'] = promisc
             new_item['link_mode'] = link_mode

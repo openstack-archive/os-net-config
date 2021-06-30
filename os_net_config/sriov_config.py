@@ -43,6 +43,7 @@ _RESET_SRIOV_RULES_FILE = '/etc/udev/rules.d/70-tripleo-reset-sriov.rules'
 _ALLOCATE_VFS_FILE = '/etc/sysconfig/allocate_vfs'
 _MLNX_DRIVER = "mlx5_core"
 MLNX_VENDOR_ID = "0x15b3"
+MLNX_UNBIND_FILE_PATH = "/sys/bus/pci/drivers/mlx5_core/unbind"
 
 MAX_RETRIES = 10
 PF_FUNC_RE = re.compile(r"\.(\d+)$", 0)
@@ -199,7 +200,8 @@ def set_numvfs(ifname, numvfs):
 
         sriov_numvfs_path = _get_dev_path(ifname, "sriov_numvfs")
         try:
-            with open(sriov_numvfs_path, 'w') as f:
+            logger.debug(f"Setting {sriov_numvfs_path} to {numvfs}")
+            with open(sriov_numvfs_path, "w") as f:
                 f.write("%d" % numvfs)
         except IOError as exc:
             msg = (f"Unable to configure pf: {ifname} with numvfs: {numvfs}\n"
@@ -268,7 +270,6 @@ def configure_sriov_pf(execution_from_cli=False, restart_openvswitch=False):
     udev_monitor_start(observer)
 
     sriov_map = _get_sriov_map()
-    MLNX_UNBIND_FILE_PATH = "/sys/bus/pci/drivers/mlx5_core/unbind"
     mlnx_vfs_pcis_list = []
     trigger_udev_rule = False
 
@@ -283,10 +284,17 @@ def configure_sriov_pf(execution_from_cli=False, restart_openvswitch=False):
                 # released by a guest
                 add_udev_rule_for_legacy_sriov_pf(item['name'],
                                                   item['numvfs'])
-            set_numvfs(item['name'], item['numvfs'])
+            # When configuring vdpa, we need to configure switchdev before
+            # we create the VFs
             vendor_id = get_vendor_id(item['name'])
-            if (item.get('link_mode') == "switchdev" and
-                    vendor_id == MLNX_VENDOR_ID):
+            is_mlnx = vendor_id == MLNX_VENDOR_ID
+            # Configure switchdev mode when vdpa
+            if item.get('vdpa') and is_mlnx:
+                configure_switchdev(item['name'])
+            set_numvfs(item['name'], item['numvfs'])
+            # Configure switchdev mode when not vdpa
+            if (item.get('link_mode') == "switchdev" and is_mlnx and
+                    not item.get('vdpa')):
                 logger.info(f"{item['name']}: Mellanox card")
                 vf_pcis_list = get_vf_pcis_list(item['name'])
                 mlnx_vfs_pcis_list += vf_pcis_list

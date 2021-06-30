@@ -1,0 +1,28 @@
+{
+    "network_config": [
+        {
+            "type": "ovs_bridge",
+            "name": "br-vdpa",
+            "members": [
+                {
+                    "type": "sriov_pf",
+                    "name": "p2p1",
+                    "numvfs": 10,
+                    "vdpa": true,
+                    "use_dhcp": false,
+                    "link_mode": "switchdev"
+                },
+                {
+                    "type": "sriov_pf",
+                    "name": "p2p2",
+                    "numvfs": 10,
+                    "vdpa": true,
+                    "use_dhcp": false,
+                    "link_mode": "switchdev"
+                }
+
+            ],
+            "use_dhcp": true
+        }
+    ]
+}
