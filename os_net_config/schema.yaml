@@ -363,6 +363,8 @@ definitions:
                 $ref: "#/definitions/list_of_domain_name_string_or_domain_name_string"
             link_mode:
                 $ref: "#/definitions/sriov_link_mode_or_param"
+            vdpa:
+                $ref: "#/definitions/bool_or_param"
         required:
           - type
           - name
