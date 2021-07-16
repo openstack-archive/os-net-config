@@ -15,6 +15,7 @@
 # under the License.
 
 import collections
+import collections.abc
 import copy
 import jsonschema
 import pkg_resources
@@ -111,7 +112,7 @@ def _get_detailed_errors(error, depth, absolute_schema_path, absolute_schema,
     sub_errors = error.context
     if filter_errors:
         if (absolute_schema_path[-1] in ['oneOf', 'anyOf'] and
-                isinstance(error.instance, collections.Mapping) and
+                isinstance(error.instance, collections.abc.Mapping) and
                 'type' in error.instance):
             found, index = _find_type_in_schema_list(
                 error.validator_value, error.instance['type'])
@@ -142,7 +143,7 @@ def _find_type_in_schema_list(schemas, type_to_find):
     If so, `index` contains the object's position in the array.
     """
     for index, schema in enumerate(schemas):
-        if not isinstance(schema, collections.Mapping):
+        if not isinstance(schema, collections.abc.Mapping):
             continue
         if ('$ref' in schema and
                 schema['$ref'].split('/')[-1] == type_to_find):
@@ -169,7 +170,7 @@ def _pretty_print_schema_path(absolute_schema_path, absolute_schema):
             pretty_path.append(item)
         current_path.append(item)
         current_schema = current_schema[item]
-        if (isinstance(current_schema, collections.Mapping) and
+        if (isinstance(current_schema, collections.abc.Mapping) and
                 '$ref' in current_schema):
             if (isinstance(pretty_path[-1], int) and
                     pretty_path[-2] in ['oneOf', 'anyOf']):
