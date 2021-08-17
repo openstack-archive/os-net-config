@@ -1069,13 +1069,11 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         """
         logger.info('adding contrail_vrouter interface: %s'
                     % contrail_vrouter.name)
-        # Contrail vrouter will have the only member (of type interface,
-        # vlan or linux_bond)
-        ifname = contrail_vrouter.members[0].name
+        ifnames = ",".join([m.name for m in contrail_vrouter.members])
         data = self._add_common(contrail_vrouter)
         data += "DEVICETYPE=vhost\n"
         data += "TYPE=kernel_mode\n"
-        data += "BIND_INT=%s\n" % ifname
+        data += "BIND_INT=%s\n" % ifnames
         logger.debug('contrail data: %s' % data)
         self.interface_data[contrail_vrouter.name] = data
         if contrail_vrouter.routes:
