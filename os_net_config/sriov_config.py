@@ -252,6 +252,24 @@ def udev_monitor_stop(observer):
     observer.stop()
 
 
+def is_partitioned_pf(dev_name):
+    """Check if any nic-partition(VF) is already used
+
+    Given a PF device, returns True if any VFs of this
+    device are in-use.
+    """
+    sriov_map = _get_sriov_map()
+    for config in sriov_map:
+        devtype = config.get('device_type', None)
+        if devtype == 'vf':
+            name = config.get('device', {}).get('name')
+            vf_name = config.get('name')
+            if dev_name == name:
+                logger.warning("%s has VF(%s) used by host" % (name, vf_name))
+                return True
+    return False
+
+
 def configure_sriov_pf(execution_from_cli=False, restart_openvswitch=False):
     observer = udev_monitor_setup()
     udev_monitor_start(observer)
@@ -267,8 +285,9 @@ def configure_sriov_pf(execution_from_cli=False, restart_openvswitch=False):
             if item.get('link_mode') == "legacy":
                 # Add a udev rule to configure the VF's when PF's are
                 # released by a guest
-                add_udev_rule_for_legacy_sriov_pf(item['name'],
-                                                  item['numvfs'])
+                if not is_partitioned_pf(item['name']):
+                    add_udev_rule_for_legacy_sriov_pf(item['name'],
+                                                      item['numvfs'])
             set_numvfs(item['name'], item['numvfs'])
             vendor_id = get_vendor_id(item['name'])
             if (item.get('link_mode') == "switchdev" and
@@ -281,6 +300,7 @@ def configure_sriov_pf(execution_from_cli=False, restart_openvswitch=False):
                         logger.info("Unbinding %s" % vf_pci)
                         with open(MLNX_UNBIND_FILE_PATH, 'w') as f:
                             f.write(vf_pci)
+
                 logger.info("%s: Adding udev rules" % item['name'])
                 # Adding a udev rule to make vf-representors unmanaged by
                 # NetworkManager
@@ -451,6 +471,7 @@ def configure_switchdev(pf_name):
                      % (pf_pci, exc))
         raise
     logger.info("Device pci/%s set to switchdev mode." % pf_pci)
+
     # WA to make sure that the uplink_rep is ready after moving to switchdev,
     # as moving to switchdev will remove the sriov_pf and create uplink
     # representor, so we need to make sure that uplink representor is ready
@@ -473,6 +494,7 @@ def configure_smfs_software_steering(pf_name):
                              'pci/%s' % pf_pci, 'name', 'flow_steering_mode',
                              'value', 'smfs', 'cmode', 'runtime')
         logger.info("Device pci/%s is set to smfs steering mode." % pf_pci)
+
     except processutils.ProcessExecutionError as exc:
         logger.warning("Could not set pci/%s to smfs steering mode: %s"
                        % (pf_pci, exc))
