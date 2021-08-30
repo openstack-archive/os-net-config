@@ -586,6 +586,32 @@ def _get_vf_name_from_map(pf_name, vfid):
             return item['name']
 
 
+def nicpart_udev_rules_check():
+    """Clean-up UDEV rules on initial deployment
+
+     After writing sriov_config.yaml file, clean-up
+     UDEV rule(s) of PF for which VFs are used by host
+    """
+    if not os.path.exists(sriov_config._UDEV_LEGACY_RULE_FILE):
+        return
+
+    udev = '^KERNEL=="(.*)", RUN.*'
+    udev_reg = re.compile(udev, 0)
+
+    with open(sriov_config._UDEV_LEGACY_RULE_FILE, "r") as fp:
+        rules = fp.readlines()
+
+    with open(sriov_config._UDEV_LEGACY_RULE_FILE, "w") as fp:
+        for line in rules:
+            match = udev_reg.match(line)
+            if match:
+                dev_name = match.group(1)
+                if not sriov_config.is_partitioned_pf(dev_name):
+                    fp.write(line)
+            else:
+                fp.write(line)
+
+
 def _configure_sriov_config_service():
     """Generate the sriov_config.service
 
@@ -607,6 +633,7 @@ def configure_sriov_pfs(execution_from_cli=False, restart_openvswitch=False):
 def configure_sriov_vfs():
     logger.info("Configuring VFs now")
     sriov_config.configure_sriov_vf()
+    nicpart_udev_rules_check()
 
 
 def get_vf_devname(pf_name, vfid):
