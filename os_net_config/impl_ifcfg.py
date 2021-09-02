@@ -1102,6 +1102,12 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         data = self._add_common(linux_tap)
         data += "TYPE=Tap\n"
         self.interface_data[linux_tap.name] = data
+        if linux_tap.routes:
+            self._add_routes(linux_tap.name,
+                             linux_tap.routes)
+        if linux_tap.rules:
+            self._add_rules(linux_tap.name,
+                            linux_tap.rules)
 
     def generate_ivs_config(self, ivs_uplinks, ivs_interfaces):
         """Generate configuration content for ivs."""
