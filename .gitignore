@@ -48,3 +48,6 @@ ChangeLog
 # Editors
 *~
 .*.swp
+
+# Visual Studio Code
+.vscode
