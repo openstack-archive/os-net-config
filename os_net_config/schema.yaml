@@ -986,7 +986,6 @@ definitions:
                       - $ref: "#/definitions/vlan"
                       - $ref: "#/definitions/linux_bond"
                 minItems: 1
-                maxItems: 1
             # common options:
             use_dhcp:
                 $ref: "#/definitions/bool_or_param"
