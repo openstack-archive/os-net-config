@@ -17,7 +17,6 @@
 import json
 import os
 import random
-import six
 import yaml
 
 from os_net_config import objects
@@ -987,7 +986,7 @@ class TestIvsInterface(base.TestCase):
                                 objects.IvsBridge.from_json,
                                 json.loads(data))
         expected = 'IVS does not support bond interfaces.'
-        self.assertIn(expected, six.text_type(err))
+        self.assertIn(expected, str(err))
 
 
 class TestNfvswitchBridge(base.TestCase):
@@ -1052,7 +1051,7 @@ class TestNfvswitchInterface(base.TestCase):
                                 objects.NfvswitchBridge.from_json,
                                 json.loads(data))
         expected = 'NFVSwitch does not support bond interfaces.'
-        self.assertIn(expected, six.text_type(err))
+        self.assertIn(expected, str(err))
 
 
 class TestBond(base.TestCase):
@@ -1746,7 +1745,7 @@ class TestNicMapping(base.TestCase):
         err = self.assertRaises(objects.InvalidConfigException,
                                 objects.mapped_nics, nic_mapping=mapping)
         expected = 'em1 already mapped, check mapping file for duplicates'
-        self.assertIn(expected, six.text_type(err))
+        self.assertIn(expected, str(err))
 
     def test_mapped_nics_map_invalid_nic(self):
         self._stub_active_nics(['em1'])
@@ -1799,7 +1798,7 @@ class TestNicMapping(base.TestCase):
         err = self.assertRaises(objects.InvalidConfigException,
                                 objects.mapped_nics, nic_mapping=mapping)
         expected = 'cannot map em2 to alias em1, alias overlaps'
-        self.assertIn(expected, six.text_type(err))
+        self.assertIn(expected, str(err))
 
     def test_mapped_nics_mapping_inactive_name_as_alias(self):
         def dummy_is_active_nic(nic):
@@ -1982,7 +1981,7 @@ class TestSriovPF(base.TestCase):
                                 objects.object_from_json,
                                 json.loads(data))
         expected = 'Expecting link_mode to match legacy/switchdev'
-        self.assertIn(expected, six.text_type(err))
+        self.assertIn(expected, str(err))
 
     def test_from_json_vdpa_link_mode_invalid(self):
         data = '{"type": "sriov_pf", "name": "p6p1", "numvfs": 8,' \
@@ -1992,7 +1991,7 @@ class TestSriovPF(base.TestCase):
                                 objects.object_from_json,
                                 json.loads(data))
         expected = 'Expecting link_mode to be switchdev when vdpa is enabled'
-        self.assertIn(expected, six.text_type(err))
+        self.assertIn(expected, str(err))
 
     def test_from_json_vdpa_no_numvfs(self):
         data = '{"type": "sriov_pf", "name": "p6p1", "numvfs": 0,' \
@@ -2002,7 +2001,7 @@ class TestSriovPF(base.TestCase):
                                 objects.object_from_json,
                                 json.loads(data))
         expected = 'Expecting to have at least 1 numvfs when vdpa is enabled'
-        self.assertIn(expected, six.text_type(err))
+        self.assertIn(expected, str(err))
 
     def test_from_json_ethtool_opts(self):
         data = '{"type": "sriov_pf", "name": "em1", "numvfs": 16, ' \
@@ -2054,7 +2053,7 @@ class TestSriovVF(base.TestCase):
                                 json.loads(data))
         expected = 'SriovVF JSON objects require \'vfid\' to be configured ' \
                    'as %s' % (str(int))
-        self.assertIn(expected, six.text_type(err))
+        self.assertIn(expected, str(err))
 
     def test_from_json_no_vfid(self):
         def test_get_vf_devname(device, vfid):
@@ -2073,7 +2072,7 @@ class TestSriovVF(base.TestCase):
                                 json.loads(data))
         expected = 'SriovVF JSON objects require \'vfid\' to be configured ' \
                    'as %s' % (str(int))
-        self.assertIn(expected, six.text_type(err))
+        self.assertIn(expected, str(err))
 
     def test_from_json_vfid(self):
         def test_get_vf_devname(device, vfid):
@@ -2191,7 +2190,7 @@ class TestSriovVF(base.TestCase):
                                 objects.object_from_json,
                                 json.loads(data))
         expected = 'Expecting state to match auto/enable/disable'
-        self.assertIn(expected, six.text_type(err))
+        self.assertIn(expected, str(err))
 
     def test_from_json_vfid_invalid_qos(self):
         def test_get_vf_devname(device, vfid):
@@ -2212,7 +2211,7 @@ class TestSriovVF(base.TestCase):
                                 objects.object_from_json,
                                 json.loads(data))
         expected = 'Vlan tag not set for QOS - VF: em4:16'
-        self.assertIn(expected, six.text_type(err))
+        self.assertIn(expected, str(err))
 
     def test_from_json_vfid_nic1(self):
         def test_get_vf_devname(device, vfid):
@@ -2392,7 +2391,7 @@ class TestVppBond(base.TestCase):
                                 objects.object_from_json,
                                 json.loads(data))
         expected = 'Members must be of type vpp_interface'
-        self.assertIn(expected, six.text_type(err))
+        self.assertIn(expected, str(err))
 
 
 class TestOvsRequiredObjects(base.TestCase):
@@ -2424,7 +2423,7 @@ class TestOvsRequiredObjects(base.TestCase):
                                 objects.OvsBond.from_json,
                                 json.loads(data))
         expected = 'OvsBond cannot be created as OpenvSwitch is not installed.'
-        self.assertIn(expected, six.text_type(err))
+        self.assertIn(expected, str(err))
 
     def test_ovs_bridge(self):
         data = """{
@@ -2445,7 +2444,7 @@ class TestOvsRequiredObjects(base.TestCase):
                                 json.loads(data))
         expected = 'OvsBridge cannot be created as OpenvSwitch is not ' \
                    'installed.'
-        self.assertIn(expected, six.text_type(err))
+        self.assertIn(expected, str(err))
 
     def test_dpdk_port(self):
         data = """{
@@ -2462,7 +2461,7 @@ class TestOvsRequiredObjects(base.TestCase):
                                 json.loads(data))
         expected = 'OvsDpdkPort cannot be created as OpenvSwitch is not ' \
                    'installed.'
-        self.assertIn(expected, six.text_type(err))
+        self.assertIn(expected, str(err))
 
 
 class TestLinuxTap(base.TestCase):
