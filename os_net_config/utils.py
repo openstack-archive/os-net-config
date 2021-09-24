@@ -18,7 +18,6 @@ import glob
 import logging
 import os
 import re
-import six
 import time
 import yaml
 
@@ -547,7 +546,7 @@ def _set_vf_fields(vf_name, vlan_id, qos, spoofcheck, trust, state, macaddr,
 
 
 def _clear_empty_values(vf_config):
-    for (key, val) in list(six.iteritems(vf_config)):
+    for (key, val) in list(vf_config.items()):
         if val is None:
             del vf_config[key]
 

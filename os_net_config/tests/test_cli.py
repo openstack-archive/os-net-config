@@ -14,6 +14,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+from io import StringIO
 import os.path
 import random
 import sys
@@ -24,7 +25,6 @@ from os_net_config import cli
 from os_net_config import sriov_config
 from os_net_config.tests import base
 from os_net_config import utils
-import six
 
 
 REALPATH = os.path.dirname(os.path.realpath(__file__))
@@ -53,8 +53,8 @@ class TestCli(base.TestCase):
         orig = sys.stdout
         orig_stderr = sys.stderr
 
-        sys.stdout = six.StringIO()
-        sys.stderr = six.StringIO()
+        sys.stdout = StringIO()
+        sys.stderr = StringIO()
         ret = cli.main(argstr.split())
         self.assertIn(ret, exitcodes)
 
