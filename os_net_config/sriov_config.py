@@ -25,8 +25,8 @@ import argparse
 import logging
 import os
 import pyudev
+import queue
 import re
-from six.moves import queue as Queue
 import sys
 import time
 import yaml
@@ -59,7 +59,7 @@ echo "NUMBER=${PORT##pf*vf}"
 '''
 
 # Create a queue for passing the udev network events
-vf_queue = Queue.Queue()
+vf_queue = queue.Queue()
 
 
 # File to contain the list of SR-IOV PF, VF and their configurations
@@ -140,7 +140,7 @@ def _wait_for_vf_creation(pf_name, numvfs):
                     logger.warning(f"Unable to parse event {event['device']}")
             else:
                 logger.warning(f"{pf_path} is not a directory")
-        except Queue.Empty:
+        except queue.Empty:
             logger.info(f"Timeout in the creation of VFs for PF {pf_name}")
             return
     logger.info(f"Required VFs are created for PF {pf_name}")
