@@ -8,7 +8,7 @@
     {
       "type": "ib_child_interface",
       "parent": "ib0",
-      "pkey_id": "100",
+      "pkey_id": 100,
       "use_dhcp": false,
       "addresses": [
         {
