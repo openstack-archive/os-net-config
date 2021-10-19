@@ -1282,20 +1282,16 @@ class IbChildInterface(_BaseOpts):
     def from_json(json):
         parent = _get_required_field(json, 'parent', 'IbChildInterface')
         pkey_id = _get_required_field(json, 'pkey_id', 'IbChildInterface')
-        if type(pkey_id) == str:
+        try:
+            pkey_id = int(pkey_id)
+        except ValueError:
             try:
-                pkey_id = int(pkey_id)
-            except ValueError:
-                try:
-                    pkey_id = int(pkey_id, base=16)
-                except Exception:
-                    # Note (Abdallahyas): We do not care for other
-                    # bases other than decimal and hexa
-                    msg = "pkey only support decimal and hex bases, not int"
-                    raise InvalidConfigException(msg)
-        else:
-            msg = "Invalid pkey type: got %s" % type(pkey_id)
-            raise InvalidConfigException(msg)
+                pkey_id = int(pkey_id, base=16)
+            except Exception:
+                # Note (Abdallahyas): We do not care for other
+                # bases other than decimal and hexa
+                msg = "pkey only support decimal and hex bases, not int"
+                raise InvalidConfigException(msg)
         if (pkey_id < 0x0001 or pkey_id >= 0x7fff):
             msg = "Invalid pkey value 0x%X" % pkey_id
             raise InvalidConfigException(msg)
