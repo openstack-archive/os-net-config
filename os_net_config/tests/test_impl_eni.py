@@ -19,10 +19,10 @@ import tempfile
 from oslo_concurrency import processutils
 
 import os_net_config
+from os_net_config import common
 from os_net_config import impl_eni
 from os_net_config import objects
 from os_net_config.tests import base
-from os_net_config import utils
 
 _AUTO = "auto eth0\n"
 
@@ -239,7 +239,7 @@ class TestENINetConfig(base.TestCase):
 
         def test_interface_mac(name):
             return "a1:b2:c3:d4:e5"
-        self.stub_out('os_net_config.utils.interface_mac', test_interface_mac)
+        self.stub_out('os_net_config.common.interface_mac', test_interface_mac)
 
         interface = objects.Interface(self.if_name, primary=True)
         bridge = objects.OvsBridge('br0', use_dhcp=True,
@@ -254,7 +254,7 @@ class TestENINetConfig(base.TestCase):
 
         def test_interface_mac(name):
             return "a1:b2:c3:d4:e5"
-        self.stub_out('os_net_config.utils.interface_mac', test_interface_mac)
+        self.stub_out('os_net_config.common.interface_mac', test_interface_mac)
 
         interface = objects.Interface(self.if_name, primary=True)
         ovs_extra = "br-set-external-id br0 bridge-id br0"
@@ -271,7 +271,7 @@ class TestENINetConfig(base.TestCase):
 
         def test_interface_mac(name):
             return "a1:b2:c3:d4:e5"
-        self.stub_out('os_net_config.utils.interface_mac', test_interface_mac)
+        self.stub_out('os_net_config.common.interface_mac', test_interface_mac)
 
         interface = objects.Interface(self.if_name, primary=True)
         ovs_extra = "br-set-external-id {name} bridge-id {name}"
@@ -344,7 +344,7 @@ class TestENINetConfigApply(base.TestCase):
         self.provider.add_interface(interface)
 
         self.provider.apply()
-        iface_data = utils.get_file_data(self.temp_config_file.name)
+        iface_data = common.get_file_data(self.temp_config_file.name)
         self.assertEqual((_V4_IFACE_STATIC_IP + _RTS), iface_data)
         self.assertIn('eth0', self.ifup_interface_names)
 
@@ -358,7 +358,7 @@ class TestENINetConfigApply(base.TestCase):
         self.provider.add_interface(interface)
 
         self.provider.apply(activate=False)
-        iface_data = utils.get_file_data(self.temp_config_file.name)
+        iface_data = common.get_file_data(self.temp_config_file.name)
         self.assertEqual((_V4_IFACE_STATIC_IP + _RTS), iface_data)
         self.assertEqual([], self.ifup_interface_names)
 
@@ -369,7 +369,7 @@ class TestENINetConfigApply(base.TestCase):
         self.provider.add_interface(interface)
         self.provider.add_bridge(bridge)
         self.provider.apply()
-        iface_data = utils.get_file_data(self.temp_config_file.name)
+        iface_data = common.get_file_data(self.temp_config_file.name)
         self.assertEqual((_OVS_BRIDGE_DHCP + _OVS_PORT_IFACE), iface_data)
         self.assertIn('eth0', self.ifup_interface_names)
         self.assertIn('br0', self.ifup_interface_names)

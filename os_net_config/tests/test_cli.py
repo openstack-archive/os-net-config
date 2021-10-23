@@ -24,9 +24,7 @@ import yaml
 import os_net_config
 from os_net_config import cli
 from os_net_config import common
-from os_net_config import sriov_config
 from os_net_config.tests import base
-from os_net_config import utils
 
 
 REALPATH = os.path.dirname(os.path.realpath(__file__))
@@ -39,7 +37,7 @@ class TestCli(base.TestCase):
     def setUp(self):
         super(TestCli, self).setUp()
         rand = str(int(random.random() * 100000))
-        sriov_config._SRIOV_CONFIG_FILE = '/tmp/sriov_config_' + rand + '.yaml'
+        common.SRIOV_CONFIG_FILE = '/tmp/sriov_config_' + rand + '.yaml'
         common._LOG_FILE = '/tmp/' + rand + 'os_net_config.log'
         sys.stdout = StringIO()
         sys.stderr = StringIO()
@@ -53,8 +51,8 @@ class TestCli(base.TestCase):
         super(TestCli, self).tearDown()
         if os.path.isfile(common._LOG_FILE):
             os.remove(common._LOG_FILE)
-        if os.path.isfile(sriov_config._SRIOV_CONFIG_FILE):
-            os.remove(sriov_config._SRIOV_CONFIG_FILE)
+        if os.path.isfile(common.SRIOV_CONFIG_FILE):
+            os.remove(common.SRIOV_CONFIG_FILE)
 
     def run_cli(self, argstr, exitcodes=(0,)):
         for s in [sys.stdout, sys.stderr]:
@@ -225,7 +223,7 @@ class TestCli(base.TestCase):
                       test_get_vf_devname)
         self.stub_out('os_net_config.utils.get_pci_address',
                       test_get_pci_address)
-        self.stub_out('os_net_config.utils.interface_mac',
+        self.stub_out('os_net_config.common.interface_mac',
                       test_interface_mac)
         ivs_yaml = os.path.join(SAMPLE_BASE, 'sriov_pf.yaml')
         ivs_json = os.path.join(SAMPLE_BASE, 'sriov_pf.json')
@@ -233,14 +231,14 @@ class TestCli(base.TestCase):
                                            '--exit-on-validation-errors '
                                            '-c %s' % ivs_yaml)
         self.assertEqual('', stderr)
-        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        contents = common.get_file_data(common.SRIOV_CONFIG_FILE)
         sriov_config_yaml = yaml.safe_load(contents)
-        os.remove(sriov_config._SRIOV_CONFIG_FILE)
+        os.remove(common.SRIOV_CONFIG_FILE)
         stdout_json, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
                                            '--exit-on-validation-errors '
                                            '-c %s' % ivs_json)
         self.assertEqual('', stderr)
-        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        contents = common.get_file_data(common.SRIOV_CONFIG_FILE)
         sriov_config_json = yaml.safe_load(contents)
         sanity_devices = ['DEVICE=p2p1',
                           'DEVICE=p2p1_5',
@@ -270,14 +268,14 @@ class TestCli(base.TestCase):
                                            '--exit-on-validation-errors '
                                            '-c %s' % ivs_yaml)
         self.assertEqual('', stderr)
-        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        contents = common.get_file_data(common.SRIOV_CONFIG_FILE)
         sriov_config_yaml = yaml.safe_load(contents)
-        os.remove(sriov_config._SRIOV_CONFIG_FILE)
+        os.remove(common.SRIOV_CONFIG_FILE)
         stdout_json, stderr = self.run_cli('ARG0 --provider=ifcfg --noop '
                                            '--exit-on-validation-errors '
                                            '-c %s' % ivs_json)
         self.assertEqual('', stderr)
-        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        contents = common.get_file_data(common.SRIOV_CONFIG_FILE)
         sriov_config_json = yaml.safe_load(contents)
         sanity_devices = ['DEVICE=p2p1',
                           'DEVICE=p2p1_5',
