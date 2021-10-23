@@ -88,16 +88,19 @@ class TestUtils(base.TestCase):
     def setUp(self):
         super(TestUtils, self).setUp()
         rand = str(int(random.random() * 100000))
-        utils._DPDK_MAPPING_FILE = '/tmp/dpdk_mapping_' + rand + '.yaml'
-        sriov_config._SRIOV_CONFIG_FILE = '/tmp/sriov_config_' + rand + '.yaml'
+        common.DPDK_MAPPING_FILE = '/tmp/dpdk_mapping_' + rand + '.yaml'
+        common.SRIOV_CONFIG_FILE = '/tmp/sriov_config_' + rand + '.yaml'
+        common._LOG_FILE = '/tmp/' + rand + 'os_net_config.log'
         sriov_config._UDEV_LEGACY_RULE_FILE = UDEV_FILE + rand
 
     def tearDown(self):
         super(TestUtils, self).tearDown()
-        if os.path.isfile(utils._DPDK_MAPPING_FILE):
-            os.remove(utils._DPDK_MAPPING_FILE)
-        if os.path.isfile(sriov_config._SRIOV_CONFIG_FILE):
-            os.remove(sriov_config._SRIOV_CONFIG_FILE)
+        if os.path.isfile(common.DPDK_MAPPING_FILE):
+            os.remove(common.DPDK_MAPPING_FILE)
+        if os.path.isfile(common._LOG_FILE):
+            os.remove(common._LOG_FILE)
+        if os.path.isfile(common.SRIOV_CONFIG_FILE):
+            os.remove(common.SRIOV_CONFIG_FILE)
         if os.path.isfile(sriov_config._UDEV_LEGACY_RULE_FILE):
             os.remove(sriov_config._UDEV_LEGACY_RULE_FILE)
 
@@ -134,7 +137,7 @@ class TestUtils(base.TestCase):
         self.stub_out('os_net_config.sriov_config.get_numvfs',
                       get_numvfs_stub)
         utils.update_sriov_pf_map('eth1', 10, False)
-        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        contents = common.get_file_data(common.SRIOV_CONFIG_FILE)
         sriov_pf_map = yaml.safe_load(contents) if contents else []
         self.assertEqual(1, len(sriov_pf_map))
         test_sriov_pf_map = [{'device_type': 'pf', 'link_mode': 'legacy',
@@ -147,7 +150,7 @@ class TestUtils(base.TestCase):
         self.stub_out('os_net_config.sriov_config.get_numvfs',
                       get_numvfs_stub)
         utils.update_sriov_pf_map('eth1', 10, False)
-        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        contents = common.get_file_data(common.SRIOV_CONFIG_FILE)
         sriov_pf_map = yaml.safe_load(contents) if contents else []
         self.assertEqual(1, len(sriov_pf_map))
         test_sriov_pf_map = [{'device_type': 'pf', 'link_mode': 'legacy',
@@ -168,7 +171,7 @@ class TestUtils(base.TestCase):
         self.stub_out('os_net_config.sriov_config.get_numvfs',
                       get_numvfs_stub)
         utils.update_sriov_pf_map('eth1', 10, False, promisc='off')
-        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        contents = common.get_file_data(common.SRIOV_CONFIG_FILE)
         sriov_pf_map = yaml.safe_load(contents) if contents else []
         self.assertEqual(1, len(sriov_pf_map))
         test_sriov_pf_map = [{'device_type': 'pf', 'link_mode': 'legacy',
@@ -182,7 +185,7 @@ class TestUtils(base.TestCase):
         self.stub_out('os_net_config.sriov_config.get_numvfs',
                       get_numvfs_stub)
         utils.update_sriov_pf_map('eth1', 10, False, vdpa=True)
-        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        contents = common.get_file_data(common.SRIOV_CONFIG_FILE)
         sriov_pf_map = yaml.safe_load(contents) if contents else []
         self.assertEqual(1, len(sriov_pf_map))
         test_sriov_pf_map = [{'device_type': 'pf', 'link_mode': 'legacy',
@@ -196,7 +199,7 @@ class TestUtils(base.TestCase):
                       get_numvfs_stub)
         pf_initial = [{'device_type': 'pf', 'link_mode': 'legacy',
                        'name': 'eth1', 'numvfs': 10}]
-        utils.write_yaml_config(sriov_config._SRIOV_CONFIG_FILE, pf_initial)
+        utils.write_yaml_config(common.SRIOV_CONFIG_FILE, pf_initial)
         self.assertRaises(sriov_config.SRIOVNumvfsException,
                           utils.update_sriov_pf_map, 'eth1', 20, False)
 
@@ -208,13 +211,13 @@ class TestUtils(base.TestCase):
         pf_initial = [{'device_type': 'pf', 'link_mode': 'legacy',
                        'name': 'eth1', 'numvfs': 10, 'promisc': 'on',
                        'vdpa': False}]
-        utils.write_yaml_config(sriov_config._SRIOV_CONFIG_FILE, pf_initial)
+        utils.write_yaml_config(common.SRIOV_CONFIG_FILE, pf_initial)
 
         utils.update_sriov_pf_map('eth1', 10, False, promisc='off')
         pf_final = [{'device_type': 'pf', 'link_mode': 'legacy',
                      'name': 'eth1', 'numvfs': 10, 'promisc': 'off',
                      'vdpa': False}]
-        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        contents = common.get_file_data(common.SRIOV_CONFIG_FILE)
 
         pf_map = yaml.safe_load(contents) if contents else []
         self.assertEqual(1, len(pf_map))
@@ -228,13 +231,13 @@ class TestUtils(base.TestCase):
         pf_initial = [{'device_type': 'pf', 'link_mode': 'legacy',
                        'name': 'eth1', 'numvfs': 10, 'promisc': 'on',
                        'vdpa': False}]
-        utils.write_yaml_config(sriov_config._SRIOV_CONFIG_FILE, pf_initial)
+        utils.write_yaml_config(common.SRIOV_CONFIG_FILE, pf_initial)
 
         utils.update_sriov_pf_map('eth1', 10, False, vdpa=True)
         pf_final = [{'device_type': 'pf', 'link_mode': 'legacy',
                      'name': 'eth1', 'numvfs': 10, 'promisc': 'on',
                      'vdpa': True}]
-        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        contents = common.get_file_data(common.SRIOV_CONFIG_FILE)
 
         pf_map = yaml.safe_load(contents) if contents else []
         self.assertEqual(1, len(pf_map))
@@ -242,7 +245,7 @@ class TestUtils(base.TestCase):
 
     def test_update_sriov_vf_map_minimal_new(self):
         utils.update_sriov_vf_map('eth1', 2, 'eth1_2')
-        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        contents = common.get_file_data(common.SRIOV_CONFIG_FILE)
         sriov_vf_map = yaml.safe_load(contents) if contents else []
         self.assertEqual(1, len(sriov_vf_map))
         test_sriov_vf_map = [{'device_type': 'vf', 'name': 'eth1_2',
@@ -258,7 +261,7 @@ class TestUtils(base.TestCase):
         utils.update_sriov_pf_map('eth1', 10, False)
         utils.update_sriov_pf_map('eth2', 10, False)
         utils.update_sriov_vf_map('eth1', 2, 'eth1_2')
-        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        contents = common.get_file_data(common.SRIOV_CONFIG_FILE)
         sriov_vf_map = yaml.safe_load(contents) if contents else []
         self.assertEqual(3, len(sriov_vf_map))
 
@@ -286,7 +289,7 @@ class TestUtils(base.TestCase):
                                   spoofcheck="on", trust="on", state="enable",
                                   macaddr="AA:BB:CC:DD:EE:FF", promisc="off",
                                   pci_address="0000:80:00.1", max_tx_rate=10)
-        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        contents = common.get_file_data(common.SRIOV_CONFIG_FILE)
         sriov_vf_map = yaml.safe_load(contents) if contents else []
         self.assertEqual(1, len(sriov_vf_map))
         test_sriov_vf_map = [{'device_type': 'vf', 'name': 'eth1_2',
@@ -303,7 +306,7 @@ class TestUtils(base.TestCase):
     def test_update_sriov_vf_map_exist(self):
         vf_initial = [{'device_type': 'vf', 'name': 'eth1_2',
                        'device': {"name": "eth1", "vfid": 2}}]
-        utils.write_yaml_config(sriov_config._SRIOV_CONFIG_FILE, vf_initial)
+        utils.write_yaml_config(common.SRIOV_CONFIG_FILE, vf_initial)
 
         utils.update_sriov_vf_map('eth1', 2, 'eth1_2', vlan_id=10, qos=5,
                                   spoofcheck="on", trust="on", state="enable",
@@ -318,7 +321,7 @@ class TestUtils(base.TestCase):
                      'macaddr': 'AA:BB:CC:DD:EE:FF',
                      'promisc': 'off',
                      'pci_address': '0000:80:00.1'}]
-        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        contents = common.get_file_data(common.SRIOV_CONFIG_FILE)
 
         vf_map = yaml.safe_load(contents) if contents else []
         self.assertEqual(1, len(vf_map))
@@ -334,7 +337,7 @@ class TestUtils(base.TestCase):
                        'macaddr': 'AA:BB:CC:DD:EE:FF',
                        'promisc': 'off',
                        'pci_address': "0000:80:00.1"}]
-        utils.write_yaml_config(sriov_config._SRIOV_CONFIG_FILE, vf_initial)
+        utils.write_yaml_config(common.SRIOV_CONFIG_FILE, vf_initial)
 
         utils.update_sriov_vf_map('eth1', 2, 'eth1_2', vlan_id=100, qos=15,
                                   spoofcheck="off", trust="off", state="auto",
@@ -349,7 +352,7 @@ class TestUtils(base.TestCase):
                      'macaddr': 'BB:BB:CC:DD:EE:FF',
                      'promisc': 'on',
                      'pci_address': '0000:80:00.1'}]
-        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        contents = common.get_file_data(common.SRIOV_CONFIG_FILE)
 
         vf_map = yaml.safe_load(contents) if contents else []
         self.assertEqual(1, len(vf_map))
@@ -485,7 +488,7 @@ class TestUtils(base.TestCase):
         def test_get_dpdk_mac_address(name):
             return '01:02:03:04:05:06'
         self.stub_out('oslo_concurrency.processutils.execute', test_execute)
-        self.stub_out('os_net_config.utils._get_dpdk_mac_address',
+        self.stub_out('os_net_config.common._get_dpdk_mac_address',
                       test_get_dpdk_mac_address)
         try:
             utils.bind_dpdk_interfaces('nic2', 'vfio-pci', False)
@@ -503,7 +506,7 @@ class TestUtils(base.TestCase):
         def test_get_dpdk_mac_address(name):
             return '01:02:03:04:05:06'
         self.stub_out('oslo_concurrency.processutils.execute', test_execute)
-        self.stub_out('os_net_config.utils._get_dpdk_mac_address',
+        self.stub_out('os_net_config.common._get_dpdk_mac_address',
                       test_get_dpdk_mac_address)
 
         self.assertRaises(utils.OvsDpdkBindException,
@@ -593,7 +596,7 @@ class TestUtils(base.TestCase):
     def test__update_dpdk_map_new(self):
         utils._update_dpdk_map('eth1', '0000:03:00.0', '01:02:03:04:05:06',
                                'vfio-pci')
-        contents = utils.get_file_data(utils._DPDK_MAPPING_FILE)
+        contents = common.get_file_data(common.DPDK_MAPPING_FILE)
 
         dpdk_map = yaml.safe_load(contents) if contents else []
         self.assertEqual(1, len(dpdk_map))
@@ -606,11 +609,11 @@ class TestUtils(base.TestCase):
         dpdk_test = [{'name': 'eth1', 'pci_address': '0000:03:00.0',
                       'mac_address': '01:02:03:04:05:06',
                       'driver': 'vfio-pci'}]
-        utils.write_yaml_config(utils._DPDK_MAPPING_FILE, dpdk_test)
+        utils.write_yaml_config(common.DPDK_MAPPING_FILE, dpdk_test)
 
         utils._update_dpdk_map('eth1', '0000:03:00.0', '01:02:03:04:05:06',
                                'vfio-pci')
-        contents = utils.get_file_data(utils._DPDK_MAPPING_FILE)
+        contents = common.get_file_data(common.DPDK_MAPPING_FILE)
 
         dpdk_map = yaml.safe_load(contents) if contents else []
         self.assertEqual(1, len(dpdk_map))
@@ -619,7 +622,7 @@ class TestUtils(base.TestCase):
     def test_update_dpdk_map_value_change(self):
         dpdk_test = [{'name': 'eth1', 'pci_address': '0000:03:00.0',
                       'driver': 'vfio-pci'}]
-        utils.write_yaml_config(utils._DPDK_MAPPING_FILE, dpdk_test)
+        utils.write_yaml_config(common.DPDK_MAPPING_FILE, dpdk_test)
 
         dpdk_test = [{'name': 'eth1', 'pci_address': '0000:03:00.0',
                       'mac_address': '01:02:03:04:05:06',
@@ -627,7 +630,7 @@ class TestUtils(base.TestCase):
         utils._update_dpdk_map('eth1', '0000:03:00.0', '01:02:03:04:05:06',
                                'vfio-pci')
         try:
-            contents = utils.get_file_data(utils._DPDK_MAPPING_FILE)
+            contents = common.get_file_data(common.DPDK_MAPPING_FILE)
         except IOError:
             pass
 
@@ -702,7 +705,7 @@ class TestUtils(base.TestCase):
         shutil.rmtree(tmp_pci_dir)
 
     def test_interface_mac_raises(self):
-        self.assertRaises(IOError, utils.interface_mac, 'ens20f2p3')
+        self.assertRaises(IOError, common.interface_mac, 'ens20f2p3')
 
     def test_get_dpdk_devargs_mlnx(self):
         def test_execute(name, dummy1, dummy2=None, dummy3=None):
@@ -933,7 +936,7 @@ dpdk {
 
         utils.update_vpp_mapping(interfaces, [])
 
-        contents = utils.get_file_data(utils._DPDK_MAPPING_FILE)
+        contents = common.get_file_data(common.DPDK_MAPPING_FILE)
 
         dpdk_test = [{'name': 'eth1', 'pci_address': '0000:00:09.0',
                       'mac_address': '01:02:03:04:05:06',

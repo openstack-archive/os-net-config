@@ -19,10 +19,9 @@ import os
 import random
 import yaml
 
+from os_net_config import common
 from os_net_config import objects
-from os_net_config import sriov_config
 from os_net_config.tests import base
-from os_net_config import utils
 
 
 class TestRoute(base.TestCase):
@@ -413,7 +412,7 @@ class TestBridge(base.TestCase):
     def setUp(self):
         super(TestBridge, self).setUp()
         rand = str(int(random.random() * 100000))
-        sriov_config._SRIOV_CONFIG_FILE = '/tmp/sriov_config_' + rand + '.yaml'
+        common.SRIOV_CONFIG_FILE = '/tmp/sriov_config_' + rand + '.yaml'
 
         def stub_is_ovs_installed():
             return True
@@ -422,8 +421,8 @@ class TestBridge(base.TestCase):
 
     def tearDown(self):
         super(TestBridge, self).tearDown()
-        if os.path.isfile(sriov_config._SRIOV_CONFIG_FILE):
-            os.remove(sriov_config._SRIOV_CONFIG_FILE)
+        if os.path.isfile(common.SRIOV_CONFIG_FILE):
+            os.remove(common.SRIOV_CONFIG_FILE)
 
     def test_from_json_dhcp(self):
         data = """{
@@ -484,7 +483,7 @@ class TestBridge(base.TestCase):
         self.assertTrue(interface1.ovs_port)
         self.assertEqual("br-foo", interface1.bridge_name)
 
-        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        contents = common.get_file_data(common.SRIOV_CONFIG_FILE)
         vf_map = yaml.safe_load(contents) if contents else []
         self.assertListEqual(vf_final, vf_map)
 
@@ -549,7 +548,7 @@ class TestBridge(base.TestCase):
         self.assertEqual("em2", interface2.device)
         self.assertEqual("br-foo", bond.bridge_name)
 
-        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        contents = common.get_file_data(common.SRIOV_CONFIG_FILE)
         vf_map = yaml.safe_load(contents) if contents else []
         self.assertListEqual(vf_final, vf_map)
 
@@ -612,7 +611,7 @@ class TestBridge(base.TestCase):
 
         objects.object_from_json(json.loads(data))
 
-        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        contents = common.get_file_data(common.SRIOV_CONFIG_FILE)
         vf_map = yaml.safe_load(contents) if contents else []
         self.assertListEqual(vf_final, vf_map)
 
@@ -659,7 +658,7 @@ class TestBridge(base.TestCase):
         self.assertTrue(interface1.ovs_port)
         self.assertEqual("br-foo", interface1.bridge_name)
 
-        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        contents = common.get_file_data(common.SRIOV_CONFIG_FILE)
         vf_map = yaml.safe_load(contents) if contents else []
         self.assertListEqual(vf_final, vf_map)
 
@@ -710,7 +709,7 @@ class TestBridge(base.TestCase):
         self.assertFalse(dpdk_interface.ovs_port)
         self.assertEqual("br-foo", dpdk_interface.bridge_name)
 
-        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        contents = common.get_file_data(common.SRIOV_CONFIG_FILE)
         vf_map = yaml.safe_load(contents) if contents else []
         self.assertListEqual(vf_final, vf_map)
 
@@ -766,7 +765,7 @@ class TestBridge(base.TestCase):
         self.assertFalse(dpdk_interface.ovs_port)
         self.assertEqual("br-foo", dpdk_interface.bridge_name)
 
-        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        contents = common.get_file_data(common.SRIOV_CONFIG_FILE)
         vf_map = yaml.safe_load(contents) if contents else []
         self.assertListEqual(vf_final, vf_map)
 
@@ -1159,7 +1158,7 @@ class TestLinuxBond(base.TestCase):
     def setUp(self):
         super(TestLinuxBond, self).setUp()
         rand = str(int(random.random() * 100000))
-        sriov_config._SRIOV_CONFIG_FILE = '/tmp/sriov_config_' + rand + '.yaml'
+        common.SRIOV_CONFIG_FILE = '/tmp/sriov_config_' + rand + '.yaml'
 
         def stub_is_ovs_installed():
             return True
@@ -1168,8 +1167,8 @@ class TestLinuxBond(base.TestCase):
 
     def tearDown(self):
         super(TestLinuxBond, self).tearDown()
-        if os.path.isfile(sriov_config._SRIOV_CONFIG_FILE):
-            os.remove(sriov_config._SRIOV_CONFIG_FILE)
+        if os.path.isfile(common.SRIOV_CONFIG_FILE):
+            os.remove(common.SRIOV_CONFIG_FILE)
 
     def test_from_json_dhcp(self):
         data = """{
@@ -1288,7 +1287,7 @@ class TestLinuxBond(base.TestCase):
         self.assertEqual("em1", interface1.device)
         self.assertEqual("em2", interface2.device)
 
-        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        contents = common.get_file_data(common.SRIOV_CONFIG_FILE)
         vf_map = yaml.safe_load(contents) if contents else []
         self.assertListEqual(vf_final, vf_map)
 
@@ -1350,7 +1349,7 @@ class TestLinuxBond(base.TestCase):
                       test_get_pci_address)
 
         objects.object_from_json(json.loads(data))
-        contents = utils.get_file_data(sriov_config._SRIOV_CONFIG_FILE)
+        contents = common.get_file_data(common.SRIOV_CONFIG_FILE)
         vf_map = yaml.safe_load(contents) if contents else []
         self.assertListEqual(vf_final, vf_map)
 
@@ -1752,7 +1751,8 @@ class TestNicMapping(base.TestCase):
             mac_map = {'em1': '12:34:56:78:9a:bc',
                        'em2': '12:34:56:de:f0:12'}
             return mac_map[name]
-        self.stub_out('os_net_config.utils.interface_mac', dummy_interface_mac)
+        self.stub_out('os_net_config.common.interface_mac',
+                      dummy_interface_mac)
         self._stub_active_nics(['em1', 'em2'])
         self._stub_available_nics(['em1', 'em2'])
         mapping = {'nic1': '12:34:56:de:f0:12', 'nic2': '12:34:56:78:9a:bc'}
@@ -1765,7 +1765,8 @@ class TestNicMapping(base.TestCase):
                        'em2': '12:34:56:de:f0:12'}
             return mac_map[name]
 
-        self.stub_out('os_net_config.utils.interface_mac', dummy_interface_mac)
+        self.stub_out('os_net_config.common.interface_mac',
+                      dummy_interface_mac)
         self._stub_active_nics(['em1', 'em2'])
         self._stub_available_nics(['em1', 'em2'])
         mapping = {'nic1': '12:34:56:de:f0:12', 'nic2': 'aa:bb:cc:dd:ee:ff'}

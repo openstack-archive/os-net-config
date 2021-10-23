@@ -22,9 +22,9 @@ import tempfile
 from oslo_concurrency import processutils
 
 import os_net_config
+from os_net_config import common
 from os_net_config import impl_ifcfg
 from os_net_config import objects
-from os_net_config import sriov_config
 from os_net_config.tests import base
 from os_net_config import utils
 
@@ -657,7 +657,7 @@ class TestIfcfgNetConfig(base.TestCase):
     def setUp(self):
         super(TestIfcfgNetConfig, self).setUp()
         rand = str(int(random.random() * 100000))
-        sriov_config._SRIOV_CONFIG_FILE = '/tmp/sriov_config_' + rand + '.yaml'
+        common.SRIOV_CONFIG_FILE = '/tmp/sriov_config_' + rand + '.yaml'
 
         self.provider = impl_ifcfg.IfcfgNetConfig()
 
@@ -668,8 +668,8 @@ class TestIfcfgNetConfig(base.TestCase):
 
     def tearDown(self):
         super(TestIfcfgNetConfig, self).tearDown()
-        if os.path.isfile(sriov_config._SRIOV_CONFIG_FILE):
-            os.remove(sriov_config._SRIOV_CONFIG_FILE)
+        if os.path.isfile(common.SRIOV_CONFIG_FILE):
+            os.remove(common.SRIOV_CONFIG_FILE)
 
     def get_interface_config(self, name='em1'):
         return self.provider.interface_data[name]
@@ -807,7 +807,7 @@ class TestIfcfgNetConfig(base.TestCase):
         def test_interface_mac(name):
             macs = {'em1': 'a1:b2:c3:d4:e5'}
             return macs[name]
-        self.stub_out('os_net_config.utils.interface_mac', test_interface_mac)
+        self.stub_out('os_net_config.common.interface_mac', test_interface_mac)
 
         nic_mapping = {'nic1': 'em1'}
         self.stubbed_mapped_nics = nic_mapping
@@ -961,7 +961,7 @@ class TestIfcfgNetConfig(base.TestCase):
     def test_network_ovs_bridge_with_dhcp_primary_interface(self):
         def test_interface_mac(name):
             return "a1:b2:c3:d4:e5"
-        self.stub_out('os_net_config.utils.interface_mac', test_interface_mac)
+        self.stub_out('os_net_config.common.interface_mac', test_interface_mac)
 
         interface = objects.Interface('em1', primary=True)
         bridge = objects.OvsBridge('br-ctlplane', use_dhcp=True,
@@ -975,7 +975,7 @@ class TestIfcfgNetConfig(base.TestCase):
     def test_network_ovs_bridge_with_dhcp_primary_interface_with_extra(self):
         def test_interface_mac(name):
             return "a1:b2:c3:d4:e5"
-        self.stub_out('os_net_config.utils.interface_mac', test_interface_mac)
+        self.stub_out('os_net_config.common.interface_mac', test_interface_mac)
 
         interface = objects.Interface('em1', primary=True)
         ovs_extra = "br-set-external-id br-ctlplane bridge-id br-ctlplane"
@@ -991,7 +991,7 @@ class TestIfcfgNetConfig(base.TestCase):
     def test_network_ovs_bridge_with_dhcp_primary_interface_with_format(self):
         def test_interface_mac(name):
             return "a1:b2:c3:d4:e5"
-        self.stub_out('os_net_config.utils.interface_mac', test_interface_mac)
+        self.stub_out('os_net_config.common.interface_mac', test_interface_mac)
 
         interface = objects.Interface('em1', primary=True)
         ovs_extra = "br-set-external-id {name} bridge-id {name}"
@@ -2222,7 +2222,7 @@ class TestIfcfgNetConfigApply(base.TestCase):
 
         self.provider.apply()
 
-        route_table_data = utils.get_file_data(
+        route_table_data = common.get_file_data(
             self.temp_route_table_file.name)
         self.assertEqual(_RT_FULL, route_table_data)
 
@@ -2253,9 +2253,9 @@ class TestIfcfgNetConfigApply(base.TestCase):
 
         self.provider.apply()
 
-        ifcfg_data = utils.get_file_data(self.temp_ifcfg_file.name)
+        ifcfg_data = common.get_file_data(self.temp_ifcfg_file.name)
         self.assertEqual(_V4_IFCFG, ifcfg_data)
-        route_data = utils.get_file_data(self.temp_route_file.name)
+        route_data = common.get_file_data(self.temp_route_file.name)
         self.assertEqual(_ROUTES, route_data)
 
     def test_sriov_pf_network_apply(self):
@@ -2275,9 +2275,9 @@ class TestIfcfgNetConfigApply(base.TestCase):
 
         self.provider.apply()
 
-        ifcfg_data = utils.get_file_data(self.temp_ifcfg_file.name)
+        ifcfg_data = common.get_file_data(self.temp_ifcfg_file.name)
         self.assertEqual(_V4_SRIOV_PF_IFCFG, ifcfg_data)
-        route_data = utils.get_file_data(self.temp_route_file.name)
+        route_data = common.get_file_data(self.temp_route_file.name)
         self.assertEqual(_ROUTES_PF, route_data)
 
     def test_dhcp_ovs_bridge_network_apply(self):
@@ -2288,11 +2288,11 @@ class TestIfcfgNetConfigApply(base.TestCase):
         self.provider.add_bridge(bridge)
         self.provider.apply()
 
-        ifcfg_data = utils.get_file_data(self.temp_ifcfg_file.name)
+        ifcfg_data = common.get_file_data(self.temp_ifcfg_file.name)
         self.assertEqual(_OVS_INTERFACE, ifcfg_data)
-        bridge_data = utils.get_file_data(self.temp_bridge_file.name)
+        bridge_data = common.get_file_data(self.temp_bridge_file.name)
         self.assertEqual(_OVS_BRIDGE_DHCP, bridge_data)
-        route_data = utils.get_file_data(self.temp_route_file.name)
+        route_data = common.get_file_data(self.temp_route_file.name)
         self.assertEqual("", route_data)
 
     def test_dhclient_stop_on_iface_activate(self):
@@ -2623,7 +2623,7 @@ class TestIfcfgNetConfigApply(base.TestCase):
         self.provider.add_vlan(vlan)
         self.provider.apply()
 
-        ifcfg_data = utils.get_file_data(self.temp_ifcfg_file.name)
+        ifcfg_data = common.get_file_data(self.temp_ifcfg_file.name)
         self.assertEqual(_VLAN_NO_IP, ifcfg_data)
 
     def test_cleanup(self):

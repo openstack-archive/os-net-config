@@ -248,7 +248,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         :returns: boolean value for whether a restart is required
         """
 
-        file_data = utils.get_file_data(filename)
+        file_data = common.get_file_data(filename)
         logger.debug("Original ifcfg file:\n%s" % file_data)
         logger.debug("New ifcfg file:\n%s" % new_data)
         file_values = self.parse_ifcfg(file_data)
@@ -292,7 +292,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         :returns: commands (commands to be run)
         """
 
-        previous_cfg = utils.get_file_data(filename)
+        previous_cfg = common.get_file_data(filename)
         file_values = self.parse_ifcfg(previous_cfg)
         data_values = self.parse_ifcfg(data)
         logger.debug("File values:\n%s" % file_values)
@@ -341,7 +341,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         :return: list of commands to feed to 'ip' to reconfigure routes
         """
 
-        file_values = self.parse_ifcfg_routes(utils.get_file_data(filename))
+        file_values = self.parse_ifcfg_routes(common.get_file_data(filename))
         data_values = self.parse_ifcfg_routes(data)
         route_changes = self.enumerate_ifcfg_route_changes(file_values,
                                                            data_values)
@@ -366,7 +366,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         :return: list of commands to feed to 'ip' to reconfigure route rules
         """
 
-        file_values = self.parse_ifcfg_rules(utils.get_file_data(filename))
+        file_values = self.parse_ifcfg_rules(common.get_file_data(filename))
         data_values = self.parse_ifcfg_rules(data)
         rule_changes = self.enumerate_ifcfg_rule_changes(file_values,
                                                          data_values)
@@ -473,7 +473,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 if base_opt.use_dhcp:
                     data += ("OVSDHCPINTERFACES=\"%s\"\n" % " ".join(members))
             if base_opt.primary_interface_name:
-                mac = utils.interface_mac(base_opt.primary_interface_name)
+                mac = common.interface_mac(base_opt.primary_interface_name)
                 ovs_extra.append("set bridge %s other-config:hwaddr=%s" %
                                  (base_opt.name, mac))
             if base_opt.ovs_options:
@@ -517,12 +517,12 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 self.member_names[base_opt.name] = members
             if base_opt.primary_interface_name:
                 primary_name = base_opt.primary_interface_name
-                primary_mac = utils.interface_mac(primary_name)
+                primary_mac = common.interface_mac(primary_name)
                 data += "MACADDR=\"%s\"\n" % primary_mac
         elif isinstance(base_opt, objects.LinuxBond):
             if base_opt.primary_interface_name:
                 primary_name = base_opt.primary_interface_name
-                primary_mac = utils.interface_mac(primary_name)
+                primary_mac = common.interface_mac(primary_name)
                 data += "MACADDR=\"%s\"\n" % primary_mac
             if base_opt.use_dhcp:
                 data += "BOOTPROTO=dhcp\n"
@@ -534,7 +534,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         elif isinstance(base_opt, objects.LinuxTeam):
             if base_opt.primary_interface_name:
                 primary_name = base_opt.primary_interface_name
-                primary_mac = utils.interface_mac(primary_name)
+                primary_mac = common.interface_mac(primary_name)
                 data += "MACADDR=\"%s\"\n" % primary_mac
             if base_opt.use_dhcp:
                 data += "BOOTPROTO=dhcp\n"
@@ -1070,7 +1070,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         if not vpp_interface.pci_dev:
             vpp_interface.pci_dev = utils.get_stored_pci_address(
                 vpp_interface.name, False)
-        vpp_interface.hwaddr = utils.interface_mac(vpp_interface.name)
+        vpp_interface.hwaddr = common.interface_mac(vpp_interface.name)
         if not self.noop:
             self.ifdown(vpp_interface.name)
             remove_ifcfg_config(vpp_interface.name)
@@ -1211,7 +1211,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         custom_tables = {}
         res_ids = ['0', '253', '254', '255']
         res_names = ['unspec', 'default', 'main', 'local']
-        rt_config = utils.get_file_data(route_table_config_path()).split('\n')
+        rt_config = common.get_file_data(route_table_config_path()).split('\n')
         rt_defaults = _ROUTE_TABLE_DEFAULT.split("\n")
         data = _ROUTE_TABLE_DEFAULT
         for line in (line for line in rt_config if line not in rt_defaults):

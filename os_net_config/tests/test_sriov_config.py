@@ -47,15 +47,15 @@ class TestSriovConfig(base.TestCase):
             'rules.d_70-tripleo-reset-sriov.rules'
         sriov_config._ALLOCATE_VFS_FILE = '/tmp/' + rand + 'etc_sysconfig_'\
             'allocate_vfs'
-        sriov_config._SRIOV_CONFIG_FILE = '/tmp/' + rand + 'sriov_config'\
-                                          '.yaml'
+        common.SRIOV_CONFIG_FILE = '/tmp/' + rand + 'sriov_config.yaml'
+        sriov_config._REP_LINK_NAME_FILE = '/tmp/' + rand + 'rep_link.sh'
 
     def tearDown(self):
         super(TestSriovConfig, self).tearDown()
         if os.path.isfile(common._LOG_FILE):
             os.remove(common._LOG_FILE)
-        if os.path.isfile(sriov_config._SRIOV_CONFIG_FILE):
-            os.remove(sriov_config._SRIOV_CONFIG_FILE)
+        if os.path.isfile(common.SRIOV_CONFIG_FILE):
+            os.remove(common.SRIOV_CONFIG_FILE)
         if os.path.isfile(sriov_config._IFUP_LOCAL_FILE):
             os.remove(sriov_config._IFUP_LOCAL_FILE)
         shutil.rmtree(common.SYS_CLASS_NET)
@@ -247,7 +247,7 @@ class TestSriovConfig(base.TestCase):
                       cleanup_puppet_config_stub)
 
         def _wait_for_vf_creation_stub(pf_name, numvfs):
-            self._save_action('_wait_for_vf_creation_stub')
+            self._save_action('_wait_for_vf_creation')
             return
         self.stub_out('os_net_config.sriov_config._wait_for_vf_creation',
                       _wait_for_vf_creation_stub)
@@ -278,6 +278,44 @@ class TestSriovConfig(base.TestCase):
         self.stub_out('os_net_config.sriov_config.set_numvfs',
                       set_numvfs_stub)
 
+        def get_pf_pci_stub(name):
+            pci_address = {"p2p1": "0000:01:01.0",
+                           "p2p2": "0000:01:02.0",
+                           "p2p3": "0000:01:03.0"}
+            return pci_address[name]
+        self.stub_out('os_net_config.sriov_config.get_pf_pci',
+                      get_pf_pci_stub)
+
+        def get_vdpa_vhost_devices_stub():
+            self._save_action('get_vdpa_vhost_devices')
+            return
+        self.stub_out('os_net_config.sriov_config.get_vdpa_vhost_devices',
+                      get_vdpa_vhost_devices_stub)
+
+        def load_kmods_stub(mods):
+            return
+        self.stub_out('os_net_config.sriov_config.load_kmods',
+                      load_kmods_stub)
+
+        def modprobe_stub(*args):
+            out = """vdpa x
+                     vhost_vdpa x
+                  """
+            return out, "hello"
+        self.stub_out('oslo_concurrency.processutils.execute',
+                      modprobe_stub)
+
+        def reload_udev_rules_stub():
+            self._save_action('reload_udev_rules')
+            return
+        self.stub_out('os_net_config.sriov_config.reload_udev_rules',
+                      reload_udev_rules_stub)
+
+    def test_list_kmods(self):
+        self.setUp_pf_stubs()
+        self.assertEqual([], common.list_kmods(["vhost_vdpa", "vdpa"]))
+        self.assertEqual(["test"], common.list_kmods(["test", "vdpa"]))
+
     def test_configure_sriov_pf(self):
         """Test the numvfs setting for SR-IOV PF
 
@@ -295,12 +333,12 @@ class TestSriovConfig(base.TestCase):
             'reload_udev_rules',
             'set_numvfs',
             'get_numvfs',
-            '_wait_for_vf_creation_stub',
+            '_wait_for_vf_creation',
             'get_numvfs',
             'reload_udev_rules',
             'set_numvfs',
             'get_numvfs',
-            '_wait_for_vf_creation_stub',
+            '_wait_for_vf_creation',
             'get_numvfs',
             'udev_monitor_stop',
         ]
@@ -314,7 +352,7 @@ class TestSriovConfig(base.TestCase):
             self._write_numvfs(ifname)
 
         self._action_order = []
-        utils.write_yaml_config(sriov_config._SRIOV_CONFIG_FILE, pf_config)
+        utils.write_yaml_config(common.SRIOV_CONFIG_FILE, pf_config)
         sriov_config.configure_sriov_pf()
         self.assertEqual(exp_actions, self._action_order)
         f = open(sriov_config._UDEV_LEGACY_RULE_FILE, 'r')
@@ -337,12 +375,12 @@ class TestSriovConfig(base.TestCase):
             'udev_monitor_start',
             'set_numvfs',
             'get_numvfs',
-            '_wait_for_vf_creation_stub',
+            '_wait_for_vf_creation',
             'get_numvfs',
             'reload_udev_rules',
             'set_numvfs',
             'get_numvfs',
-            '_wait_for_vf_creation_stub',
+            '_wait_for_vf_creation',
             'get_numvfs',
             'udev_monitor_stop',
         ]
@@ -360,7 +398,7 @@ class TestSriovConfig(base.TestCase):
             self._write_numvfs(ifname)
 
         self._action_order = []
-        utils.write_yaml_config(sriov_config._SRIOV_CONFIG_FILE, pf_config)
+        utils.write_yaml_config(common.SRIOV_CONFIG_FILE, pf_config)
         sriov_config.configure_sriov_pf()
         self.assertEqual(exp_actions, self._action_order)
         f = open(sriov_config._UDEV_LEGACY_RULE_FILE, 'r')
@@ -384,12 +422,12 @@ class TestSriovConfig(base.TestCase):
             'reload_udev_rules',
             'set_numvfs',
             'get_numvfs',
-            '_wait_for_vf_creation_stub',
+            '_wait_for_vf_creation',
             'get_numvfs',
             'reload_udev_rules',
             'set_numvfs',
             'get_numvfs',
-            '_wait_for_vf_creation_stub',
+            '_wait_for_vf_creation',
             'get_numvfs',
             'udev_monitor_stop',
         ]
@@ -407,7 +445,7 @@ class TestSriovConfig(base.TestCase):
             self._write_numvfs(ifname)
 
         self._action_order = []
-        utils.write_yaml_config(sriov_config._SRIOV_CONFIG_FILE, pf_config)
+        utils.write_yaml_config(common.SRIOV_CONFIG_FILE, pf_config)
         sriov_config.configure_sriov_pf()
         self.assertEqual(exp_actions, self._action_order)
         f = open(sriov_config._UDEV_LEGACY_RULE_FILE, 'r')
@@ -425,18 +463,28 @@ class TestSriovConfig(base.TestCase):
         exp_actions = [
             'udev_monitor_setup',
             'udev_monitor_start',
+            'get_vdpa_vhost_devices',
             'configure_switchdev',
             'set_numvfs',
             'get_numvfs',
-            '_wait_for_vf_creation_stub',
+            '_wait_for_vf_creation',
             'get_numvfs',
+            'reload_udev_rules',
+            'reload_udev_rules',
+            'reload_udev_rules',
+            'reload_udev_rules',
             'configure_switchdev',
             'set_numvfs',
             'get_numvfs',
-            '_wait_for_vf_creation_stub',
+            '_wait_for_vf_creation',
             'get_numvfs',
+            'reload_udev_rules',
+            'reload_udev_rules',
+            'reload_udev_rules',
+            'trigger_udev_rules',
             'udev_monitor_stop',
         ]
+
         pf_config = [{"device_type": "pf", "name": "p2p1", "numvfs": 10,
                       "vdpa": True, "link_mode": "switchdev"},
                      {"device_type": "pf", "name": "p2p2", "numvfs": 12,
@@ -446,7 +494,7 @@ class TestSriovConfig(base.TestCase):
             self._write_numvfs(ifname)
 
         self._action_order = []
-        utils.write_yaml_config(sriov_config._SRIOV_CONFIG_FILE, pf_config)
+        utils.write_yaml_config(common.SRIOV_CONFIG_FILE, pf_config)
         sriov_config.configure_sriov_pf()
         self.assertEqual(exp_actions, self._action_order)
         self.assertEqual(10, sriov_config.get_numvfs('p2p1'))
@@ -565,7 +613,7 @@ class TestSriovConfig(base.TestCase):
         self.stub_out('os_net_config.sriov_config.run_ip_config_cmd',
                       run_ip_config_cmd_stub)
 
-        utils.write_yaml_config(sriov_config._SRIOV_CONFIG_FILE, vf_config)
+        utils.write_yaml_config(common.SRIOV_CONFIG_FILE, vf_config)
         sriov_config.configure_sriov_vf()
 
         for cmd in exp_cmds:
