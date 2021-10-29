@@ -22,7 +22,6 @@
 # An entry point os-net-config-sriov is added for invocation of this module.
 
 import argparse
-import logging
 import os
 import pyudev
 import queue
@@ -31,11 +30,12 @@ import sys
 import time
 import yaml
 
+from os_net_config import common
 from os_net_config import sriov_bind_config
 from oslo_concurrency import processutils
 
-logger = logging.getLogger(__name__)
-_SYS_CLASS_NET = '/sys/class/net'
+logger = common.configure_logger()
+
 _UDEV_RULE_FILE = '/etc/udev/rules.d/80-persistent-os-net-config.rules'
 _UDEV_LEGACY_RULE_FILE = '/etc/udev/rules.d/70-os-net-config-sriov.rules'
 _IFUP_LOCAL_FILE = '/sbin/ifup-local'
@@ -112,11 +112,6 @@ def _get_sriov_map():
     return sriov_map
 
 
-def _get_dev_path(ifname, path=None):
-    path = f"device/{path}" if path else "device"
-    return os.path.join(_SYS_CLASS_NET, ifname, path)
-
-
 def _wait_for_vf_creation(pf_name, numvfs):
     vf_count = 0
     vf_list = []
@@ -155,7 +150,7 @@ def get_numvfs(ifname):
     :returns: int -- the number of current VFs on ifname
     :raises: SRIOVNumvfsException
     """
-    sriov_numvfs_path = _get_dev_path(ifname, "sriov_numvfs")
+    sriov_numvfs_path = common.get_dev_path(ifname, "sriov_numvfs")
     logger.debug(f"Getting numvfs for interface {ifname}")
     try:
         with open(sriov_numvfs_path, 'r') as f:
@@ -198,7 +193,7 @@ def set_numvfs(ifname, numvfs):
                            f"{ifname}")
             return curr_numvfs
 
-        sriov_numvfs_path = _get_dev_path(ifname, "sriov_numvfs")
+        sriov_numvfs_path = common.get_dev_path(ifname, "sriov_numvfs")
         try:
             logger.debug(f"Setting {sriov_numvfs_path} to {numvfs}")
             with open(sriov_numvfs_path, "w") as f:
@@ -305,7 +300,7 @@ def configure_sriov_pf(execution_from_cli=False, restart_openvswitch=False):
                                                       item['numvfs'])
             # When configuring vdpa, we need to configure switchdev before
             # we create the VFs
-            vendor_id = get_vendor_id(item['name'])
+            vendor_id = common.get_vendor_id(item['name'])
             is_mlnx = vendor_id == MLNX_VENDOR_ID
             # Configure switchdev mode when vdpa
             if item.get('vdpa') and is_mlnx:
@@ -407,7 +402,7 @@ def add_udev_rule_for_legacy_sriov_pf(pf_name, numvfs):
 
 def add_udev_rule_for_vf_representors(pf_name):
     logger.info(f"adding udev rules for vf representators {pf_name}")
-    phys_switch_id_path = os.path.join(_SYS_CLASS_NET, pf_name,
+    phys_switch_id_path = os.path.join(common.SYS_CLASS_NET, pf_name,
                                        "phys_switch_id")
     phys_switch_id = get_file_data(phys_switch_id_path).strip()
     pf_pci = get_pf_pci(pf_name)
@@ -553,35 +548,26 @@ def _pf_interface_up(pf_device):
     run_ip_config_cmd('ip', 'link', 'set', 'dev', pf_device['name'], 'up')
 
 
-def get_vendor_id(ifname):
-    try:
-        with open(_get_dev_path(ifname, "vendor"), 'r') as f:
-            out = f.read().strip()
-        return out
-    except IOError:
-        return
-
-
 def get_pf_pci(pf_name):
-    pf_pci_path = _get_dev_path(pf_name, "uevent")
+    pf_pci_path = common.get_dev_path(pf_name, "uevent")
     pf_info = get_file_data(pf_pci_path)
     pf_pci = re.search(r'PCI_SLOT_NAME=(.*)', pf_info, re.MULTILINE).group(1)
     return pf_pci
 
 
 def get_pf_device_id(pf_name):
-    pf_device_path = _get_dev_path(pf_name, "device")
+    pf_device_path = common.get_dev_path(pf_name, "device")
     pf_device_id = get_file_data(pf_device_path).strip()
     return pf_device_id
 
 
 def get_vf_pcis_list(pf_name):
     vf_pcis_list = []
-    listOfPfFiles = os.listdir(os.path.join(_SYS_CLASS_NET, pf_name,
+    listOfPfFiles = os.listdir(os.path.join(common.SYS_CLASS_NET, pf_name,
                                             "device"))
     for pf_file in listOfPfFiles:
         if pf_file.startswith("virtfn"):
-            vf_info = get_file_data(_get_dev_path(pf_name,
+            vf_info = get_file_data(common.get_dev_path(pf_name,
                                     f"{pf_file}/uevent"))
             vf_pcis_list.append(re.search(r'PCI_SLOT_NAME=(.*)',
                                           vf_info, re.MULTILINE).group(1))
@@ -675,30 +661,18 @@ def parse_opts(argv):
     return opts
 
 
-def configure_logger(verbose=False, debug=False):
-    LOG_FORMAT = '[%(asctime)s] [%(levelname)s] %(message)s'
-    DATE_FORMAT = '%Y/%m/%d %I:%M:%S %p'
-    log_level = logging.WARN
-
-    if debug:
-        log_level = logging.DEBUG
-    elif verbose:
-        log_level = logging.INFO
-
-    logging.basicConfig(format=LOG_FORMAT, datefmt=DATE_FORMAT,
-                        level=log_level)
-
-
-def main(argv=sys.argv):
+def main(argv=sys.argv, main_logger=None):
     opts = parse_opts(argv)
-    configure_logger(opts.verbose, opts.debug)
+    if not main_logger:
+        main_logger = common.configure_logger(log_file=True)
+    common.logger_level(main_logger, opts.verbose, opts.debug)
 
     if opts.numvfs:
         if re.match(r"^\w+:\d+$", opts.numvfs):
             device_name, numvfs = opts.numvfs.split(':')
             set_numvfs(device_name, int(numvfs))
         else:
-            logging.error(f"Invalid arguments for --numvfs {opts.numvfs}")
+            main_logger.error(f"Invalid arguments for --numvfs {opts.numvfs}")
             return 1
     else:
         # Configure the PF's

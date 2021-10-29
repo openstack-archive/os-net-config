@@ -17,11 +17,13 @@
 from io import StringIO
 import os.path
 import random
+import re
 import sys
 import yaml
 
 import os_net_config
 from os_net_config import cli
+from os_net_config import common
 from os_net_config import sriov_config
 from os_net_config.tests import base
 from os_net_config import utils
@@ -38,6 +40,9 @@ class TestCli(base.TestCase):
         super(TestCli, self).setUp()
         rand = str(int(random.random() * 100000))
         sriov_config._SRIOV_CONFIG_FILE = '/tmp/sriov_config_' + rand + '.yaml'
+        common._LOG_FILE = '/tmp/' + rand + 'os_net_config.log'
+        sys.stdout = StringIO()
+        sys.stderr = StringIO()
 
         def stub_is_ovs_installed():
             return True
@@ -46,24 +51,22 @@ class TestCli(base.TestCase):
 
     def tearDown(self):
         super(TestCli, self).tearDown()
+        if os.path.isfile(common._LOG_FILE):
+            os.remove(common._LOG_FILE)
         if os.path.isfile(sriov_config._SRIOV_CONFIG_FILE):
             os.remove(sriov_config._SRIOV_CONFIG_FILE)
 
     def run_cli(self, argstr, exitcodes=(0,)):
-        orig = sys.stdout
-        orig_stderr = sys.stderr
-
-        sys.stdout = StringIO()
-        sys.stderr = StringIO()
+        for s in [sys.stdout, sys.stderr]:
+            s.flush()
+            s.truncate(0)
+            s.seek(0)
         ret = cli.main(argstr.split())
         self.assertIn(ret, exitcodes)
-
+        sys.stdout.flush()
+        sys.stderr.flush()
         stdout = sys.stdout.getvalue()
-        sys.stdout.close()
-        sys.stdout = orig
         stderr = sys.stderr.getvalue()
-        sys.stderr.close()
-        sys.stderr = orig_stderr
         return (stdout, stderr)
 
     def stub_get_stored_pci_address(self, ifname, noop):
@@ -420,6 +423,11 @@ class TestCli(base.TestCase):
         self.assertEqual(stdout_yaml, stdout_json)
 
     def test_contrail_vrouter_dpdk_noop_output(self):
+        timestamp_rex = re.compile(
+            (r'contrail_vrouter_dpdk\.(yaml|json)|^[\d]{4}-[\d]{2}-[\d]{2} '
+             r'[\d]{2}:[\d]{2}:[\d]{2}\.[\d]{3} '),
+            flags=re.M
+        )
         cvi_yaml = os.path.join(SAMPLE_BASE, 'contrail_vrouter_dpdk.yaml')
         cvi_json = os.path.join(SAMPLE_BASE, 'contrail_vrouter_dpdk.json')
         self.stub_out('os_net_config.utils.get_stored_pci_address',
@@ -440,4 +448,6 @@ class TestCli(base.TestCase):
                           'TYPE=dpdk']
         for dev in sanity_devices:
             self.assertIn(dev, stdout_yaml)
+        stdout_yaml = timestamp_rex.sub('', stdout_yaml)
+        stdout_json = timestamp_rex.sub('', stdout_json)
         self.assertEqual(stdout_yaml, stdout_json)

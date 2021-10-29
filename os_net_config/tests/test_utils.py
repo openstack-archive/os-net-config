@@ -22,12 +22,14 @@ import tempfile
 from unittest import mock
 import yaml
 
+from os_net_config import common
 from os_net_config import objects
 from os_net_config import sriov_config
 from os_net_config.tests import base
 from os_net_config import utils
 
 from oslo_concurrency import processutils
+
 
 _PCI_OUTPUT = '''driver: e1000e
 version: 3.2.6-k
@@ -102,7 +104,7 @@ class TestUtils(base.TestCase):
     def test_ordered_active_nics(self):
 
         tmpdir = tempfile.mkdtemp()
-        self.stub_out('os_net_config.utils._SYS_CLASS_NET', tmpdir)
+        self.stub_out('os_net_config.common.SYS_CLASS_NET', tmpdir)
 
         def test_is_available_nic(interface_name, check_active):
             return True
@@ -355,7 +357,7 @@ class TestUtils(base.TestCase):
 
     def test_get_vf_devname_net_dir_not_found(self):
         tmpdir = tempfile.mkdtemp()
-        self.stub_out('os_net_config.utils._SYS_CLASS_NET', tmpdir)
+        self.stub_out('os_net_config.common.SYS_CLASS_NET', tmpdir)
 
         self.assertRaises(utils.SriovVfNotFoundException,
                           utils.get_vf_devname, "eth1", 1)
@@ -363,14 +365,14 @@ class TestUtils(base.TestCase):
 
     def test_get_vf_devname_vf_dir_found_in_map(self):
         tmpdir = tempfile.mkdtemp()
-        self.stub_out('os_net_config.utils._SYS_CLASS_NET', tmpdir)
+        self.stub_out('os_net_config.common.SYS_CLASS_NET', tmpdir)
 
         def test_get_vf_name_from_map(pf_name, vfid):
             return pf_name + '_' + str(vfid)
         self.stub_out('os_net_config.utils._get_vf_name_from_map',
                       test_get_vf_name_from_map)
 
-        vf_path = os.path.join(utils._SYS_CLASS_NET, 'eth1/device/virtfn1')
+        vf_path = os.path.join(common.SYS_CLASS_NET, 'eth1/device/virtfn1')
         os.makedirs(vf_path)
 
         self.assertEqual(utils.get_vf_devname("eth1", 1), "eth1_1")
@@ -378,14 +380,14 @@ class TestUtils(base.TestCase):
 
     def test_get_vf_devname_vf_dir_not_found(self):
         tmpdir = tempfile.mkdtemp()
-        self.stub_out('os_net_config.utils._SYS_CLASS_NET', tmpdir)
+        self.stub_out('os_net_config.common.SYS_CLASS_NET', tmpdir)
 
         def test_get_vf_name_from_map(pf_name, vfid):
             return None
         self.stub_out('os_net_config.utils._get_vf_name_from_map',
                       test_get_vf_name_from_map)
 
-        vf_path = os.path.join(utils._SYS_CLASS_NET, 'eth1/device/virtfn1')
+        vf_path = os.path.join(common.SYS_CLASS_NET, 'eth1/device/virtfn1')
         os.makedirs(vf_path)
 
         self.assertRaises(utils.SriovVfNotFoundException,
@@ -394,9 +396,9 @@ class TestUtils(base.TestCase):
 
     def test_get_vf_devname_vf_dir_found(self):
         tmpdir = tempfile.mkdtemp()
-        self.stub_out('os_net_config.utils._SYS_CLASS_NET', tmpdir)
+        self.stub_out('os_net_config.common.SYS_CLASS_NET', tmpdir)
 
-        vf_path = os.path.join(utils._SYS_CLASS_NET,
+        vf_path = os.path.join(common.SYS_CLASS_NET,
                                'eth1/device/virtfn1/net/eth1_1')
         os.makedirs(vf_path)
 
@@ -448,28 +450,28 @@ class TestUtils(base.TestCase):
 
     def test_get_vendor_id_success(self):
         mocked_open = mock.mock_open(read_data='0x15b3\n')
-        with mock.patch('os_net_config.utils.open', mocked_open, create=True):
-            vendor = utils.get_vendor_id('nic2')
+        with mock.patch('os_net_config.common.open', mocked_open, create=True):
+            vendor = common.get_vendor_id('nic2')
             self.assertEqual('0x15b3', vendor)
 
     def test_get_vendor_id_exception(self):
         mocked_open = mock.mock_open()
         mocked_open.side_effect = IOError
-        with mock.patch('os_net_config.utils.open', mocked_open, create=True):
-            vendor = utils.get_vendor_id('nic2')
+        with mock.patch('os_net_config.common.open', mocked_open, create=True):
+            vendor = common.get_vendor_id('nic2')
             self.assertEqual(None, vendor)
 
     def test_get_device_id_success(self):
         mocked_open = mock.mock_open(read_data='0x1003\n')
-        with mock.patch('os_net_config.utils.open', mocked_open, create=True):
-            device = utils.get_device_id('nic2')
+        with mock.patch('os_net_config.common.open', mocked_open, create=True):
+            device = common.get_device_id('nic2')
             self.assertEqual('0x1003', device)
 
     def test_get_device_id_exception(self):
         mocked_open = mock.mock_open()
         mocked_open.side_effect = IOError
         with mock.patch('os_net_config.utils.open', mocked_open, create=True):
-            device = utils.get_device_id('nic2')
+            device = common.get_device_id('nic2')
             self.assertEqual(None, device)
 
     def test_bind_dpdk_interfaces(self):
@@ -636,7 +638,7 @@ class TestUtils(base.TestCase):
     def test_ordered_active_nics_with_dpdk_mapping(self):
 
         tmpdir = tempfile.mkdtemp()
-        self.stub_out('os_net_config.utils._SYS_CLASS_NET', tmpdir)
+        self.stub_out('os_net_config.common.SYS_CLASS_NET', tmpdir)
         tmp_pci_dir = tempfile.mkdtemp()
         self.stub_out('os_net_config.utils._SYS_BUS_PCI_DEV', tmp_pci_dir)
         physfn_path = utils._SYS_BUS_PCI_DEV + '/0000:05:01.1/physfn'
@@ -677,7 +679,7 @@ class TestUtils(base.TestCase):
 
     def test_ordered_active_nics_with_dpdk_mapping_of_vf(self):
         tmpdir = tempfile.mkdtemp()
-        self.stub_out('os_net_config.utils._SYS_CLASS_NET', tmpdir)
+        self.stub_out('os_net_config.common.SYS_CLASS_NET', tmpdir)
         tmp_pci_dir = tempfile.mkdtemp()
         self.stub_out('os_net_config.utils._SYS_BUS_PCI_DEV', tmp_pci_dir)
         physfn_path = utils._SYS_BUS_PCI_DEV + '/0000:05:01.1/physfn'
@@ -721,7 +723,7 @@ class TestUtils(base.TestCase):
         self.stub_out('os_net_config.utils.get_stored_pci_address',
                       test_get_stored_pci_address)
         tmpdir = tempfile.mkdtemp()
-        self.stub_out('os_net_config.utils._SYS_CLASS_NET', tmpdir)
+        self.stub_out('os_net_config.common.SYS_CLASS_NET', tmpdir)
         nic = 'p4p1'
         nic_path = os.path.join(tmpdir, nic)
         os.makedirs(nic_path)
@@ -764,7 +766,7 @@ class TestUtils(base.TestCase):
     def test_is_active_nic_for_sriov_vf(self):
 
         tmpdir = tempfile.mkdtemp()
-        self.stub_out('os_net_config.utils._SYS_CLASS_NET', tmpdir)
+        self.stub_out('os_net_config.common.SYS_CLASS_NET', tmpdir)
 
         # SR-IOV PF = ens802f0
         # SR-IOV VF = enp129s2

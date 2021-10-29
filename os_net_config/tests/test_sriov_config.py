@@ -21,6 +21,7 @@ import shutil
 import tempfile
 
 
+from os_net_config import common
 from os_net_config import sriov_config
 from os_net_config.tests import base
 from os_net_config import utils
@@ -34,8 +35,9 @@ class TestSriovConfig(base.TestCase):
         rand = str(int(random.random() * 100000))
 
         tmpdir = tempfile.mkdtemp()
-        self.stub_out('os_net_config.sriov_config._SYS_CLASS_NET', tmpdir)
+        self.stub_out('os_net_config.common.SYS_CLASS_NET', tmpdir)
 
+        common._LOG_FILE = '/tmp/' + rand + 'os_net_config.log'
         sriov_config._UDEV_RULE_FILE = '/tmp/' + rand + 'etc_udev_rules.d'\
             '80-persistent-os-net-config.rules'
         sriov_config._UDEV_LEGACY_RULE_FILE = '/tmp/' + rand + 'etc_udev_'\
@@ -50,11 +52,13 @@ class TestSriovConfig(base.TestCase):
 
     def tearDown(self):
         super(TestSriovConfig, self).tearDown()
+        if os.path.isfile(common._LOG_FILE):
+            os.remove(common._LOG_FILE)
         if os.path.isfile(sriov_config._SRIOV_CONFIG_FILE):
             os.remove(sriov_config._SRIOV_CONFIG_FILE)
         if os.path.isfile(sriov_config._IFUP_LOCAL_FILE):
             os.remove(sriov_config._IFUP_LOCAL_FILE)
-        shutil.rmtree(sriov_config._SYS_CLASS_NET)
+        shutil.rmtree(common.SYS_CLASS_NET)
         if os.path.isfile(sriov_config._RESET_SRIOV_RULES_FILE):
             os.remove(sriov_config._RESET_SRIOV_RULES_FILE)
         if os.path.isfile(sriov_config._ALLOCATE_VFS_FILE):
@@ -63,8 +67,8 @@ class TestSriovConfig(base.TestCase):
             os.remove(sriov_config._UDEV_LEGACY_RULE_FILE)
 
     def _write_numvfs(self, ifname, numvfs=0):
-        os.makedirs(sriov_config._get_dev_path(ifname))
-        numvfs_file = sriov_config._get_dev_path(ifname, 'sriov_numvfs')
+        os.makedirs(common.get_dev_path(ifname, '_device'))
+        numvfs_file = common.get_dev_path(ifname, 'sriov_numvfs')
         with open(numvfs_file, 'w') as f:
             f.write(str(numvfs))
 
@@ -250,7 +254,7 @@ class TestSriovConfig(base.TestCase):
 
         def get_vendor_id_stub(ifname):
             return vendor_id
-        self.stub_out('os_net_config.sriov_config.get_vendor_id',
+        self.stub_out('os_net_config.common.get_vendor_id',
                       get_vendor_id_stub)
 
         def configure_switchdev_stub(pf_name):
@@ -311,7 +315,6 @@ class TestSriovConfig(base.TestCase):
 
         self._action_order = []
         utils.write_yaml_config(sriov_config._SRIOV_CONFIG_FILE, pf_config)
-        sriov_config.configure_logger(debug=True)
         sriov_config.configure_sriov_pf()
         self.assertEqual(exp_actions, self._action_order)
         f = open(sriov_config._UDEV_LEGACY_RULE_FILE, 'r')
@@ -358,7 +361,6 @@ class TestSriovConfig(base.TestCase):
 
         self._action_order = []
         utils.write_yaml_config(sriov_config._SRIOV_CONFIG_FILE, pf_config)
-        sriov_config.configure_logger(debug=True)
         sriov_config.configure_sriov_pf()
         self.assertEqual(exp_actions, self._action_order)
         f = open(sriov_config._UDEV_LEGACY_RULE_FILE, 'r')
@@ -406,7 +408,6 @@ class TestSriovConfig(base.TestCase):
 
         self._action_order = []
         utils.write_yaml_config(sriov_config._SRIOV_CONFIG_FILE, pf_config)
-        sriov_config.configure_logger(debug=True)
         sriov_config.configure_sriov_pf()
         self.assertEqual(exp_actions, self._action_order)
         f = open(sriov_config._UDEV_LEGACY_RULE_FILE, 'r')
@@ -446,7 +447,6 @@ class TestSriovConfig(base.TestCase):
 
         self._action_order = []
         utils.write_yaml_config(sriov_config._SRIOV_CONFIG_FILE, pf_config)
-        sriov_config.configure_logger(debug=True)
         sriov_config.configure_sriov_pf()
         self.assertEqual(exp_actions, self._action_order)
         self.assertEqual(10, sriov_config.get_numvfs('p2p1'))
