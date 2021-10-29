@@ -16,11 +16,11 @@
 
 
 import argparse
-import logging
 import os
 import sys
 import yaml
 
+from os_net_config import common
 from os_net_config import impl_eni
 from os_net_config import impl_ifcfg
 from os_net_config import impl_iproute
@@ -29,7 +29,8 @@ from os_net_config import utils
 from os_net_config import validator
 from os_net_config import version
 
-logger = logging.getLogger(__name__)
+logger = common.configure_logger()
+
 _SYSTEM_CTL_CONFIG_FILE = '/etc/sysctl.d/os-net-sysctl.conf'
 
 
@@ -120,20 +121,6 @@ def parse_opts(argv):
     return opts
 
 
-def configure_logger(verbose=False, debug=False):
-    LOG_FORMAT = '[%(asctime)s] [%(levelname)s] %(message)s'
-    DATE_FORMAT = '%Y/%m/%d %I:%M:%S %p'
-    log_level = logging.WARN
-
-    if debug:
-        log_level = logging.DEBUG
-    elif verbose:
-        log_level = logging.INFO
-
-    logging.basicConfig(format=LOG_FORMAT, datefmt=DATE_FORMAT,
-                        level=log_level)
-
-
 def check_configure_sriov(obj):
     configure_sriov = False
     for member in obj.members:
@@ -163,10 +150,12 @@ def get_sriovpf_member_of_bond_ovs_port(obj):
     return net_devs_list
 
 
-def main(argv=sys.argv):
+def main(argv=sys.argv, main_logger=None):
     opts = parse_opts(argv)
-    configure_logger(opts.verbose, opts.debug)
-    logger.info('Using config file at: %s' % opts.config_file)
+    if not main_logger:
+        main_logger = common.configure_logger(log_file=not opts.noop)
+    common.logger_level(main_logger, opts.verbose, opts.debug)
+    main_logger.info(f"Using config file at: {opts.config_file}")
     iface_array = []
     configure_sriov = False
     sriovpf_member_of_bond_ovs_port_list = []
@@ -182,7 +171,7 @@ def main(argv=sys.argv):
             provider = impl_iproute.IPRouteNetConfig(noop=opts.noop,
                                                      root_dir=opts.root_dir)
         else:
-            logger.error('Invalid provider specified.')
+            main_logger.error("Invalid provider specified.")
             return 1
     else:
         if os.path.exists('%s/etc/sysconfig/network-scripts/' % opts.root_dir):
@@ -192,22 +181,23 @@ def main(argv=sys.argv):
             provider = impl_eni.ENINetConfig(noop=opts.noop,
                                              root_dir=opts.root_dir)
         else:
-            logger.error('Unable to set provider for this operating system.')
+            main_logger.error("Unable to set provider for this operating "
+                              "system.")
             return 1
 
     # Read the interface mapping file, if it exists
     # This allows you to override the default network naming abstraction
     # mappings by specifying a specific nicN->name or nicN->MAC mapping
     if os.path.exists(opts.mapping_file):
-        logger.info('Using mapping file at: %s' % opts.mapping_file)
+        main_logger.info(f"Using mapping file at: {opts.mapping_file}")
         with open(opts.mapping_file) as cf:
             iface_map = yaml.safe_load(cf.read())
             iface_mapping = iface_map.get("interface_mapping")
-            logger.debug('interface_mapping JSON: %s' % str(iface_mapping))
+            main_logger.debug(f"interface_mapping JSON: {str(iface_mapping)}")
             persist_mapping = opts.persist_mapping
-            logger.debug('persist_mapping: %s' % persist_mapping)
+            main_logger.debug(f"persist_mapping: {persist_mapping}")
     else:
-        logger.info('Not using any mapping file.')
+        main_logger.info("Not using any mapping file.")
         iface_mapping = None
         persist_mapping = False
 
@@ -228,22 +218,22 @@ def main(argv=sys.argv):
                 if requested_nic in mapped_nics.values():
                     if found is True:  # Name matches alias and real NIC
                         # (return the mapped NIC, but warn of overlap).
-                        logger.warning('"%s" overlaps with real NIC name.'
-                                       % (requested_nic))
+                        main_logger.warning(f"{requested_nic} overlaps with "
+                                            "real NIC name.")
                     else:
                         reported_nics[requested_nic] = requested_nic
                         found = True
                 if not found:
                     retval = 1
             if reported_nics:
-                logger.debug("Interface mapping requested for interface: "
-                             "%s" % reported_nics.keys())
+                main_logger.debug("Interface mapping requested for interface: "
+                                  "%s" % reported_nics.keys())
         else:
-            logger.debug("Interface mapping requested for all interfaces")
+            main_logger.debug("Interface mapping requested for all interfaces")
             reported_nics = mapped_nics
         # Return the report on the mapped NICs. If all NICs were found, exit
         # cleanly, otherwise exit with status 1.
-        logger.debug("Interface report requested, exiting after report.")
+        main_logger.debug("Interface report requested, exiting after report.")
         print(reported_nics)
         return retval
 
@@ -252,16 +242,17 @@ def main(argv=sys.argv):
         try:
             with open(opts.config_file) as cf:
                 iface_array = yaml.safe_load(cf.read()).get("network_config")
-                logger.debug('network_config JSON: %s' % str(iface_array))
+                main_logger.debug(f"network_config JSON: {str(iface_array)}")
         except IOError:
-            logger.error("Error reading file: %s" % opts.config_file)
+            main_logger.error(f"Error reading file: {opts.config_file}")
             return 1
     else:
-        logger.error('No config file exists at: %s' % opts.config_file)
+        main_logger.error(f"No config file exists at: {opts.config_file}")
         return 1
 
     if not isinstance(iface_array, list):
-        logger.error('No interfaces defined in config: %s' % opts.config_file)
+        main_logger.error("No interfaces defined in config: "
+                          f"{opts.config_file}")
         return 1
 
     for iface_json in iface_array:
@@ -272,10 +263,10 @@ def main(argv=sys.argv):
     validation_errors = validator.validate_config(iface_array)
     if validation_errors:
         if opts.exit_on_validation_errors:
-            logger.error('\n'.join(validation_errors))
+            main_logger.error('\n'.join(validation_errors))
             return 1
         else:
-            logger.warning('\n'.join(validation_errors))
+            main_logger.warning('\n'.join(validation_errors))
 
     # Look for the presence of SriovPF types in the first parse of the json
     # if SriovPFs exists then PF devices needs to be configured so that the VF
@@ -362,4 +353,4 @@ def main(argv=sys.argv):
 
 
 if __name__ == '__main__':
-    sys.exit(main(sys.argv))
+    sys.exit(main(sys.argv, main_logger=logger))

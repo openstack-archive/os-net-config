@@ -21,11 +21,11 @@ import re
 import time
 import yaml
 
+from os_net_config import common
 from os_net_config import sriov_config
 from oslo_concurrency import processutils
 
 logger = logging.getLogger(__name__)
-_SYS_CLASS_NET = '/sys/class/net'
 _SYS_BUS_PCI_DEV = '/sys/bus/pci/devices'
 # File to contain the DPDK mapped nics, as nic name will not be available after
 # binding driver, which is required for correct nic numbering.
@@ -109,14 +109,14 @@ def get_file_data(filename):
 
 def interface_mac(name):
     try:  # If the iface is part of a Linux bond, the real MAC is only here.
-        with open(_SYS_CLASS_NET + '/%s/bonding_slave/perm_hwaddr' % name,
+        with open(common.get_dev_path(name, 'bonding_slave/perm_hwaddr'),
                   'r') as f:
             return f.read().rstrip()
     except IOError:
         pass  # Iface is not part of a bond, continue
 
     try:
-        with open(_SYS_CLASS_NET + '/%s/address' % name, 'r') as f:
+        with open(common.get_dev_path(name, '_address'), 'r') as f:
             return f.read().rstrip()
     except IOError:
         # If the interface is bound to a DPDK driver, get the mac address from
@@ -137,12 +137,12 @@ def is_real_nic(interface_name):
     if interface_name == 'lo':
         return True
 
-    device_dir = _SYS_CLASS_NET + '/%s/device' % interface_name
+    device_dir = common.get_dev_path(interface_name, '_device')
     has_device_dir = os.path.isdir(device_dir)
 
     address = None
     try:
-        with open(_SYS_CLASS_NET + '/%s/address' % interface_name, 'r') as f:
+        with open(common.get_dev_path(interface_name, "_address"), 'r') as f:
             address = f.read().rstrip()
     except IOError:
         return False
@@ -155,7 +155,7 @@ def is_real_nic(interface_name):
 
 def _is_vf(pci_address):
 
-    # If DPDK drivers are bound on a VF, then the path _SYS_CLASS_NET
+    # If DPDK drivers are bound on a VF, then the path common.SYS_CLASS_NET
     # wouldn't exist. Instead we look for the path
     # /sys/bus/pci/devices/<PCI addr>/physfn to understand if the device
     # is actually a VF. This path could be used by VFs not bound with
@@ -167,7 +167,7 @@ def _is_vf(pci_address):
 
 
 def _is_vf_by_name(interface_name, check_mapping_file=False):
-    vf_path_check = _SYS_CLASS_NET + '/%s/device/physfn' % interface_name
+    vf_path_check = common.get_dev_path(interface_name, 'physfn')
     is_sriov_vf = os.path.isdir(vf_path_check)
     if not is_sriov_vf and check_mapping_file:
         sriov_map = _get_sriov_map()
@@ -187,7 +187,8 @@ def _is_available_nic(interface_name, check_active=True):
             return False
 
         operstate = None
-        with open(_SYS_CLASS_NET + '/%s/operstate' % interface_name, 'r') as f:
+        with open(common.get_dev_path(interface_name, '_operstate'),
+                  'r') as f:
             operstate = f.read().rstrip().lower()
         if check_active and operstate != 'up':
             return False
@@ -231,8 +232,8 @@ def _ordered_nics(check_active):
     embedded_nics = []
     nics = []
     logger.info("Finding active nics")
-    for name in glob.iglob(_SYS_CLASS_NET + '/*'):
-        nic = name[(len(_SYS_CLASS_NET) + 1):]
+    for name in glob.iglob(common.SYS_CLASS_NET + '/*'):
+        nic = name[(len(common.SYS_CLASS_NET) + 1):]
         if _is_available_nic(nic, check_active):
             if _is_embedded_nic(nic):
                 logger.info("%s is an embedded active nic" % nic)
@@ -304,7 +305,7 @@ def bind_dpdk_interfaces(ifname, driver, noop):
                     raise OvsDpdkBindException(msg)
 
             mac_address = interface_mac(ifname)
-            vendor_id = get_vendor_id(ifname)
+            vendor_id = common.get_vendor_id(ifname)
             try:
                 out, err = processutils.execute('driverctl', 'set-override',
                                                 pci_address, driver)
@@ -382,29 +383,9 @@ def translate_ifname_to_pci_address(ifname, noop):
     return pci_address
 
 
-def get_vendor_id(ifname):
-    try:
-        with open('%s/%s/device/vendor' % (_SYS_CLASS_NET, ifname),
-                  'r') as f:
-            out = f.read().strip()
-        return out
-    except IOError:
-        return
-
-
-def get_device_id(ifname):
-    try:
-        with open('%s/%s/device/device' % (_SYS_CLASS_NET, ifname),
-                  'r') as f:
-            out = f.read().strip()
-        return out
-    except IOError:
-        return
-
-
 def is_mellanox_interface(ifname):
     MLNX_VENDOR_ID = "0x15b3"
-    vendor_id = get_vendor_id(ifname)
+    vendor_id = common.get_vendor_id(ifname)
     if vendor_id == MLNX_VENDOR_ID:
         return True
     return False
@@ -412,7 +393,7 @@ def is_mellanox_interface(ifname):
 
 def get_interface_driver(ifname):
     try:
-        uevent = '%s/%s/device/uevent' % (_SYS_CLASS_NET, ifname)
+        uevent = common.get_dev_path(ifname, 'device/uevent')
         with open(uevent, 'r') as f:
             out = f.read().strip()
             for line in out.split('\n'):
@@ -426,8 +407,8 @@ def get_interface_driver(ifname):
 
 def get_dpdk_devargs(ifname, noop):
     if not noop:
-        vendor_id = get_vendor_id(ifname)
-        device_id = get_device_id(ifname)
+        vendor_id = common.get_vendor_id(ifname)
+        device_id = common.get_device_id(ifname)
         if vendor_id == "0x15b3":
             logger.info("Getting devargs for Mellanox cards")
             if device_id == "0x1007":
@@ -446,7 +427,6 @@ def get_dpdk_devargs(ifname, noop):
                 # be treated the same as VFs of other devices
                 dpdk_devargs = get_pci_address(ifname, noop)
             else:
-                logger.error("Unable to get devargs for interface %s" % ifname)
                 msg = ("Unable to get devargs for interface %s" % ifname)
                 raise InvalidInterfaceException(msg)
         else:
@@ -646,8 +626,8 @@ def configure_sriov_vfs():
 
 
 def get_vf_devname(pf_name, vfid):
-    vf_path = os.path.join(_SYS_CLASS_NET, pf_name, "device/virtfn%d/net"
-                           % vfid)
+    vf_path = os.path.join(common.SYS_CLASS_NET, pf_name,
+                           f"device/virtfn{vfid}/net")
     if os.path.isdir(vf_path):
         vf_nic = os.listdir(vf_path)
     else:
