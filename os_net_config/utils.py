@@ -402,6 +402,14 @@ def get_device_id(ifname):
         return
 
 
+def is_mellanox_interface(ifname):
+    MLNX_VENDOR_ID = "0x15b3"
+    vendor_id = get_vendor_id(ifname)
+    if vendor_id == MLNX_VENDOR_ID:
+        return True
+    return False
+
+
 def get_interface_driver(ifname):
     try:
         uevent = '%s/%s/device/uevent' % (_SYS_CLASS_NET, ifname)
