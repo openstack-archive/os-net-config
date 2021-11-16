@@ -26,6 +26,7 @@ import sys
 
 SYS_CLASS_NET = '/sys/class/net'
 _LOG_FILE = '/var/log/os-net-config.log'
+MLNX_VENDOR_ID = "0x15b3"
 
 
 def configure_logger(log_file=False, verbose=False, debug=False):
@@ -84,3 +85,8 @@ def get_device_id(ifname):
         return out
     except IOError:
         return
+
+
+def is_mellanox_interface(ifname):
+    vendor_id = get_vendor_id(ifname)
+    return vendor_id == MLNX_VENDOR_ID
