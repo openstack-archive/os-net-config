@@ -1775,7 +1775,7 @@ OVS_EXTRA="set Interface $DEVICE options:dpdk-devargs=0000:00:09.0"
 
         def stub_vendor_id_mellanox(ifname):
             return True
-        self.stub_out('os_net_config.utils.is_mellanox_interface',
+        self.stub_out('os_net_config.common.is_mellanox_interface',
                       stub_vendor_id_mellanox)
 
         interface = objects.Interface(name='nic1')
@@ -1921,7 +1921,7 @@ OVS_EXTRA="set Interface dpdk0 options:dpdk-devargs=0000:00:08.0 \
 
         def stub_vendor_id_mellanox(ifname):
             return True
-        self.stub_out('os_net_config.utils.is_mellanox_interface',
+        self.stub_out('os_net_config.common.is_mellanox_interface',
                       stub_vendor_id_mellanox)
 
         iface0 = objects.Interface(name='nic1')

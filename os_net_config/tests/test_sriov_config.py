@@ -420,7 +420,7 @@ class TestSriovConfig(base.TestCase):
 
         """
 
-        self.setUp_pf_stubs(sriov_config.MLNX_VENDOR_ID)
+        self.setUp_pf_stubs(common.MLNX_VENDOR_ID)
 
         exp_actions = [
             'udev_monitor_setup',

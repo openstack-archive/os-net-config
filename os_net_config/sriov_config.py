@@ -42,7 +42,6 @@ _IFUP_LOCAL_FILE = '/sbin/ifup-local'
 _RESET_SRIOV_RULES_FILE = '/etc/udev/rules.d/70-tripleo-reset-sriov.rules'
 _ALLOCATE_VFS_FILE = '/etc/sysconfig/allocate_vfs'
 _MLNX_DRIVER = "mlx5_core"
-MLNX_VENDOR_ID = "0x15b3"
 MLNX_UNBIND_FILE_PATH = "/sys/bus/pci/drivers/mlx5_core/unbind"
 
 MAX_RETRIES = 10
@@ -300,8 +299,7 @@ def configure_sriov_pf(execution_from_cli=False, restart_openvswitch=False):
                                                       item['numvfs'])
             # When configuring vdpa, we need to configure switchdev before
             # we create the VFs
-            vendor_id = common.get_vendor_id(item['name'])
-            is_mlnx = vendor_id == MLNX_VENDOR_ID
+            is_mlnx = common.is_mellanox_interface(item['name'])
             # Configure switchdev mode when vdpa
             if item.get('vdpa') and is_mlnx:
                 configure_switchdev(item['name'])

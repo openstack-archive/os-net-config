@@ -22,6 +22,7 @@ import os
 import re
 
 import os_net_config
+from os_net_config import common
 from os_net_config import objects
 from os_net_config import utils
 
@@ -983,7 +984,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         for the interface which is a member of ovs_dpdk_port
         with NM and DHCP disabled
         """
-        if utils.is_mellanox_interface(ifname):
+        if common.is_mellanox_interface(ifname):
             self.nm_controlled = False
             self.use_dhcp = False
             dpdk_if_name = objects.Interface(ifname)
@@ -1019,7 +1020,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         """
         for dpdk_port in ovs_dpdk_bond.members:
             ifname = dpdk_port.members[0].name
-            if utils.is_mellanox_interface(ifname):
+            if common.is_mellanox_interface(ifname):
                 self.nm_controlled = False
                 self.use_dhcp = False
                 dpdk_if_name = objects.Interface(ifname)

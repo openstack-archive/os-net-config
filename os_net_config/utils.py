@@ -383,14 +383,6 @@ def translate_ifname_to_pci_address(ifname, noop):
     return pci_address
 
 
-def is_mellanox_interface(ifname):
-    MLNX_VENDOR_ID = "0x15b3"
-    vendor_id = common.get_vendor_id(ifname)
-    if vendor_id == MLNX_VENDOR_ID:
-        return True
-    return False
-
-
 def get_interface_driver(ifname):
     try:
         uevent = common.get_dev_path(ifname, 'device/uevent')
