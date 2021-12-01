@@ -287,6 +287,11 @@ def diff(filename, data):
 
 
 def bind_dpdk_interfaces(ifname, driver, noop):
+    if common.is_mellanox_interface(ifname) and 'vfio-pci' in driver:
+        msg = ("For Mellanox NIC %s, the default driver vfio-pci "
+               "needs to be overridden" % ifname)
+        raise OvsDpdkBindException(msg)
+
     iface_driver = get_interface_driver(ifname)
     if iface_driver == driver:
         logger.info("Driver (%s) is already bound to the device (%s)" %
@@ -322,7 +327,7 @@ def bind_dpdk_interfaces(ifname, driver, noop):
                     # - get_dpdk_devargs() in case of OvsDpdkPort and
                     #   OvsDpdkBond.
                     # - bind_dpdk_interface() in case of OvsDpdkBond.
-                    if vendor_id == "0x15b3":
+                    if vendor_id == common.MLNX_VENDOR_ID:
                         processutils.execute('ethtool', '-i', ifname,
                                              attempts=10)
 
