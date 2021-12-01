@@ -526,6 +526,14 @@ def get_vendor_id(ifname):
         return
 
 
+def run_ip_config_cmd_safe(raise_error, *cmd, **kwargs):
+    try:
+        run_ip_config_cmd(*cmd)
+    except processutils.ProcessExecutionError:
+        if raise_error:
+            raise
+
+
 def get_pf_pci(pf_name):
     pf_pci_path = _get_dev_path(pf_name, "uevent")
     pf_info = get_file_data(pf_pci_path)
@@ -573,6 +581,7 @@ def if_up_interface(device):
 def configure_sriov_vf():
     sriov_map = _get_sriov_map()
     for item in sriov_map:
+        raise_error = True
         if item['device_type'] == 'vf':
             pf_name = item['device']['name']
             vfid = item['device']['vfid']
@@ -589,10 +598,14 @@ def configure_sriov_vf():
                 run_ip_config_cmd(*vlan_cmd)
             if 'max_tx_rate' in item:
                 cmd = base_cmd + ('max_tx_rate', str(item['max_tx_rate']))
-                run_ip_config_cmd(*cmd)
+                if item['max_tx_rate'] == 0:
+                    raise_error = False
+                run_ip_config_cmd_safe(raise_error, *cmd)
             if 'min_tx_rate' in item:
                 cmd = base_cmd + ('min_tx_rate', str(item['min_tx_rate']))
-                run_ip_config_cmd(*cmd)
+                if item['min_tx_rate'] == 0:
+                    raise_error = False
+                run_ip_config_cmd_safe(raise_error, *cmd)
             if 'spoofcheck' in item:
                 cmd = base_cmd + ('spoofchk', item['spoofcheck'])
                 run_ip_config_cmd(*cmd)
