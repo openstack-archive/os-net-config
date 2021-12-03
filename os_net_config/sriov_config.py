@@ -546,6 +546,14 @@ def _pf_interface_up(pf_device):
     run_ip_config_cmd('ip', 'link', 'set', 'dev', pf_device['name'], 'up')
 
 
+def run_ip_config_cmd_safe(raise_error, *cmd, **kwargs):
+    try:
+        run_ip_config_cmd(*cmd)
+    except processutils.ProcessExecutionError:
+        if raise_error:
+            raise
+
+
 def get_pf_pci(pf_name):
     pf_pci_path = common.get_dev_path(pf_name, "uevent")
     pf_info = get_file_data(pf_pci_path)
@@ -593,12 +601,14 @@ def if_up_interface(device):
 def configure_sriov_vf():
     sriov_map = _get_sriov_map()
     for item in sriov_map:
+        raise_error = True
         if item['device_type'] == 'vf':
             pf_name = item['device']['name']
             vfid = item['device']['vfid']
             base_cmd = ('ip', 'link', 'set', 'dev', pf_name, 'vf', str(vfid))
             logger.info(f"Configuring settings for PF: {pf_name} VF: {vfid} "
                         f"VF name: {item['name']}")
+            raise_error = True
             if 'macaddr' in item:
                 cmd = base_cmd + ('mac', item['macaddr'])
                 run_ip_config_cmd(*cmd)
@@ -609,10 +619,14 @@ def configure_sriov_vf():
                 run_ip_config_cmd(*vlan_cmd)
             if 'max_tx_rate' in item:
                 cmd = base_cmd + ('max_tx_rate', str(item['max_tx_rate']))
-                run_ip_config_cmd(*cmd)
+                if item['max_tx_rate'] == 0:
+                    raise_error = False
+                run_ip_config_cmd_safe(raise_error, *cmd)
             if 'min_tx_rate' in item:
                 cmd = base_cmd + ('min_tx_rate', str(item['min_tx_rate']))
-                run_ip_config_cmd(*cmd)
+                if item['min_tx_rate'] == 0:
+                    raise_error = False
+                run_ip_config_cmd_safe(raise_error, *cmd)
             if 'spoofcheck' in item:
                 cmd = base_cmd + ('spoofchk', item['spoofcheck'])
                 run_ip_config_cmd(*cmd)
