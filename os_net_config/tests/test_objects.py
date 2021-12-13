@@ -1623,21 +1623,14 @@ class TestIbChildInterface(base.TestCase):
         ib_child_interface = objects.IbChildInterface('foo', pkey_id=100)
         self.assertEqual(100, ib_child_interface.pkey_id)
 
-    def test_ib_child_interface_pkek_id_str(self):
-        data = '{"type": "ib_child_interface", ' \
-               '"parent": "foo", "pkey_id": "100"}'
-        ib_child_interface = \
-            objects.IbChildInterface.from_json(json.loads(data))
-        self.assertEqual(100, ib_child_interface.pkey_id)
-
-    def test_ib_child_interface_pkey_id_str_hexa(self):
+    def test_ib_child_interface_pkey_id_hexa(self):
         data = '{"type": "ib_child_interface", ' \
                '"parent": "foo", "pkey_id": "0x64"}'
         ib_child_interface = \
             objects.IbChildInterface.from_json(json.loads(data))
         self.assertEqual(100, ib_child_interface.pkey_id)
 
-    def test_ib_child_interface_pkey_id_str_invalid_base(self):
+    def test_ib_child_interface_pkey_id_invalid_base(self):
         data = '{"type": "ib_child_interface", ' \
                '"parent": "foo", "pkey_id": "0b01100100"}'
         self.assertRaises(objects.InvalidConfigException,
@@ -1646,14 +1639,14 @@ class TestIbChildInterface(base.TestCase):
 
     def test_ib_child_interface_nm_controlled_true(self):
         data = '{"type": "ib_child_interface", ' \
-               '"parent": "foo", "pkey_id": "100"}'
+               '"parent": "foo", "pkey_id": 100}'
         ib_child_interface = \
             objects.IbChildInterface.from_json(json.loads(data))
         self.assertEqual(True, ib_child_interface.nm_controlled)
 
     def test_ib_child_interface_pkey_id_zero(self):
         data = '{"type": "ib_child_interface", ' \
-               '"parent": "foo", "pkey_id": "0"}'
+               '"parent": "foo", "pkey_id": 0}'
         self.assertRaises(objects.InvalidConfigException,
                           objects.object_from_json,
                           json.loads(data))

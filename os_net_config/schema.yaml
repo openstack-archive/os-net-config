@@ -1505,7 +1505,7 @@ definitions:
             parent:
                 $ref: "#/definitions/string_or_param"
             pkey_id:
-                $ref: "#/definitions/string_or_param"
+                $ref: "#/definitions/int_or_param"
             primary:
                 $ref: "#/definitions/bool_or_param"
             # common options:

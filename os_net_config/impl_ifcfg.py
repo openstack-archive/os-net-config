@@ -430,7 +430,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             data += "TYPE=Infiniband\n"
             data += "PKEY=yes\n"
             data += "PHYSDEV=%s\n" % base_opt.parent
-            data += "PKEY_ID=%s\n" % base_opt.pkey_id
+            data += "PKEY_ID=%d\n" % base_opt.pkey_id
         elif re.match(r'\w+\.\d+$', base_opt.name):
             data += "VLAN=yes\n"
         elif isinstance(base_opt, objects.Interface):
