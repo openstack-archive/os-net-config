@@ -1289,8 +1289,8 @@ class IbChildInterface(_BaseOpts):
                 pkey_id = int(pkey_id, base=16)
             except Exception:
                 # Note (Abdallahyas): We do not care for other
-                # bases other than decimal and hexa
-                msg = "pkey only support decimal and hex bases, not int"
+                # bases other than base 10 or base 16
+                msg = "pkey only supports base 10 or base 16 int numbers"
                 raise InvalidConfigException(msg)
         if (pkey_id < 0x0001 or pkey_id >= 0x7fff):
             msg = "Invalid pkey value 0x%X" % pkey_id
