@@ -9,6 +9,8 @@
                     "driver": "igb_uio",
                     "mtu": 8192,
                     "rx_queue": 4,
+                    "rx_queue_size": 1024,
+                    "tx_queue_size": 2048,
                     "members": [
                         {
                             "type": "interface",

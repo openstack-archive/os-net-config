@@ -578,6 +578,14 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 data += "RX_QUEUE=%i\n" % base_opt.rx_queue
                 ovs_extra.append("set Interface $DEVICE " +
                                  "options:n_rxq=$RX_QUEUE")
+            if base_opt.rx_queue_size:
+                data += "RX_QUEUE_SIZE=%i\n" % base_opt.rx_queue_size
+                ovs_extra.append("set Interface $DEVICE " +
+                                 "options:n_rxq_desc=$RX_QUEUE_SIZE")
+            if base_opt.tx_queue_size:
+                data += "TX_QUEUE_SIZE=%i\n" % base_opt.tx_queue_size
+                ovs_extra.append("set Interface $DEVICE " +
+                                 "options:n_txq_desc=$TX_QUEUE_SIZE")
         elif isinstance(base_opt, objects.OvsDpdkBond):
             ovs_extra.extend(base_opt.ovs_extra)
             # Referring to bug:1643026, the below commenting of the interfaces,
@@ -614,6 +622,17 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                     for member in base_opt.members:
                         ovs_extra.append("set Interface %s options:n_rxq="
                                          "$RX_QUEUE" % member.name)
+                if base_opt.rx_queue_size:
+                    data += "RX_QUEUE_SIZE=%i\n" % base_opt.rx_queue_size
+                    for member in base_opt.members:
+                        ovs_extra.append("set Interface %s options:n_rxq_desc="
+                                         "$RX_QUEUE_SIZE" % member.name)
+                if base_opt.tx_queue_size:
+                    data += "TX_QUEUE_SIZE=%i\n" % base_opt.tx_queue_size
+                    for member in base_opt.members:
+                        ovs_extra.append("set Interface %s options:n_txq_desc="
+                                         "$TX_QUEUE_SIZE" % member.name)
+
             if base_opt.ovs_options:
                 data += "OVS_OPTIONS=\"%s\"\n" % base_opt.ovs_options
             ovs_extra.extend(base_opt.ovs_extra)

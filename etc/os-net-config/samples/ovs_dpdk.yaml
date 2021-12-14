@@ -22,6 +22,11 @@ network_config:
         # should be less than the PMD cores as each queue will have one PMD
         # thread (CPU) associated with it.
         rx_queue: 4
+        # rx_queue_size and tx_queue_size are optional. It configures the
+        # number of rx/tx descriptors that the associated NIC will be
+        # initialized with.
+        rx_queue_size: 1024
+        tx_queue_size: 2048
         members:
             - type: interface
               name: nic2
