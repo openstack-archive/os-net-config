@@ -18,9 +18,9 @@ import logging
 
 import netaddr
 import os_net_config
+from os_net_config import common
 from os_net_config import objects
 from os_net_config import utils
-
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +98,8 @@ class ENINetConfig(os_net_config.NetConfig):
                     if isinstance(mem, objects.Interface):
                         data += "    pre-up ip addr flush dev %s\n" % mem.name
                 if interface.primary_interface_name:
-                    mac = utils.interface_mac(interface.primary_interface_name)
+                    mac = common.interface_mac(
+                        interface.primary_interface_name)
                     ovs_extra.append("set bridge %s other-config:hwaddr=%s" %
                                      (interface.name, mac))
             ovs_extra.extend(interface.ovs_extra)

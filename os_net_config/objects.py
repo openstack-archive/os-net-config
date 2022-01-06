@@ -23,6 +23,7 @@ import logging
 import netaddr
 from oslo_utils import strutils
 
+from os_net_config import common
 from os_net_config import utils
 
 
@@ -151,7 +152,7 @@ def mapped_nics(nic_mapping=None):
                 # If 'nic' is actually a mac address, retrieve actual nic name
                 for nic in available_nics:
                     try:
-                        mac = utils.interface_mac(nic)
+                        mac = common.interface_mac(nic)
                     except IOError:
                         continue
                     if nic_mapped == mac:
@@ -352,7 +353,7 @@ class _BaseOpts(object):
                 self.name = name
                 self.hwname = '%s%s' % (mapped_nic_names[base_name],
                                         vlan_suffix)
-                self.hwaddr = utils.interface_mac(self.hwname)
+                self.hwaddr = common.interface_mac(self.hwname)
                 self.renamed = True
             else:
                 self.name = '%s%s' % (mapped_nic_names[base_name], vlan_suffix)

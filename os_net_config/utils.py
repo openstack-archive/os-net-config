@@ -27,15 +27,6 @@ from oslo_concurrency import processutils
 
 logger = logging.getLogger(__name__)
 _SYS_BUS_PCI_DEV = '/sys/bus/pci/devices'
-# File to contain the DPDK mapped nics, as nic name will not be available after
-# binding driver, which is required for correct nic numbering.
-# Format of the file (list mapped nic's details):
-#   -
-#     name: eth1
-#     pci_address: 0000:02:00.0
-#     mac_address: 01:02:03:04:05:06
-#     driver: vfio-pci
-_DPDK_MAPPING_FILE = '/var/lib/os-net-config/dpdk_mapping.yaml'
 # sriov_config service shall be created and enabled so that the various
 # SR-IOV PF and VF configurations shall be done during reboot as well using
 # sriov_config.py installed in path /usr/bin/os-net-config-sriov
@@ -95,40 +86,6 @@ def ensure_directory_presence(filepath):
         os.makedirs(dir_path)
 
 
-def get_file_data(filename):
-    if not os.path.exists(filename):
-        return ''
-
-    try:
-        with open(filename, 'r') as f:
-            return f.read()
-    except IOError:
-        logger.error("Error reading file: %s" % filename)
-        return ''
-
-
-def interface_mac(name):
-    try:  # If the iface is part of a Linux bond, the real MAC is only here.
-        with open(common.get_dev_path(name, 'bonding_slave/perm_hwaddr'),
-                  'r') as f:
-            return f.read().rstrip()
-    except IOError:
-        pass  # Iface is not part of a bond, continue
-
-    try:
-        with open(common.get_dev_path(name, '_address'), 'r') as f:
-            return f.read().rstrip()
-    except IOError:
-        # If the interface is bound to a DPDK driver, get the mac address from
-        # the DPDK mapping file as /sys files will be removed after binding.
-        dpdk_mac_address = _get_dpdk_mac_address(name)
-        if dpdk_mac_address:
-            return dpdk_mac_address
-
-        logger.error("Unable to read mac address: %s" % name)
-        raise
-
-
 def is_active_nic(interface_name):
     return _is_available_nic(interface_name, True)
 
@@ -170,7 +127,7 @@ def _is_vf_by_name(interface_name, check_mapping_file=False):
     vf_path_check = common.get_dev_path(interface_name, 'physfn')
     is_sriov_vf = os.path.isdir(vf_path_check)
     if not is_sriov_vf and check_mapping_file:
-        sriov_map = _get_sriov_map()
+        sriov_map = common.get_sriov_map()
         for item in sriov_map:
             if (item['name'] == interface_name and
                     item['device_type'] == 'vf'):
@@ -246,7 +203,7 @@ def _ordered_nics(check_active):
 
     # Adding nics which are bound to DPDK as it will not be found in '/sys'
     # after it is bound to DPDK driver.
-    contents = get_file_data(_DPDK_MAPPING_FILE)
+    contents = common.get_file_data(common.DPDK_MAPPING_FILE)
     if contents:
         dpdk_map = yaml.safe_load(contents)
         for item in dpdk_map:
@@ -267,7 +224,7 @@ def _ordered_nics(check_active):
                     nics.append(nic)
     else:
         logger.info("No DPDK mapping available in path (%s)" %
-                    _DPDK_MAPPING_FILE)
+                    common.DPDK_MAPPING_FILE)
 
     # NOTE: we could just natural sort all active devices,
     # but this ensures em, eno, and eth are ordered first
@@ -279,7 +236,7 @@ def _ordered_nics(check_active):
 
 
 def diff(filename, data):
-    file_data = get_file_data(filename)
+    file_data = common.get_file_data(filename)
     logger.debug("Diff file data:\n%s" % file_data)
     logger.debug("Diff data:\n%s" % data)
     # convert to string as JSON may have unicode in it
@@ -309,7 +266,7 @@ def bind_dpdk_interfaces(ifname, driver, noop):
                     msg = "Failed to modprobe vfio-pci module"
                     raise OvsDpdkBindException(msg)
 
-            mac_address = interface_mac(ifname)
+            mac_address = common.interface_mac(ifname)
             vendor_id = common.get_vendor_id(ifname)
             try:
                 out, err = processutils.execute('driverctl', 'set-override',
@@ -383,7 +340,7 @@ def translate_ifname_to_pci_address(ifname, noop):
     pci_address = get_stored_pci_address(ifname, noop)
     if pci_address is None and not noop:
         pci_address = get_pci_address(ifname, noop=False)
-        mac_address = interface_mac(ifname)
+        mac_address = common.interface_mac(ifname)
         _update_dpdk_map(ifname, pci_address, mac_address, driver=None)
     return pci_address
 
@@ -413,7 +370,7 @@ def get_dpdk_devargs(ifname, noop):
                 # address associated with multiple ports. Using a PCI
                 # device won’t work. Instead, we should use
                 # "class=eth,mac=<MAC>"
-                dpdk_devargs = "class=eth,mac=%s" % interface_mac(ifname)
+                dpdk_devargs = f"class=eth,mac={common.interface_mac(ifname)}"
             elif is_active_nic(ifname):
                 # Other Mellanox devices are active and they are not stored
                 # in dpdk_mapping.yaml file, so we need to get their pci
@@ -436,7 +393,7 @@ def get_dpdk_devargs(ifname, noop):
 # Once the interface is bound to a DPDK driver, all the references to the
 # interface including '/sys' and '/proc', will be removed. And there is no
 # way to identify the nic name after it is bound. So, the DPDK bound nic info
-# is stored persistently in _DPDK_MAPPING_FILE and is used to for nic numbering
+# is stored persistently in DPDK_MAPPING_FILE and is used to for nic numbering
 # on subsequent runs of os-net-config.
 def _update_dpdk_map(ifname, pci_address, mac_address, driver):
     dpdk_map = _get_dpdk_map()
@@ -454,21 +411,13 @@ def _update_dpdk_map(ifname, pci_address, mac_address, driver):
         new_item['driver'] = driver
         dpdk_map.append(new_item)
 
-    write_yaml_config(_DPDK_MAPPING_FILE, dpdk_map)
+    write_yaml_config(common.DPDK_MAPPING_FILE, dpdk_map)
 
 
 def _get_dpdk_map():
-    contents = get_file_data(_DPDK_MAPPING_FILE)
+    contents = common.get_file_data(common.DPDK_MAPPING_FILE)
     dpdk_map = yaml.safe_load(contents) if contents else []
     return dpdk_map
-
-
-def _get_dpdk_mac_address(name):
-    contents = get_file_data(_DPDK_MAPPING_FILE)
-    dpdk_map = yaml.safe_load(contents) if contents else []
-    for item in dpdk_map:
-        if item['name'] == name:
-            return item['mac_address']
 
 
 def update_sriov_pf_map(ifname, numvfs, noop, promisc=None,
@@ -478,7 +427,7 @@ def update_sriov_pf_map(ifname, numvfs, noop, promisc=None,
         if cur_numvfs > 0 and cur_numvfs != numvfs:
             msg = ("Can't change the numvfs for %s" % ifname)
             raise sriov_config.SRIOVNumvfsException(msg)
-        sriov_map = _get_sriov_map()
+        sriov_map = common.get_sriov_map()
         for item in sriov_map:
             if item['device_type'] == 'pf' and item['name'] == ifname:
                 item['numvfs'] = numvfs
@@ -498,13 +447,7 @@ def update_sriov_pf_map(ifname, numvfs, noop, promisc=None,
             new_item['link_mode'] = link_mode
             sriov_map.append(new_item)
 
-        write_yaml_config(sriov_config._SRIOV_CONFIG_FILE, sriov_map)
-
-
-def _get_sriov_map():
-    contents = get_file_data(sriov_config._SRIOV_CONFIG_FILE)
-    sriov_map = yaml.safe_load(contents) if contents else []
-    return sriov_map
+        write_yaml_config(common.SRIOV_CONFIG_FILE, sriov_map)
 
 
 def _set_vf_fields(vf_name, vlan_id, qos, spoofcheck, trust, state, macaddr,
@@ -540,7 +483,7 @@ def update_sriov_vf_map(pf_name, vfid, vf_name, vlan_id=0, qos=0,
                         spoofcheck=None, trust=None, state=None, macaddr=None,
                         promisc=None, pci_address=None,
                         min_tx_rate=0, max_tx_rate=0):
-    sriov_map = _get_sriov_map()
+    sriov_map = common.get_sriov_map()
     for item in sriov_map:
         if (item['device_type'] == 'vf' and
            item['device'].get('name') == pf_name and
@@ -560,11 +503,11 @@ def update_sriov_vf_map(pf_name, vfid, vf_name, vlan_id=0, qos=0,
         _clear_empty_values(new_item)
         sriov_map.append(new_item)
 
-    write_yaml_config(sriov_config._SRIOV_CONFIG_FILE, sriov_map)
+    write_yaml_config(common.SRIOV_CONFIG_FILE, sriov_map)
 
 
 def _get_vf_name_from_map(pf_name, vfid):
-    sriov_map = _get_sriov_map()
+    sriov_map = common.get_sriov_map()
     for item in sriov_map:
         if (item['device_type'] == 'vf' and
            item['device'].get('name') == pf_name and
@@ -623,8 +566,7 @@ def configure_sriov_vfs():
 
 
 def get_vf_devname(pf_name, vfid):
-    vf_path = os.path.join(common.SYS_CLASS_NET, pf_name,
-                           f"device/virtfn{vfid}/net")
+    vf_path = common.get_dev_path(pf_name, f"virtfn{vfid}/net")
     if os.path.isdir(vf_path):
         vf_nic = os.listdir(vf_path)
     else:
@@ -754,7 +696,7 @@ def generate_vpp_config(vpp_config_path, vpp_interfaces, vpp_bonds):
     :return: updated VPP config content.
     """
 
-    data = get_file_data(vpp_config_path)
+    data = common.get_file_data(vpp_config_path)
 
     # Add interface config to 'dpdk' section
     for vpp_interface in vpp_interfaces:
@@ -911,7 +853,7 @@ def update_vpp_mapping(vpp_interfaces, vpp_bonds):
         else:
             raise VppException('Bond %s not found in VPP.' % vpp_bond.name)
 
-    vpp_start_cli = get_file_data(_VPP_EXEC_FILE)
+    vpp_start_cli = common.get_file_data(_VPP_EXEC_FILE)
     for cli_line in cli_list:
         if not re.search(r'^\s*%s\s*$' % cli_line,
                          vpp_start_cli, re.MULTILINE):
