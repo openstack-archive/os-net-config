@@ -979,6 +979,16 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         logger.debug('ovs dpdk port data: %s' % data)
         self.interface_data[ovs_dpdk_port.name] = data
 
+        """Add an extra ifcfg entry for mellanox NICs,
+        for the interface which is a member of ovs_dpdk_port
+        with NM and DHCP disabled
+        """
+        if utils.is_mellanox_interface(ifname):
+            self.nm_controlled = False
+            self.use_dhcp = False
+            dpdk_if_name = objects.Interface(ifname)
+            self.add_interface(dpdk_if_name)
+
     def add_ovs_dpdk_bond(self, ovs_dpdk_bond):
         """Add an OvsDPDKBond object to the net config object.
 
@@ -1002,6 +1012,18 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             self._add_routes(ovs_dpdk_bond.name, ovs_dpdk_bond.routes)
         if ovs_dpdk_bond.rules:
             self._add_rules(ovs_dpdk_bond.name, ovs_dpdk_bond.rules)
+
+        """Add an extra ifcfg entry for mellanox NICs,
+        for all interfaces which is a member of ovs_dpdk_bond
+        with NM and DHCP disabled
+        """
+        for dpdk_port in ovs_dpdk_bond.members:
+            ifname = dpdk_port.members[0].name
+            if utils.is_mellanox_interface(ifname):
+                self.nm_controlled = False
+                self.use_dhcp = False
+                dpdk_if_name = objects.Interface(ifname)
+                self.add_interface(dpdk_if_name)
 
     def add_sriov_pf(self, sriov_pf):
         """Add a SriovPF object to the net config object
