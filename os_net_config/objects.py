@@ -1512,7 +1512,7 @@ class SriovPF(_BaseOpts):
                  defroute=True, dhclient_args=None, dns_servers=None,
                  nm_controlled=False, onboot=True, domain=None, members=None,
                  promisc=None, link_mode='legacy', ethtool_opts=None,
-                 vdpa=False):
+                 vdpa=False, steering_mode=None):
         addresses = addresses or []
         routes = routes or []
         rules = rules or []
@@ -1532,6 +1532,7 @@ class SriovPF(_BaseOpts):
         self.link_mode = link_mode
         self.ethtool_opts = ethtool_opts
         self.vdpa = vdpa
+        self.steering_mode = steering_mode
 
     @staticmethod
     def get_on_off(config):
@@ -1552,6 +1553,10 @@ class SriovPF(_BaseOpts):
         link_mode = json.get('link_mode', 'legacy')
         ethtool_opts = json.get('ethtool_opts', None)
         vdpa = json.get('vdpa', False)
+        steering_mode = json.get('steering_mode')
+        if steering_mode is not None and steering_mode not in ['smfs', 'dmfs']:
+            msg = 'Expecting steering_mode to match smfs/dmfs'
+            raise InvalidConfigException(msg)
         if vdpa:
             msg = ""
             if link_mode != 'switchdev':
@@ -1568,7 +1573,7 @@ class SriovPF(_BaseOpts):
         opts = _BaseOpts.base_opts_from_json(json)
         return SriovPF(name, numvfs, *opts, promisc=promisc,
                        link_mode=link_mode, ethtool_opts=ethtool_opts,
-                       vdpa=vdpa)
+                       vdpa=vdpa, steering_mode=steering_mode)
 
 
 class OvsDpdkBond(_BaseOpts):

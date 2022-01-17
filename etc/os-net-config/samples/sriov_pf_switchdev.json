@@ -6,7 +6,8 @@
             "numvfs": 10,
             "use_dhcp": false,
             "promisc": true,
-            "link_mode": "switchdev"
+            "link_mode": "switchdev",
+            "steering_mode": "dmfs"
         },
         {
             "type": "ovs_bridge",

@@ -467,7 +467,7 @@ def _get_dpdk_mac_address(name):
 
 
 def update_sriov_pf_map(ifname, numvfs, noop, promisc=None,
-                        link_mode='legacy', vdpa=False):
+                        link_mode='legacy', vdpa=False, steering_mode=None):
     if not noop:
         cur_numvfs = sriov_config.get_numvfs(ifname)
         if cur_numvfs > 0 and cur_numvfs != numvfs:
@@ -481,6 +481,8 @@ def update_sriov_pf_map(ifname, numvfs, noop, promisc=None,
                 if promisc is not None:
                     item['promisc'] = promisc
                 item['link_mode'] = link_mode
+                if steering_mode is not None:
+                    item['steering_mode'] = steering_mode
                 break
         else:
             new_item = {}
@@ -491,6 +493,8 @@ def update_sriov_pf_map(ifname, numvfs, noop, promisc=None,
             if promisc is not None:
                 new_item['promisc'] = promisc
             new_item['link_mode'] = link_mode
+            if steering_mode is not None:
+                new_item['steering_mode'] = steering_mode
             sriov_map.append(new_item)
 
         write_yaml_config(sriov_config._SRIOV_CONFIG_FILE, sriov_map)
