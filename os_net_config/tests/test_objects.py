@@ -1984,6 +1984,52 @@ class TestSriovPF(base.TestCase):
         expected = 'Expecting link_mode to match legacy/switchdev'
         self.assertIn(expected, six.text_type(err))
 
+    def test_from_json_steering_mode_dmfs(self):
+        data = '{"type": "sriov_pf", "name": "p6p1", "numvfs": 8,' \
+               '"use_dhcp": false, "promisc": false, "link_mode":' \
+               '"switchdev", "steering_mode": "dmfs"}'
+        pf = objects.object_from_json(json.loads(data))
+        self.assertEqual("p6p1", pf.name)
+        self.assertEqual(8, pf.numvfs)
+        self.assertEqual("off", pf.promisc)
+        self.assertFalse(pf.use_dhcp)
+        self.assertEqual("switchdev", pf.link_mode)
+        self.assertEqual("dmfs", pf.steering_mode)
+
+    def test_from_json_steering_mode_smfs(self):
+        data = '{"type": "sriov_pf", "name": "p6p1", "numvfs": 8,' \
+               '"use_dhcp": false, "promisc": false, "link_mode":' \
+               '"switchdev", "steering_mode": "smfs"}'
+        pf = objects.object_from_json(json.loads(data))
+        self.assertEqual("p6p1", pf.name)
+        self.assertEqual(8, pf.numvfs)
+        self.assertEqual("off", pf.promisc)
+        self.assertFalse(pf.use_dhcp)
+        self.assertEqual("switchdev", pf.link_mode)
+        self.assertEqual("smfs", pf.steering_mode)
+
+    def test_from_json_steering_mode_none(self):
+        data = '{"type": "sriov_pf", "name": "p6p1", "numvfs": 8,' \
+               '"use_dhcp": false, "promisc": false, "link_mode":' \
+               '"switchdev"}'
+        pf = objects.object_from_json(json.loads(data))
+        self.assertEqual("p6p1", pf.name)
+        self.assertEqual(8, pf.numvfs)
+        self.assertEqual("off", pf.promisc)
+        self.assertFalse(pf.use_dhcp)
+        self.assertEqual("switchdev", pf.link_mode)
+        self.assertIsNone(pf.steering_mode)
+
+    def test_from_json_steering_mode_invalid(self):
+        data = '{"type": "sriov_pf", "name": "p6p1", "numvfs": 8,' \
+               '"use_dhcp": false, "promisc": false, "link_mode":' \
+               '"switchdev", "steering_mode": "dmfss"}'
+        err = self.assertRaises(objects.InvalidConfigException,
+                                objects.object_from_json,
+                                json.loads(data))
+        expected = 'Expecting steering_mode to match smfs/dmfs'
+        self.assertIn(expected, str(err))
+
     def test_from_json_ethtool_opts(self):
         data = '{"type": "sriov_pf", "name": "em1", "numvfs": 16, ' \
                '"use_dhcp": false, "promisc": false, ' \
