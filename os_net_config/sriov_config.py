@@ -308,7 +308,10 @@ def configure_sriov_pf(execution_from_cli=False, restart_openvswitch=False):
                 # Adding a udev rule to save the sriov_pf name
                 trigger_udev_rule = add_udev_rule_for_sriov_pf(item['name'])\
                     or trigger_udev_rule
-                configure_smfs_software_steering(item['name'])
+                # Configure flow steering mode, default to smfs
+                configure_flow_steering(item['name'],
+                                        item.get('steering_mode', 'smfs'))
+
                 # Configure switchdev mode
                 configure_switchdev(item['name'])
                 # Adding a udev rule to rename vf-representors
@@ -487,17 +490,18 @@ def configure_switchdev(pf_name):
         raise
 
 
-def configure_smfs_software_steering(pf_name):
+def configure_flow_steering(pf_name, steering_mode):
     pf_pci = get_pf_pci(pf_name)
     try:
         processutils.execute('/usr/sbin/devlink', 'dev', 'param', 'set',
                              'pci/%s' % pf_pci, 'name', 'flow_steering_mode',
-                             'value', 'smfs', 'cmode', 'runtime')
-        logger.info("Device pci/%s is set to smfs steering mode." % pf_pci)
+                             'value', steering_mode, 'cmode', 'runtime')
+        logger.info("Device pci/%s is set to %s steering mode."
+                    % (pf_pci, steering_mode))
 
     except processutils.ProcessExecutionError as exc:
-        logger.warning("Could not set pci/%s to smfs steering mode: %s"
-                       % (pf_pci, exc))
+        logger.warning("Could not set pci/%s to %s steering mode: %s"
+                       % (pf_pci, steering_mode, exc))
 
 
 def run_ip_config_cmd(*cmd, **kwargs):

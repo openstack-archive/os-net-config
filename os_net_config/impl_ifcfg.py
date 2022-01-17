@@ -1014,7 +1014,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         logger.debug('sriov pf data: %s' % data)
         utils.update_sriov_pf_map(sriov_pf.name, sriov_pf.numvfs,
                                   self.noop, promisc=sriov_pf.promisc,
-                                  link_mode=sriov_pf.link_mode)
+                                  link_mode=sriov_pf.link_mode,
+                                  steering_mode=sriov_pf.steering_mode)
         self.interface_data[sriov_pf.name] = data
         if sriov_pf.routes:
             self._add_routes(sriov_pf.name, sriov_pf.routes)
