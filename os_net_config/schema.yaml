@@ -38,6 +38,11 @@ definitions:
           - type: string
             pattern: "^(legacy|switchdev)$"
           - $ref: "#/definitions/param"
+    sriov_steering_mode_or_param:
+        oneOf:
+          - type: string
+            pattern: "^(smfs|dmfs)$"
+          - $ref: "#/definitions/param"
     # MAC address type
     mac_address_string:
         type: string
@@ -365,6 +370,8 @@ definitions:
                 $ref: "#/definitions/sriov_link_mode_or_param"
             vdpa:
                 $ref: "#/definitions/bool_or_param"
+            steering_mode:
+                $ref: "#/definitions/sriov_steering_mode_or_param"
         required:
           - type
           - name

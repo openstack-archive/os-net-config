@@ -23,6 +23,9 @@ network_config:
     # - switchdev
     # - legacy (default)
     link_mode: switchdev
+    # (Optional) The flow steering mode, which could be smfs or dmfs
+    # If it's not set (None), the default will be smfs
+    steering_mode: dmfs
 
   -
     type: ovs_bridge

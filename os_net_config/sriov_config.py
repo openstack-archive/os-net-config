@@ -362,7 +362,11 @@ def configure_sriov_pf(execution_from_cli=False, restart_openvswitch=False):
                 if not vdpa:
                     # This is used for the sriov_bind_config
                     dpdk_vfs_pcis_list += vf_pcis_list
-                    configure_smfs_software_steering(item['name'])
+
+                    # Configure flow steering mode, default to smfs
+                    configure_flow_steering(item['name'],
+                                            item.get('steering_mode', 'smfs'))
+
                     # Configure switchdev mode
                     configure_switchdev(item['name'])
                     # Adding a udev rule to rename vf-representors
@@ -592,17 +596,17 @@ def configure_vdpa_vhost_device(pci):
         raise
 
 
-def configure_smfs_software_steering(pf_name):
+def configure_flow_steering(pf_name, steering_mode):
     pf_pci = get_pf_pci(pf_name)
     try:
         processutils.execute('/usr/sbin/devlink', 'dev', 'param', 'set',
                              f'pci/{pf_pci}', 'name', 'flow_steering_mode',
-                             'value', 'smfs', 'cmode', 'runtime')
-        logger.info(f"{pf_name}: Device pci/{pf_pci} is set to smfs steering "
-                    "mode.")
+                             'value', steering_mode, 'cmode', 'runtime')
+        logger.info(f"{pf_name}: Device pci/{pf_pci} is set to"
+                    " {steering_mode} steering mode.")
     except processutils.ProcessExecutionError as exc:
-        logger.warning(f"{pf_name}: Could not set pci/{pf_pci} to smfs "
-                       f" steering mode: {exc}")
+        logger.warning(f"{pf_name}: Could not set pci/{pf_pci} to"
+                       f" {steering_mode} steering mode: {exc}")
 
 
 def run_ip_config_cmd(*cmd, **kwargs):
