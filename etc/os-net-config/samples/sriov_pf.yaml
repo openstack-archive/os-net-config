@@ -138,8 +138,8 @@ network_config:
       vfid: 3
       vlan_id: 113
       qos: 5
-      # For linux_bond, the default value is true
-      spoofcheck: true
+      # For linux_bond, the default value is false
+      spoofcheck: false
       # For linux_bond, the default value is true
       trust: true
       # For linux_bond, the default value is false
@@ -151,6 +151,6 @@ network_config:
       vfid: 3
       vlan_id: 113
       qos: 5
-      spoofcheck: true
+      spoofcheck: false
       trust: true
       promisc: false
