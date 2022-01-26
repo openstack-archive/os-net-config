@@ -1019,9 +1019,9 @@ class LinuxBond(_BaseOpts):
                         % (iface.device, iface.vfid))
             iface.trust = 'on'
         if iface.spoofcheck is None:
-            logger.info("Spoofcheck is not set for VF %s:%d, defaulting to on"
+            logger.info("Spoofcheck is not set for VF %s:%d, defaulting to off"
                         % (iface.device, iface.vfid))
-            iface.spoofcheck = 'on'
+            iface.spoofcheck = 'off'
         if iface.promisc is None:
             logger.info("Promisc is not set for VF %s:%d, defaulting to off"
                         % (iface.device, iface.vfid))
