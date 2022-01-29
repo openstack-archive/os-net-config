@@ -788,6 +788,10 @@ definitions:
                 $ref: "#/definitions/ovs_extra_or_param"
             rx_queue:
                 $ref: "#/definitions/int_or_param"
+            rx_queue_size:
+                $ref: "#/definitions/int_or_param"
+            tx_queue_size:
+                $ref: "#/definitions/int_or_param"
             # common options:
             use_dhcp:
                 $ref: "#/definitions/bool_or_param"
@@ -847,6 +851,10 @@ definitions:
             ovs_extra:
                 $ref: "#/definitions/ovs_extra_or_param"
             rx_queue:
+                $ref: "#/definitions/int_or_param"
+            rx_queue_size:
+                $ref: "#/definitions/int_or_param"
+            tx_queue_size:
                 $ref: "#/definitions/int_or_param"
             # common options:
             use_dhcp:
