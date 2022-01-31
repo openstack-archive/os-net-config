@@ -1255,14 +1255,14 @@ class TestLinuxBond(base.TestCase):
                      'vlan_id': 111, 'qos': 1,
                      'min_tx_rate': 0, 'max_tx_rate': 10,
                      'pci_address': '0000:79:10.1',
-                     'spoofcheck': 'on', 'trust': 'on',
+                     'spoofcheck': 'off', 'trust': 'on',
                      'promisc': 'off'},
                     {'device_type': 'vf', 'name': 'em2_1',
                      'device': {'name': 'em2', 'vfid': 1},
                      'vlan_id': 111, 'qos': 1,
                      'min_tx_rate': 0, 'max_tx_rate': 10,
                      'pci_address': '0000:79:10.2',
-                     'spoofcheck': 'on', 'trust': 'on',
+                     'spoofcheck': 'off', 'trust': 'on',
                      'promisc': 'off'}]
 
         def test_get_vf_devname(device, vfid):
