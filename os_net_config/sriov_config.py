@@ -31,6 +31,7 @@ import sys
 import time
 import yaml
 
+from os_net_config import common
 from oslo_concurrency import processutils
 
 logger = logging.getLogger(__name__)
@@ -275,7 +276,6 @@ def configure_sriov_pf(execution_from_cli=False, restart_openvswitch=False):
     udev_monitor_start(observer)
     sriov_map = _get_sriov_map()
     MLNX_UNBIND_FILE_PATH = "/sys/bus/pci/drivers/mlx5_core/unbind"
-    MLNX_VENDOR_ID = "0x15b3"
     trigger_udev_rule = False
     # Cleanup the previous config by puppet-tripleo
     cleanup_puppet_config()
@@ -291,7 +291,7 @@ def configure_sriov_pf(execution_from_cli=False, restart_openvswitch=False):
             set_numvfs(item['name'], item['numvfs'])
             vendor_id = get_vendor_id(item['name'])
             if (item.get('link_mode') == "switchdev" and
-                    vendor_id == MLNX_VENDOR_ID):
+                    vendor_id == common.MLNX_VENDOR_ID):
                 logger.info("%s: Mellanox card" % item['name'])
                 vf_pcis_list = get_vf_pcis_list(item['name'])
                 for vf_pci in vf_pcis_list:
@@ -622,6 +622,9 @@ def configure_sriov_vf():
             if 'promisc' in item:
                 run_ip_config_cmd('ip', 'link', 'set', 'dev', item['name'],
                                   'promisc', item['promisc'])
+            if 'driver' in item:
+                common.set_driverctl_override(item['pci_address'],
+                                              item['driver'])
 
 
 def parse_opts(argv):

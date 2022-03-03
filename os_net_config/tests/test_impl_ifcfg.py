@@ -1478,8 +1478,8 @@ DOMAIN="openstack.local subdomain.openstack.local"
         def test_update_sriov_vf_map(pf_name, vfid, vf_name, vlan_id=None,
                                      qos=None, spoofcheck=None, trust=None,
                                      state=None, macaddr=None, promisc=None,
-                                     pci_address=None,
-                                     min_tx_rate=0, max_tx_rate=0):
+                                     pci_address=None, min_tx_rate=0,
+                                     max_tx_rate=0, driver=None):
             self.assertEqual(pf_name, 'eth2')
             self.assertEqual(vfid, 7)
             self.assertEqual(vlan_id, 0)
@@ -1491,6 +1491,7 @@ DOMAIN="openstack.local subdomain.openstack.local"
             self.assertEqual(state, None)
             self.assertEqual(macaddr, None)
             self.assertEqual(pci_address, '0000:79:10.2')
+            self.assertEqual(driver, None)
         self.stub_out('os_net_config.utils.update_sriov_vf_map',
                       test_update_sriov_vf_map)
 
@@ -1528,8 +1529,8 @@ NETMASK=255.255.255.0
         def test_update_sriov_vf_map(pf_name, vfid, vf_name, vlan_id=None,
                                      qos=None, spoofcheck=None, trust=None,
                                      state=None, macaddr=None, promisc=None,
-                                     pci_address=None,
-                                     min_tx_rate=0, max_tx_rate=0):
+                                     pci_address=None, min_tx_rate=0,
+                                     max_tx_rate=0, driver=None):
             self.assertEqual(pf_name, 'eth2')
             self.assertEqual(vf_name, 'eth2_7')
             self.assertEqual(vfid, 7)
@@ -1543,6 +1544,7 @@ NETMASK=255.255.255.0
             self.assertEqual(macaddr, "AA:BB:CC:DD:EE:FF")
             self.assertTrue(promisc)
             self.assertEqual(pci_address, '0000:80:10.1')
+            self.assertEqual(driver, None)
         self.stub_out('os_net_config.utils.update_sriov_vf_map',
                       test_update_sriov_vf_map)
 
@@ -1584,8 +1586,8 @@ NETMASK=255.255.255.0
         def test_update_sriov_vf_map(pf_name, vfid, vf_name, vlan_id=None,
                                      qos=None, spoofcheck=None, trust=None,
                                      state=None, macaddr=None, promisc=None,
-                                     pci_address=None,
-                                     min_tx_rate=0, max_tx_rate=0):
+                                     pci_address=None, min_tx_rate=0,
+                                     max_tx_rate=0, driver=None):
             self.assertEqual(pf_name, 'eth2')
             self.assertEqual(vf_name, 'eth2_7')
             self.assertEqual(vfid, 7)
@@ -1599,6 +1601,7 @@ NETMASK=255.255.255.0
             self.assertEqual(macaddr, "AA:BB:CC:DD:EE:FF")
             self.assertFalse(promisc)
             self.assertEqual(pci_address, '0000:82:00.2')
+            self.assertEqual(driver, None)
         self.stub_out('os_net_config.utils.update_sriov_vf_map',
                       test_update_sriov_vf_map)
 
