@@ -689,7 +689,8 @@ class TestBridge(base.TestCase):
                      'vlan_id': 111, 'qos': 1,
                      'min_tx_rate': 0, 'max_tx_rate': 0,
                      'spoofcheck': 'off', 'trust': 'on',
-                     'pci_address': '0000:79:10.2'
+                     'pci_address': '0000:79:10.2',
+                     'driver': 'vfio-pci'
                      }]
 
         def test_get_vf_devname(device, vfid):
@@ -745,7 +746,8 @@ class TestBridge(base.TestCase):
                      'vlan_id': 111, 'qos': 1,
                      'min_tx_rate': 100, 'max_tx_rate': 500,
                      'spoofcheck': 'off', 'trust': 'off',
-                     'pci_address': '0000:79:10.2'
+                     'pci_address': '0000:79:10.2',
+                     'driver': 'vfio-pci'
                      }]
 
         def test_get_vf_devname(device, vfid):

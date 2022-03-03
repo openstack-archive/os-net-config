@@ -31,6 +31,7 @@ import sys
 import time
 import yaml
 
+from os_net_config import common
 from os_net_config import sriov_bind_config
 from oslo_concurrency import processutils
 
@@ -42,7 +43,6 @@ _IFUP_LOCAL_FILE = '/sbin/ifup-local'
 _RESET_SRIOV_RULES_FILE = '/etc/udev/rules.d/70-tripleo-reset-sriov.rules'
 _ALLOCATE_VFS_FILE = '/etc/sysconfig/allocate_vfs'
 _MLNX_DRIVER = "mlx5_core"
-MLNX_VENDOR_ID = "0x15b3"
 
 MAX_RETRIES = 10
 PF_FUNC_RE = re.compile(r"\.(\d+)$", 0)
@@ -306,7 +306,7 @@ def configure_sriov_pf(execution_from_cli=False, restart_openvswitch=False):
             vendor_id = get_vendor_id(item['name'])
 
             if (item.get('link_mode') == "switchdev" and
-                    vendor_id == MLNX_VENDOR_ID):
+                    vendor_id == common.MLNX_VENDOR_ID):
                 logger.info(f"{item['name']}: Mellanox card")
                 vf_pcis_list = get_vf_pcis_list(item['name'])
                 mlnx_vfs_pcis_list += vf_pcis_list
@@ -650,6 +650,9 @@ def configure_sriov_vf():
             if 'promisc' in item:
                 run_ip_config_cmd('ip', 'link', 'set', 'dev', item['name'],
                                   'promisc', item['promisc'])
+            if 'driver' in item:
+                common.set_driverctl_override(item['pci_address'],
+                                              item['driver'])
 
 
 def parse_opts(argv):

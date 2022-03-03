@@ -22,6 +22,7 @@ import tempfile
 from unittest import mock
 import yaml
 
+from os_net_config import common
 from os_net_config import objects
 from os_net_config import sriov_config
 from os_net_config.tests import base
@@ -451,7 +452,7 @@ class TestUtils(base.TestCase):
                       test_get_dpdk_mac_address)
         try:
             utils.bind_dpdk_interfaces('nic2', 'vfio-pci', False)
-        except utils.OvsDpdkBindException:
+        except common.OvsDpdkBindException:
             self.fail("Received OvsDpdkBindException unexpectedly")
 
     def test_bind_dpdk_interfaces_fail(self):
@@ -468,7 +469,7 @@ class TestUtils(base.TestCase):
         self.stub_out('os_net_config.utils._get_dpdk_mac_address',
                       test_get_dpdk_mac_address)
 
-        self.assertRaises(utils.OvsDpdkBindException,
+        self.assertRaises(common.OvsDpdkBindException,
                           utils.bind_dpdk_interfaces, 'eth1', 'vfio-pci',
                           False)
 
@@ -493,7 +494,7 @@ class TestUtils(base.TestCase):
                       test_get_dpdk_mac_address)
         try:
             utils.bind_dpdk_interfaces('eth1', 'vfio-pci', False)
-        except utils.OvsDpdkBindException:
+        except common.OvsDpdkBindException:
             self.fail("Received OvsDpdkBindException unexpectedly")
 
     def test_bind_dpdk_interfaces_fail_invalid_device(self):
@@ -518,7 +519,7 @@ class TestUtils(base.TestCase):
         self.stub_out('os_net_config.utils._get_dpdk_mac_address',
                       test_get_dpdk_mac_address)
 
-        self.assertRaises(utils.OvsDpdkBindException,
+        self.assertRaises(common.OvsDpdkBindException,
                           utils.bind_dpdk_interfaces, 'eth2', 'vfio-pci',
                           False)
 
@@ -529,7 +530,7 @@ class TestUtils(base.TestCase):
         self.stub_out('os_net_config.utils.logger.info', mocked_logger)
         try:
             utils.bind_dpdk_interfaces('eth1', 'vfio-pci', False)
-        except utils.OvsDpdkBindException:
+        except common.OvsDpdkBindException:
             self.fail("Received OvsDpdkBindException unexpectedly")
         msg = "Driver (vfio-pci) is already bound to the device (eth1)"
         mocked_logger.assert_called_with(msg)
@@ -602,8 +603,8 @@ class TestUtils(base.TestCase):
         tmpdir = tempfile.mkdtemp()
         self.stub_out('os_net_config.utils._SYS_CLASS_NET', tmpdir)
         tmp_pci_dir = tempfile.mkdtemp()
-        self.stub_out('os_net_config.utils._SYS_BUS_PCI_DEV', tmp_pci_dir)
-        physfn_path = utils._SYS_BUS_PCI_DEV + '/0000:05:01.1/physfn'
+        self.stub_out('os_net_config.common._SYS_BUS_PCI_DEV', tmp_pci_dir)
+        physfn_path = common._SYS_BUS_PCI_DEV + '/0000:05:01.1/physfn'
         os.makedirs(physfn_path)
 
         def test_is_available_nic(interface_name, check_active):
@@ -643,8 +644,8 @@ class TestUtils(base.TestCase):
         tmpdir = tempfile.mkdtemp()
         self.stub_out('os_net_config.utils._SYS_CLASS_NET', tmpdir)
         tmp_pci_dir = tempfile.mkdtemp()
-        self.stub_out('os_net_config.utils._SYS_BUS_PCI_DEV', tmp_pci_dir)
-        physfn_path = utils._SYS_BUS_PCI_DEV + '/0000:05:01.1/physfn'
+        self.stub_out('os_net_config.common._SYS_BUS_PCI_DEV', tmp_pci_dir)
+        physfn_path = common._SYS_BUS_PCI_DEV + '/0000:05:01.1/physfn'
         os.makedirs(physfn_path)
 
         def test_is_available_nic(interface_name, check_active):
