@@ -1034,7 +1034,8 @@ class LinuxBond(_BaseOpts):
                                   macaddr=iface.macaddr, promisc=iface.promisc,
                                   pci_address=iface.pci_address,
                                   min_tx_rate=iface.min_tx_rate,
-                                  max_tx_rate=iface.max_tx_rate)
+                                  max_tx_rate=iface.max_tx_rate,
+                                  driver=None)
 
     @staticmethod
     def from_json(json):
@@ -1120,7 +1121,8 @@ class OvsBond(_BaseOpts):
                                   trust=iface.trust, state=iface.state,
                                   macaddr=iface.macaddr, promisc=iface.promisc,
                                   min_tx_rate=iface.min_tx_rate,
-                                  max_tx_rate=iface.max_tx_rate)
+                                  max_tx_rate=iface.max_tx_rate,
+                                  driver=None)
 
     @staticmethod
     def from_json(json):
@@ -1328,7 +1330,7 @@ class OvsDpdkPort(_BaseOpts):
         self.tx_queue_size = tx_queue_size
 
     @staticmethod
-    def update_vf_config(iface):
+    def update_vf_config(iface, driver=None):
         if iface.trust is None:
             logger.info("Trust is not set for VF %s:%d, defaulting to on"
                         % (iface.device, iface.vfid))
@@ -1340,6 +1342,7 @@ class OvsDpdkPort(_BaseOpts):
         if iface.promisc is not None:
             logger.warning("Promisc can't be changed for ovs_dpdk_port")
             iface.promisc = None
+        logger.info("Overriding the default driver for DPDK")
         utils.update_sriov_vf_map(iface.device, iface.vfid, iface.name,
                                   vlan_id=iface.vlan_id, qos=iface.qos,
                                   spoofcheck=iface.spoofcheck,
@@ -1347,7 +1350,8 @@ class OvsDpdkPort(_BaseOpts):
                                   macaddr=iface.macaddr, promisc=iface.promisc,
                                   pci_address=iface.pci_address,
                                   min_tx_rate=iface.min_tx_rate,
-                                  max_tx_rate=iface.max_tx_rate)
+                                  max_tx_rate=iface.max_tx_rate,
+                                  driver=driver)
 
     @staticmethod
     def from_json(json):
@@ -1379,7 +1383,7 @@ class OvsDpdkPort(_BaseOpts):
                         # be set in the interface part of DPDK Port
                         members.append(iface)
                     elif isinstance(iface, SriovVF):
-                        OvsDpdkPort.update_vf_config(iface)
+                        OvsDpdkPort.update_vf_config(iface, driver)
                         members.append(iface)
                     else:
                         msg = 'Unsupported OVS DPDK Port member type'
@@ -1457,6 +1461,8 @@ class SriovVF(_BaseOpts):
         self.macaddr = macaddr
         self.promisc = promisc
         self.pci_address = pci_address
+        self.driver = None
+
         utils.update_sriov_vf_map(device, self.vfid, name,
                                   vlan_id=self.vlan_id,
                                   qos=self.qos,
@@ -1467,7 +1473,8 @@ class SriovVF(_BaseOpts):
                                   promisc=promisc,
                                   pci_address=pci_address,
                                   min_tx_rate=min_tx_rate,
-                                  max_tx_rate=max_tx_rate)
+                                  max_tx_rate=max_tx_rate,
+                                  driver=self.driver)
 
     @staticmethod
     def get_on_off(config):
