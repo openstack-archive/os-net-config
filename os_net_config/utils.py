@@ -26,7 +26,6 @@ from os_net_config import sriov_config
 from oslo_concurrency import processutils
 
 logger = logging.getLogger(__name__)
-_SYS_BUS_PCI_DEV = '/sys/bus/pci/devices'
 # sriov_config service shall be created and enabled so that the various
 # SR-IOV PF and VF configurations shall be done during reboot as well using
 # sriov_config.py installed in path /usr/bin/os-net-config-sriov
@@ -34,14 +33,14 @@ _SRIOV_CONFIG_SERVICE_FILE = "/etc/systemd/system/sriov_config.service"
 _SRIOV_CONFIG_DEVICE_CONTENT = """[Unit]
 Description=SR-IOV numvfs configuration
 After=systemd-udev-settle.service openibd.service
-Before=openvswitch.service
+Before=network-pre.target  openvswitch.service
 
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/os-net-config-sriov
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=basic.target
 """
 
 # VPP startup operational configuration file. The content of this file will
@@ -50,10 +49,6 @@ _VPP_EXEC_FILE = '/etc/vpp/vpp-exec'
 
 
 class InvalidInterfaceException(ValueError):
-    pass
-
-
-class OvsDpdkBindException(ValueError):
     pass
 
 
@@ -110,31 +105,6 @@ def is_real_nic(interface_name):
         return False
 
 
-def _is_vf(pci_address):
-
-    # If DPDK drivers are bound on a VF, then the path common.SYS_CLASS_NET
-    # wouldn't exist. Instead we look for the path
-    # /sys/bus/pci/devices/<PCI addr>/physfn to understand if the device
-    # is actually a VF. This path could be used by VFs not bound with
-    # DPDK drivers as well
-
-    vf_path_check = _SYS_BUS_PCI_DEV + '/%s/physfn' % pci_address
-    is_sriov_vf = os.path.isdir(vf_path_check)
-    return is_sriov_vf
-
-
-def _is_vf_by_name(interface_name, check_mapping_file=False):
-    vf_path_check = common.get_dev_path(interface_name, 'physfn')
-    is_sriov_vf = os.path.isdir(vf_path_check)
-    if not is_sriov_vf and check_mapping_file:
-        sriov_map = common.get_sriov_map()
-        for item in sriov_map:
-            if (item['name'] == interface_name and
-                    item['device_type'] == 'vf'):
-                is_sriov_vf = True
-    return is_sriov_vf
-
-
 def _is_available_nic(interface_name, check_active=True):
     try:
         if interface_name == 'lo':
@@ -155,7 +125,7 @@ def _is_available_nic(interface_name, check_active=True):
         # the nic numbering. All the VFs will have a reference to the PF with
         # directory name as 'physfn', if this directory is present it should be
         # ignored.
-        if _is_vf_by_name(interface_name):
+        if common.is_vf_by_name(interface_name):
             return False
 
         # nic is available
@@ -210,9 +180,9 @@ def _ordered_nics(check_active):
             # If the DPDK drivers are bound to a VF, the same needs
             # to be skipped for the NIC ordering
             nic = item['name']
-            if _is_vf(item['pci_address']):
+            if common.is_vf(item['pci_address']):
                 logger.info("%s is a VF, skipping it for NIC ordering" % nic)
-            elif _is_vf_by_name(nic, True):
+            elif common.is_vf_by_name(nic, True):
                 logger.info("%s is a VF, skipping it for NIC ordering" % nic)
             elif _is_embedded_nic(nic):
                 logger.info("%s is an embedded DPDK bound nic" % nic)
@@ -247,7 +217,7 @@ def bind_dpdk_interfaces(ifname, driver, noop):
     if common.is_mellanox_interface(ifname) and 'vfio-pci' in driver:
         msg = ("For Mellanox NIC %s, the default driver vfio-pci "
                "needs to be overridden" % ifname)
-        raise OvsDpdkBindException(msg)
+        raise common.OvsDpdkBindException(msg)
 
     iface_driver = get_interface_driver(ifname)
     if iface_driver == driver:
@@ -264,33 +234,23 @@ def bind_dpdk_interfaces(ifname, driver, noop):
                     processutils.execute('modprobe', 'vfio-pci')
                 except processutils.ProcessExecutionError:
                     msg = "Failed to modprobe vfio-pci module"
-                    raise OvsDpdkBindException(msg)
+                    raise common.OvsDpdkBindException(msg)
 
             mac_address = common.interface_mac(ifname)
             vendor_id = common.get_vendor_id(ifname)
-            try:
-                out, err = processutils.execute('driverctl', 'set-override',
-                                                pci_address, driver)
-                if err:
-                    msg = "Failed to bind dpdk interface err - %s" % err
-                    raise OvsDpdkBindException(msg)
-                else:
-                    _update_dpdk_map(ifname, pci_address, mac_address, driver)
-                    # Not like other nics, beacause mellanox nics keep the
-                    # interface after binding it to dpdk, so we are adding
-                    # ethtool command with 10 attempts after binding the driver
-                    # just to make sure that the interface is initialized
-                    # successfully in order not to fail in each of this cases:
-                    # - get_dpdk_devargs() in case of OvsDpdkPort and
-                    #   OvsDpdkBond.
-                    # - bind_dpdk_interface() in case of OvsDpdkBond.
-                    if vendor_id == common.MLNX_VENDOR_ID:
-                        processutils.execute('ethtool', '-i', ifname,
-                                             attempts=10)
-
-            except processutils.ProcessExecutionError:
-                msg = "Failed to bind interface %s with dpdk" % ifname
-                raise OvsDpdkBindException(msg)
+            err = common.set_driverctl_override(pci_address, driver)
+            if not err:
+                _update_dpdk_map(ifname, pci_address, mac_address, driver)
+                # Not like other nics, beacause mellanox nics keep the
+                # interface after binding it to dpdk, so we are adding
+                # ethtool command with 10 attempts after binding the driver
+                # just to make sure that the interface is initialized
+                # successfully in order not to fail in each of this cases:
+                # - get_dpdk_devargs() in case of OvsDpdkPort and
+                #   OvsDpdkBond.
+                # - bind_dpdk_interface() in case of OvsDpdkBond.
+                if vendor_id == common.MLNX_VENDOR_ID:
+                    processutils.execute('ethtool', '-i', ifname, attempts=10)
         else:
             # Check if the pci address is already fetched and stored.
             # If the pci address could not be fetched from dpdk_mapping.yaml
@@ -298,7 +258,7 @@ def bind_dpdk_interfaces(ifname, driver, noop):
             # available nor bound with dpdk.
             if not get_stored_pci_address(ifname, noop):
                 msg = "Interface %s cannot be found" % ifname
-                raise OvsDpdkBindException(msg)
+                raise common.OvsDpdkBindException(msg)
     else:
         logger.info('Interface %(name)s bound to DPDK driver %(driver)s '
                     'using driverctl command' %
@@ -327,7 +287,7 @@ def get_pci_address(ifname, noop):
 
 def get_stored_pci_address(ifname, noop):
     if not noop:
-        dpdk_map = _get_dpdk_map()
+        dpdk_map = common.get_dpdk_map()
         for dpdk_nic in dpdk_map:
             if dpdk_nic['name'] == ifname:
                 return dpdk_nic['pci_address']
@@ -376,7 +336,7 @@ def get_dpdk_devargs(ifname, noop):
                 # in dpdk_mapping.yaml file, so we need to get their pci
                 # address with ethtool.
                 dpdk_devargs = get_pci_address(ifname, noop)
-            elif _is_vf_by_name(ifname):
+            elif common.is_vf_by_name(ifname):
                 # For Mellanox devices the VFs bound with DPDK shall
                 # be treated the same as VFs of other devices
                 dpdk_devargs = get_pci_address(ifname, noop)
@@ -396,7 +356,7 @@ def get_dpdk_devargs(ifname, noop):
 # is stored persistently in DPDK_MAPPING_FILE and is used to for nic numbering
 # on subsequent runs of os-net-config.
 def _update_dpdk_map(ifname, pci_address, mac_address, driver):
-    dpdk_map = _get_dpdk_map()
+    dpdk_map = common.get_dpdk_map()
     for item in dpdk_map:
         if item['pci_address'] == pci_address:
             item['name'] = ifname
@@ -412,12 +372,6 @@ def _update_dpdk_map(ifname, pci_address, mac_address, driver):
         dpdk_map.append(new_item)
 
     write_yaml_config(common.DPDK_MAPPING_FILE, dpdk_map)
-
-
-def _get_dpdk_map():
-    contents = common.get_file_data(common.DPDK_MAPPING_FILE)
-    dpdk_map = yaml.safe_load(contents) if contents else []
-    return dpdk_map
 
 
 def update_sriov_pf_map(ifname, numvfs, noop, promisc=None,
@@ -455,7 +409,7 @@ def update_sriov_pf_map(ifname, numvfs, noop, promisc=None,
 
 
 def _set_vf_fields(vf_name, vlan_id, qos, spoofcheck, trust, state, macaddr,
-                   promisc, pci_address, min_tx_rate, max_tx_rate):
+                   promisc, pci_address, min_tx_rate, max_tx_rate, driver):
     vf_configs = {}
     vf_configs['name'] = vf_name
     if vlan_id != 0:
@@ -474,6 +428,8 @@ def _set_vf_fields(vf_name, vlan_id, qos, spoofcheck, trust, state, macaddr,
     vf_configs['macaddr'] = macaddr
     vf_configs['promisc'] = promisc
     vf_configs['pci_address'] = pci_address
+    if driver:
+        vf_configs['driver'] = driver
     return vf_configs
 
 
@@ -486,7 +442,7 @@ def _clear_empty_values(vf_config):
 def update_sriov_vf_map(pf_name, vfid, vf_name, vlan_id=0, qos=0,
                         spoofcheck=None, trust=None, state=None, macaddr=None,
                         promisc=None, pci_address=None,
-                        min_tx_rate=0, max_tx_rate=0):
+                        min_tx_rate=0, max_tx_rate=0, driver=None):
     sriov_map = common.get_sriov_map()
     for item in sriov_map:
         if (item['device_type'] == 'vf' and
@@ -494,7 +450,8 @@ def update_sriov_vf_map(pf_name, vfid, vf_name, vlan_id=0, qos=0,
            item['device'].get('vfid') == vfid):
             item.update(_set_vf_fields(vf_name, vlan_id, qos, spoofcheck,
                                        trust, state, macaddr, promisc,
-                                       pci_address, min_tx_rate, max_tx_rate))
+                                       pci_address, min_tx_rate, max_tx_rate,
+                                       driver))
             _clear_empty_values(item)
             break
     else:
@@ -503,7 +460,8 @@ def update_sriov_vf_map(pf_name, vfid, vf_name, vlan_id=0, qos=0,
         new_item['device'] = {"name": pf_name, "vfid": vfid}
         new_item.update(_set_vf_fields(vf_name, vlan_id, qos, spoofcheck,
                                        trust, state, macaddr, promisc,
-                                       pci_address, min_tx_rate, max_tx_rate))
+                                       pci_address, min_tx_rate, max_tx_rate,
+                                       driver))
         _clear_empty_values(new_item)
         sriov_map.append(new_item)
 

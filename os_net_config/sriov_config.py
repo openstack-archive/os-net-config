@@ -718,6 +718,9 @@ def configure_sriov_vf():
             if 'promisc' in item:
                 run_ip_config_cmd('ip', 'link', 'set', 'dev', item['name'],
                                   'promisc', item['promisc'])
+            if 'driver' in item:
+                common.set_driverctl_override(item['pci_address'],
+                                              item['driver'])
 
 
 def parse_opts(argv):

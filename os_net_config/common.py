@@ -57,11 +57,16 @@ DPDK_MAPPING_FILE = '/var/lib/os-net-config/dpdk_mapping.yaml'
 SRIOV_CONFIG_FILE = '/var/lib/os-net-config/sriov_config.yaml'
 
 
+_SYS_BUS_PCI_DEV = '/sys/bus/pci/devices'
 SYS_CLASS_NET = '/sys/class/net'
 _LOG_FILE = '/var/log/os-net-config.log'
 MLNX_VENDOR_ID = "0x15b3"
 
 logger = logging.getLogger(__name__)
+
+
+class OvsDpdkBindException(ValueError):
+    pass
 
 
 def configure_logger(log_file=False, verbose=False, debug=False):
@@ -104,6 +109,14 @@ def get_dev_path(ifname, path=None):
     return os.path.join(SYS_CLASS_NET, ifname, path)
 
 
+def get_pci_dev_path(pci_address, path=None):
+    if not path:
+        path = ""
+    elif path.startswith("_"):
+        path = path[1:]
+    return os.path.join(_SYS_BUS_PCI_DEV, pci_address, path)
+
+
 def get_vendor_id(ifname):
     try:
         with open(get_dev_path(ifname, "vendor"), 'r') as f:
@@ -141,6 +154,12 @@ def get_sriov_map(pf_name=None):
     return sriov_map
 
 
+def get_dpdk_map():
+    contents = get_file_data(DPDK_MAPPING_FILE)
+    dpdk_map = yaml.safe_load(contents) if contents else []
+    return dpdk_map
+
+
 def _get_dpdk_mac_address(name):
     contents = get_file_data(DPDK_MAPPING_FILE)
     dpdk_map = yaml.safe_load(contents) if contents else []
@@ -171,9 +190,75 @@ def interface_mac(name):
         raise
 
 
+def get_interface_driver_by_pci_address(pci_address):
+    try:
+        uevent = get_pci_dev_path(pci_address, 'uevent')
+        with open(uevent, 'r') as f:
+            out = f.read().strip()
+            for line in out.split('\n'):
+                if 'DRIVER' in line:
+                    driver = line.split('=')
+                    if len(driver) == 2:
+                        return driver[1]
+    except IOError:
+        return
+
+
 def is_mellanox_interface(ifname):
     vendor_id = get_vendor_id(ifname)
     return vendor_id == MLNX_VENDOR_ID
+
+
+def is_vf(pci_address):
+
+    # If DPDK drivers are bound on a VF, then the path common.SYS_CLASS_NET
+    # wouldn't exist. Instead we look for the path
+    # /sys/bus/pci/devices/<PCI addr>/physfn to understand if the device
+    # is actually a VF. This path could be used by VFs not bound with
+    # DPDK drivers as well
+
+    vf_path_check = _SYS_BUS_PCI_DEV + '/%s/physfn' % pci_address
+    is_sriov_vf = os.path.isdir(vf_path_check)
+    return is_sriov_vf
+
+
+def is_vf_by_name(interface_name, check_mapping_file=False):
+    vf_path_check = get_dev_path(interface_name, 'physfn')
+    is_sriov_vf = os.path.isdir(vf_path_check)
+    if not is_sriov_vf and check_mapping_file:
+        sriov_map = get_sriov_map()
+        for item in sriov_map:
+            if (item['name'] == interface_name and
+                    item['device_type'] == 'vf'):
+                is_sriov_vf = True
+    return is_sriov_vf
+
+
+def set_driverctl_override(pci_address, driver):
+    if driver is None:
+        logger.info(f"Driver override is not required for device"
+                    "{pci_address}")
+        return False
+    iface_driver = get_interface_driver_by_pci_address(pci_address)
+    if iface_driver == driver:
+        logger.info(f"Driver {driver} is already bound to the device"
+                    "{pci_address}")
+        return False
+    try:
+        if is_vf(pci_address):
+            out, err = processutils.execute('driverctl', '--nosave',
+                                            'set-override', pci_address,
+                                            driver)
+        else:
+            out, err = processutils.execute('driverctl', 'set-override',
+                                            pci_address, driver)
+        if err:
+            msg = f"Failed to bind dpdk interface {pci_address} err - {err}"
+            raise OvsDpdkBindException(msg)
+    except processutils.ProcessExecutionError:
+        msg = f"Failed to bind interface {pci_address} with dpdk"
+        raise OvsDpdkBindException(msg)
+    return err
 
 
 def list_kmods(mods: list) -> list:

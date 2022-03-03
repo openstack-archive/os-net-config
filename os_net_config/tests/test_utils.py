@@ -439,7 +439,7 @@ class TestUtils(base.TestCase):
                      'mac_address': '01:02:03:04:05:06',
                      'driver': 'vfio-pci'}]
 
-        self.stub_out('os_net_config.utils._get_dpdk_map', test_get_dpdk_map)
+        self.stub_out('os_net_config.common.get_dpdk_map', test_get_dpdk_map)
         pci = utils.get_stored_pci_address('eth1', False)
         self.assertEqual('0000:00:09.0', pci)
 
@@ -447,7 +447,7 @@ class TestUtils(base.TestCase):
         def test_get_dpdk_map():
             return []
 
-        self.stub_out('os_net_config.utils._get_dpdk_map', test_get_dpdk_map)
+        self.stub_out('os_net_config.common.get_dpdk_map', test_get_dpdk_map)
         pci = utils.get_stored_pci_address('eth1', False)
         self.assertEqual(None, pci)
 
@@ -492,7 +492,7 @@ class TestUtils(base.TestCase):
                       test_get_dpdk_mac_address)
         try:
             utils.bind_dpdk_interfaces('nic2', 'vfio-pci', False)
-        except utils.OvsDpdkBindException:
+        except common.OvsDpdkBindException:
             self.fail("Received OvsDpdkBindException unexpectedly")
 
     def test_bind_dpdk_interfaces_fail(self):
@@ -509,7 +509,7 @@ class TestUtils(base.TestCase):
         self.stub_out('os_net_config.common._get_dpdk_mac_address',
                       test_get_dpdk_mac_address)
 
-        self.assertRaises(utils.OvsDpdkBindException,
+        self.assertRaises(common.OvsDpdkBindException,
                           utils.bind_dpdk_interfaces, 'eth1', 'vfio-pci',
                           False)
 
@@ -528,13 +528,13 @@ class TestUtils(base.TestCase):
                      'mac_address': '01:02:03:04:05:06',
                      'driver': 'vfio-pci'}]
 
-        self.stub_out('os_net_config.utils._get_dpdk_map', test_get_dpdk_map)
+        self.stub_out('os_net_config.common.get_dpdk_map', test_get_dpdk_map)
         self.stub_out('oslo_concurrency.processutils.execute', test_execute)
         self.stub_out('os_net_config.utils_get_dpdk_mac_address',
                       test_get_dpdk_mac_address)
         try:
             utils.bind_dpdk_interfaces('eth1', 'vfio-pci', False)
-        except utils.OvsDpdkBindException:
+        except common.OvsDpdkBindException:
             self.fail("Received OvsDpdkBindException unexpectedly")
 
     def test_bind_dpdk_interfaces_fail_invalid_device(self):
@@ -552,14 +552,14 @@ class TestUtils(base.TestCase):
                      'mac_address': '01:02:03:04:05:06',
                      'driver': 'vfio-pci'}]
 
-        self.stub_out('os_net_config.utils_get_dpdk_map',
+        self.stub_out('os_net_config.common.get_dpdk_map',
                       test_get_dpdk_map)
         self.stub_out('oslo_concurrency.processutils.execute',
                       test_execute)
         self.stub_out('os_net_config.utils._get_dpdk_mac_address',
                       test_get_dpdk_mac_address)
 
-        self.assertRaises(utils.OvsDpdkBindException,
+        self.assertRaises(common.OvsDpdkBindException,
                           utils.bind_dpdk_interfaces, 'eth2', 'vfio-pci',
                           False)
 
@@ -570,7 +570,7 @@ class TestUtils(base.TestCase):
         self.stub_out('os_net_config.utils.logger.info', mocked_logger)
         try:
             utils.bind_dpdk_interfaces('eth1', 'vfio-pci', False)
-        except utils.OvsDpdkBindException:
+        except common.OvsDpdkBindException:
             self.fail("Received OvsDpdkBindException unexpectedly")
         msg = "Driver (vfio-pci) is already bound to the device (eth1)"
         mocked_logger.assert_called_with(msg)
@@ -643,8 +643,8 @@ class TestUtils(base.TestCase):
         tmpdir = tempfile.mkdtemp()
         self.stub_out('os_net_config.common.SYS_CLASS_NET', tmpdir)
         tmp_pci_dir = tempfile.mkdtemp()
-        self.stub_out('os_net_config.utils._SYS_BUS_PCI_DEV', tmp_pci_dir)
-        physfn_path = utils._SYS_BUS_PCI_DEV + '/0000:05:01.1/physfn'
+        self.stub_out('os_net_config.common._SYS_BUS_PCI_DEV', tmp_pci_dir)
+        physfn_path = common._SYS_BUS_PCI_DEV + '/0000:05:01.1/physfn'
         os.makedirs(physfn_path)
 
         def test_is_available_nic(interface_name, check_active):
@@ -684,8 +684,8 @@ class TestUtils(base.TestCase):
         tmpdir = tempfile.mkdtemp()
         self.stub_out('os_net_config.common.SYS_CLASS_NET', tmpdir)
         tmp_pci_dir = tempfile.mkdtemp()
-        self.stub_out('os_net_config.utils._SYS_BUS_PCI_DEV', tmp_pci_dir)
-        physfn_path = utils._SYS_BUS_PCI_DEV + '/0000:05:01.1/physfn'
+        self.stub_out('os_net_config.common._SYS_BUS_PCI_DEV', tmp_pci_dir)
+        physfn_path = common._SYS_BUS_PCI_DEV + '/0000:05:01.1/physfn'
         os.makedirs(physfn_path)
 
         def test_is_available_nic(interface_name, check_active):
@@ -914,7 +914,7 @@ dpdk {
                      'mac_address': '01:02:03:04:05:06',
                      'driver': 'vfio-pci'}]
 
-        self.stub_out('os_net_config.utils._get_dpdk_map', test_get_dpdk_map)
+        self.stub_out('os_net_config.common.get_dpdk_map', test_get_dpdk_map)
 
         def test_execute(name, *args, **kwargs):
             return None, None
