@@ -43,14 +43,14 @@ _SRIOV_CONFIG_SERVICE_FILE = "/etc/systemd/system/sriov_config.service"
 _SRIOV_CONFIG_DEVICE_CONTENT = """[Unit]
 Description=SR-IOV numvfs configuration
 After=systemd-udev-settle.service openibd.service
-Before=system-driverctl.slice network-pre.target openvswitch.service
+Before=openvswitch.service
 
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/os-net-config-sriov
 
 [Install]
-WantedBy=basic.target
+WantedBy=multi-user.target
 """
 
 # VPP startup operational configuration file. The content of this file will
