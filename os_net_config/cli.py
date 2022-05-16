@@ -16,6 +16,7 @@
 
 
 import argparse
+import json
 import logging
 import os
 import sys
@@ -203,7 +204,7 @@ def main(argv=sys.argv):
         with open(opts.mapping_file) as cf:
             iface_map = yaml.safe_load(cf.read())
             iface_mapping = iface_map.get("interface_mapping")
-            logger.debug('interface_mapping JSON: %s' % str(iface_mapping))
+            logger.debug('interface_mapping: %s' % str(iface_mapping))
             persist_mapping = opts.persist_mapping
             logger.debug('persist_mapping: %s' % persist_mapping)
     else:
@@ -244,7 +245,7 @@ def main(argv=sys.argv):
         # Return the report on the mapped NICs. If all NICs were found, exit
         # cleanly, otherwise exit with status 1.
         logger.debug("Interface report requested, exiting after report.")
-        print(reported_nics)
+        print(json.dumps(reported_nics))
         return retval
 
     # Read config file containing network configs to apply
@@ -252,7 +253,7 @@ def main(argv=sys.argv):
         try:
             with open(opts.config_file) as cf:
                 iface_array = yaml.safe_load(cf.read()).get("network_config")
-                logger.debug('network_config JSON: %s' % str(iface_array))
+                logger.debug('network_config: %s' % str(iface_array))
         except IOError:
             logger.error("Error reading file: %s" % opts.config_file)
             return 1
