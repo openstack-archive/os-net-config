@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 # Import the raw NetConfig object so we can call its methods
 netconfig = os_net_config.NetConfig()
 
+MAC_TABLE_SIZE = 50000
 _ROUTE_TABLE_DEFAULT = """# reserved values
 #
 255\tlocal
@@ -472,6 +473,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                 self.member_names[base_opt.name] = members
                 if base_opt.use_dhcp:
                     data += ("OVSDHCPINTERFACES=\"%s\"\n" % " ".join(members))
+            ovs_extra.append("set bridge %s other-config:mac-table-size=%d" %
+                             (base_opt.name, MAC_TABLE_SIZE))
             if base_opt.primary_interface_name:
                 mac = common.interface_mac(base_opt.primary_interface_name)
                 ovs_extra.append("set bridge %s other-config:hwaddr=%s" %
