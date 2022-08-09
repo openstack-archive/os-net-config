@@ -261,7 +261,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             "IPADDR",
             "NETMASK",
             "MTU",
-            "ONBOOT"
+            "ONBOOT",
+            "ETHTOOL_OPTS"
         ]
         # Check whether any of the changes require restart
         for change in self.enumerate_ifcfg_changes(file_values, new_values):
@@ -329,6 +330,46 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                                 (device_name, data_values["MTU"]))
             elif changes["MTU"] == "removed":
                 commands.append("link set dev %s mtu 1500" % device_name)
+        return commands
+
+    def ethtool_apply_command(self, device_name, filename, data):
+        """Return list of commands needed to implement changes.
+
+           Given ifcfg data for an interface, return commands required to
+           apply the configuration using 'ethtool' commands.
+
+        :param device_name: The name of the int, bridge, or bond
+        :type device_name: string
+        :param filename: The ifcfg-<int> filename.
+        :type filename: string
+        :param data: The data for the new ifcfg-<int> file.
+        :type data: string
+        :returns: commands (commands to be run)
+        """
+
+        previous_cfg = common.get_file_data(filename)
+        file_values = self.parse_ifcfg(previous_cfg)
+        data_values = self.parse_ifcfg(data)
+        logger.debug("File values:\n%s" % file_values)
+        logger.debug("Data values:\n%s" % data_values)
+        changes = self.enumerate_ifcfg_changes(file_values, data_values)
+        commands = []
+
+        if "ETHTOOL_OPTS" in changes:
+            if changes["ETHTOOL_OPTS"] == "added" or \
+               changes["ETHTOOL_OPTS"] == "modified":
+                for command_opts in data_values["ETHTOOL_OPTS"].split(';'):
+                    if re.match(r'\s*-+\w+-*\w* ', command_opts):
+                        if device_name or "${DEVICE}" or "$DEVICE" \
+                                in command_opts:
+                            commands.append("%s" % command_opts)
+                        else:
+                            msg = ("Assigned interface name to \
+                                    ETHTOOL_OPTS is invalid %s" % device_name)
+                            raise utils.InvalidInterfaceException(msg)
+                    else:
+                        commands.append("-s %s %s" %
+                                        (device_name, command_opts))
         return commands
 
     def iproute2_route_commands(self, filename, data):
@@ -1292,6 +1333,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
         vpp_interfaces = self.vpp_interface_data.values()
         vpp_bonds = self.vpp_bond_data.values()
         ipcmd = utils.iproute2_path()
+        ethtoolcmd = utils.ethtool_path()
 
         for interface_name, iface_data in self.interface_data.items():
             route_data = self.route_data.get(interface_name, '')
@@ -1735,6 +1777,27 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                         restart_interfaces.extend(
                             self.child_members(interface[0]))
                         break
+
+                commands = self.ethtool_apply_command(interface[0],
+                                                      interface[1],
+                                                      interface[2])
+                if commands is not None:
+                    for command in commands:
+                        try:
+                            args = command.split()
+                            args = [interface[0]
+                                    if item in ["${DEVICE}", "$DEVICE"]
+                                    else item for item in args]
+                            self.execute('Running ethtool %s' % command,
+                                         ethtoolcmd, *args)
+                        except Exception as e:
+                            logger.warning("Error in 'ethtool %s', restarting %s:\
+                                           \n%s)" %
+                                           (command, interface[0], str(e)))
+                            restart_interfaces.append(interface[0])
+                            restart_interfaces.extend(
+                                self.child_members(interface[0]))
+                            break
 
             for bridge in apply_bridges:
                 logger.debug('Running ip commands on bridge: %s' %
