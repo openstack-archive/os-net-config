@@ -950,3 +950,15 @@ def iproute2_path():
         logger.warning("Could not execute /sbin/ip or /usr/sbin/ip")
         return False
     return ipcmd
+
+
+def ethtool_path():
+    """Find 'ethtool' executable."""
+    if os.access('/sbin/ethtool', os.X_OK):
+        ethtoolcmd = '/sbin/ethtool'
+    elif os.access('/usr/sbin/ethtool', os.X_OK):
+        ethtoolcmd = '/usr/sbin/ethtool'
+    else:
+        logger.warning("Could not execute /sbin/ethtool or /usr/sbin/ethtool")
+        return False
+    return ethtoolcmd
