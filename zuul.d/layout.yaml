@@ -1,4 +1,5 @@
 - project:
+    queue: tripleo
     templates:
       - check-requirements
       - openstack-cover-jobs
@@ -9,4 +10,5 @@
       - tripleo-multinode-container-minimal-pipeline
       - tripleo-upgrades-train-pipeline
     gate:
-      queue: tripleo
+      jobs:
+        - openstack-tox-pep8
