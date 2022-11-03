@@ -51,6 +51,7 @@ def remove_ifcfg_config(ifname):
     if re.match('[\w-]+$', ifname):
         ifcfg_file = ifcfg_config_path(ifname)
         if os.path.exists(ifcfg_file):
+            logger.info('removing existing ifcfg script for intf: %s' % ifname)
             os.remove(ifcfg_file)
 
 
@@ -951,7 +952,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
 
         # Bind the dpdk interface
         utils.bind_dpdk_interfaces(ifname, ovs_dpdk_port.driver, self.noop)
-        if not self.noop:
+        if not self.noop and (not utils.is_mellanox_interface(ifname)):
             remove_ifcfg_config(ifname)
 
         data = self._add_common(ovs_dpdk_port)
@@ -981,7 +982,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
             # checks are added at the object creation stage.
             ifname = dpdk_port.members[0].name
             utils.bind_dpdk_interfaces(ifname, dpdk_port.driver, self.noop)
-            if not self.noop:
+            if not self.noop and (not utils.is_mellanox_interface(ifname)):
                 remove_ifcfg_config(ifname)
 
         data = self._add_common(ovs_dpdk_bond)
