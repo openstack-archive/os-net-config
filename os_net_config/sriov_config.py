@@ -313,6 +313,9 @@ def configure_sriov_pf(execution_from_cli=False, restart_openvswitch=False):
 
     for item in sriov_map:
         if item['device_type'] == 'pf':
+            if pf_configure_status(item):
+                logger.debug(f"PF {item['name']} is already configured")
+                continue
             _pf_interface_up(item)
             if item.get('link_mode') == "legacy":
                 # Add a udev rule to configure the VF's when PF's are
@@ -624,6 +627,10 @@ def _pf_interface_up(pf_device):
                           'promisc', pf_device['promisc'])
     logger.info(f"{pf_device['name']}: Bringing up PF")
     run_ip_config_cmd('ip', 'link', 'set', 'dev', pf_device['name'], 'up')
+
+
+def pf_configure_status(pf_device):
+    return pf_device['numvfs'] == get_numvfs(pf_device['name'])
 
 
 def run_ip_config_cmd_safe(raise_error, *cmd, **kwargs):
