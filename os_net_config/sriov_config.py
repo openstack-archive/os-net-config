@@ -281,6 +281,9 @@ def configure_sriov_pf(execution_from_cli=False, restart_openvswitch=False):
     cleanup_puppet_config()
     for item in sriov_map:
         if item['device_type'] == 'pf':
+            if pf_configure_status(item):
+                logger.debug("PF %s is already configured" % item['name'])
+                continue
             _pf_interface_up(item)
             if item.get('link_mode') == "legacy":
                 # Add a udev rule to configure the VF's when PF's are
@@ -528,6 +531,10 @@ def get_vendor_id(ifname):
         return out
     except IOError:
         return
+
+
+def pf_configure_status(pf_device):
+    return pf_device['numvfs'] == get_numvfs(pf_device['name'])
 
 
 def run_ip_config_cmd_safe(raise_error, *cmd, **kwargs):
