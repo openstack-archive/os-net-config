@@ -55,8 +55,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'os-net-config Release Notes'
-copyright = u'2018, OpenStackFoundation'
+project = 'os-net-config Release Notes'
+copyright = '2018, OpenStackFoundation'
 
 # openstackdocstheme options
 openstackdocs_repo_name = 'openstack/os-net-config'
