@@ -3,12 +3,25 @@
     queue: tripleo
     templates:
       - check-requirements
-      - openstack-cover-jobs
-      - openstack-python3-zed-jobs
       - publish-openstack-docs-pti
       - release-notes-jobs-python3
       - tripleo-multinode-container-minimal-pipeline
       - tripleo-upgrades-zed-pipeline
+    check:
+      jobs:
+        - tripleo-ci-centos-9-content-provider:
+            dependencies:
+              - openstack-tox-pep8
+        - openstack-tox-pep8: &nodes
+            nodeset: centos-9-stream
+        - openstack-tox-py39: *nodes
+        - openstack-tox-docs: *nodes
+        - openstack-tox-cover: *nodes
     gate:
       jobs:
-        - openstack-tox-pep8
+        - openstack-tox-pep8: *nodes
+        - openstack-tox-py39: *nodes
+        - openstack-tox-docs: *nodes
+    post:
+      jobs:
+        - publish-openstack-python-branch-tarball
