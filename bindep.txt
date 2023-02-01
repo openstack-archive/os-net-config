@@ -3,3 +3,7 @@
 # see https://docs.openstack.org/infra/bindep/ for additional information.
 
 ethtool
+nmstate            [platform:rpm]
+NetworkManager-ovs [platform:rpm]
+python3-libnmstate [platform:rpm]
+nmstate-libs       [platform:rpm]
