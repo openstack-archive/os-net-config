@@ -191,7 +191,7 @@ PEERDNS=no
 TYPE=Infiniband
 PKEY=yes
 PHYSDEV=ib0
-PKEY_ID=1
+PKEY_ID=0x8001
 BOOTPROTO=none
 """
 

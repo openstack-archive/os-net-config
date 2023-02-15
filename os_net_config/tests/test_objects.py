@@ -1622,14 +1622,14 @@ class TestIbChildInterface(base.TestCase):
 
     def test_ib_child_interface_pkey_id_valid(self):
         ib_child_interface = objects.IbChildInterface('foo', pkey_id=100)
-        self.assertEqual(100, ib_child_interface.pkey_id)
+        self.assertEqual("0x8064", ib_child_interface.pkey_id)
 
     def test_ib_child_interface_pkey_id_hexa(self):
         data = '{"type": "ib_child_interface", ' \
                '"parent": "foo", "pkey_id": "0x64"}'
         ib_child_interface = \
             objects.IbChildInterface.from_json(json.loads(data))
-        self.assertEqual(100, ib_child_interface.pkey_id)
+        self.assertEqual("0x8064", ib_child_interface.pkey_id)
 
     def test_ib_child_interface_pkey_id_invalid_base(self):
         data = '{"type": "ib_child_interface", ' \
