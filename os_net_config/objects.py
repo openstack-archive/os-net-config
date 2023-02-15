@@ -1269,9 +1269,9 @@ class IbChildInterface(_BaseOpts):
         routes = routes or []
         rules = rules or []
         dns_servers = dns_servers or []
-        self.pkey_id = pkey_id
-        self.parent = parent
         full_pkey_id = 0x8000 | pkey_id
+        self.pkey_id = hex(full_pkey_id)
+        self.parent = parent
         name = "%s.%04x" % (parent, full_pkey_id)
         nm_controlled = True
         super(IbChildInterface, self).__init__(name, use_dhcp, use_dhcpv6,
