@@ -25,6 +25,7 @@ from os_net_config import common
 from os_net_config import impl_eni
 from os_net_config import impl_ifcfg
 from os_net_config import impl_iproute
+from os_net_config import impl_nmstate
 from os_net_config import objects
 from os_net_config import utils
 from os_net_config import validator
@@ -53,7 +54,7 @@ def parse_opts(argv):
                         nargs='*', default=None)
     parser.add_argument('-p', '--provider', metavar='PROVIDER',
                         help="""The provider to use. """
-                        """One of: ifcfg, eni, iproute.""",
+                        """One of: ifcfg, eni, nmstate, iproute.""",
                         default=None)
     parser.add_argument('-r', '--root-dir', metavar='ROOT_DIR',
                         help="""The root directory of the filesystem.""",
@@ -170,6 +171,9 @@ def main(argv=sys.argv, main_logger=None):
                                              root_dir=opts.root_dir)
         elif opts.provider == 'iproute':
             provider = impl_iproute.IPRouteNetConfig(noop=opts.noop,
+                                                     root_dir=opts.root_dir)
+        elif opts.provider == 'nmstate':
+            provider = impl_nmstate.NmstateNetConfig(noop=opts.noop,
                                                      root_dir=opts.root_dir)
         else:
             main_logger.error("Invalid provider specified.")
