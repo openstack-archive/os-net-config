@@ -14,9 +14,12 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+from libnmstate.schema import Ethernet
+from libnmstate.schema import Ethtool
 import os.path
 import yaml
 
+import os_net_config
 from os_net_config import impl_nmstate
 from os_net_config import objects
 from os_net_config.tests import base
@@ -158,6 +161,14 @@ class TestNmstateNetConfig(base.TestCase):
     def get_interface_config(self, name='em1'):
         return self.provider.interface_data[name]
 
+    def get_nmstate_ethtool_opts(self, name):
+        data = {}
+        data[Ethernet.CONFIG_SUBTREE] = \
+            self.provider.interface_data[name][Ethernet.CONFIG_SUBTREE]
+        data[Ethtool.CONFIG_SUBTREE] = \
+            self.provider.interface_data[name][Ethtool.CONFIG_SUBTREE]
+        return data
+
     def get_dns_data(self):
         return self.provider.dns_data
 
@@ -285,6 +296,111 @@ class TestNmstateNetConfig(base.TestCase):
 """
         self.assertEqual(yaml.safe_load(test_dns_config3),
                          self.get_dns_data())
+
+    def test_ethtool_opts(self):
+        interface1 = objects.Interface('em1',
+                                       ethtool_opts='speed 1000 duplex full '
+                                                    'autoneg on')
+        interface2 = objects.Interface('em2',
+                                       ethtool_opts='--set-ring \
+                                       ${DEVICE} rx 1024 tx 1024')
+        interface3 = objects.Interface('em3',
+                                       ethtool_opts='-G $DEVICE '
+                                       'rx 1024 tx 1024;'
+                                       '-A ${DEVICE} autoneg on;'
+                                       '--offload ${DEVICE} '
+                                       'hw-tc-offload on')
+        interface4 = objects.Interface('em4',
+                                       ethtool_opts='-K ${DEVICE} '
+                                       'hw-tc-offload on;'
+                                       '-C ${DEVICE} adaptive-rx off '
+                                       'adaptive-tx off')
+        interface5 = objects.Interface('em5',
+                                       ethtool_opts='-s ${DEVICE} speed '
+                                       '100 duplex half autoneg off')
+        # Mismatch in device name
+        interface6 = objects.Interface('em6',
+                                       ethtool_opts='-s em3 speed 100 '
+                                       'duplex half autoneg off')
+        # Unhandled option -U
+        interface7 = objects.Interface('em7',
+                                       ethtool_opts='-U ${DEVICE} '
+                                       'flow-type tcp4 tos 1 action 10')
+        # Unsupported option `advertise`
+        interface8 = objects.Interface('em8',
+                                       ethtool_opts='advertise 0x100000')
+        # Unsupported format
+        interface9 = objects.Interface('em9',
+                                       ethtool_opts='s $DEVICE rx 78')
+        self.provider.add_interface(interface1)
+        self.provider.add_interface(interface2)
+        self.provider.add_interface(interface3)
+        self.provider.add_interface(interface4)
+        self.provider.add_interface(interface5)
+
+        em1_config = """
+  - ethernet:
+      speed: 1000
+      duplex: full
+      auto-negotiation: true
+    ethtool: {}
+"""
+        em2_config = """
+  - ethernet: {}
+    ethtool:
+      ring:
+        rx: 1024
+        tx: 1024
+"""
+        em3_config = """
+  - ethernet: {}
+    ethtool:
+      ring:
+        rx: 1024
+        tx: 1024
+      pause:
+        autoneg: true
+      feature:
+        hw-tc-offload: true
+"""
+        em4_config = """
+  - ethernet: {}
+    ethtool:
+      feature:
+        hw-tc-offload: true
+      coalesce:
+        adaptive-rx: false
+        adaptive-tx: false
+"""
+        em5_config = """
+  - ethernet:
+      speed: 100
+      duplex: half
+      auto-negotiation: false
+    ethtool: {}
+"""
+        self.assertEqual(yaml.safe_load(em1_config)[0],
+                         self.get_nmstate_ethtool_opts('em1'))
+        self.assertEqual(yaml.safe_load(em2_config)[0],
+                         self.get_nmstate_ethtool_opts('em2'))
+        self.assertEqual(yaml.safe_load(em3_config)[0],
+                         self.get_nmstate_ethtool_opts('em3'))
+        self.assertEqual(yaml.safe_load(em4_config)[0],
+                         self.get_nmstate_ethtool_opts('em4'))
+        self.assertEqual(yaml.safe_load(em5_config)[0],
+                         self.get_nmstate_ethtool_opts('em5'))
+        self.assertRaises(os_net_config.ConfigurationError,
+                          self.provider.add_interface,
+                          interface6)
+        self.assertRaises(os_net_config.ConfigurationError,
+                          self.provider.add_interface,
+                          interface7)
+        self.assertRaises(os_net_config.ConfigurationError,
+                          self.provider.add_interface,
+                          interface8)
+        self.assertRaises(os_net_config.ConfigurationError,
+                          self.provider.add_interface,
+                          interface9)
 
 
 class TestNmstateNetConfigApply(base.TestCase):

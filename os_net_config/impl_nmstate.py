@@ -18,6 +18,7 @@ from libnmstate import netapplier
 from libnmstate import netinfo
 from libnmstate.schema import DNS
 from libnmstate.schema import Ethernet
+from libnmstate.schema import Ethtool
 from libnmstate.schema import Interface
 from libnmstate.schema import InterfaceIPv4
 from libnmstate.schema import InterfaceIPv6
@@ -41,13 +42,15 @@ IPV4_DEFAULT_GATEWAY_DESTINATION = "0.0.0.0/0"
 IPV6_DEFAULT_GATEWAY_DESTINATION = "::/0"
 
 
-def _convert_to_bool(value):
-    if isinstance(value, str):
-        if value.lower() in ['true', 'yes', 'on']:
+def _get_type_value(str_val):
+    if isinstance(str_val, str):
+        if str_val.isdigit():
+            return int(str_val)
+        if str_val.lower() in ['true', 'yes', 'on']:
             return True
-        if value.lower() in ['false', 'no', 'off']:
+        if str_val.lower() in ['false', 'no', 'off']:
             return False
-    return value
+    return str_val
 
 
 def is_dict_subset(superset, subset):
@@ -84,6 +87,16 @@ def is_dict_subset(superset, subset):
                     return False
         return True
     return False
+
+
+def _add_sub_tree(data, subtree):
+    config = data
+    if subtree:
+        for cfg in subtree:
+            if cfg not in config:
+                config[cfg] = {}
+            config = config[cfg]
+    return config
 
 
 class NmstateNetConfig(os_net_config.NetConfig):
@@ -159,6 +172,126 @@ class NmstateNetConfig(os_net_config.NetConfig):
         self.__dump_config(state, msg=f"Applying DNS")
         if not self.noop:
             netapplier.apply(state, verify_change=verify)
+
+    def add_ethtool_subtree(self, data, sub_config, command):
+        config = _add_sub_tree(data, sub_config['sub-tree'])
+        ethtool_map = sub_config['map']
+
+        # skip first 2 entries as they are already validated
+        for index in range(2, len(command) - 1, 2):
+            value = _get_type_value(command[index + 1])
+            if command[index] in ethtool_map.keys():
+                config[ethtool_map[command[index]]] = value
+            elif (sub_config['sub-options'] == 'copy'):
+                config[command[index]] = value
+            else:
+                msg = f'Unhandled ethtool option {command[index]} for '\
+                      f'command {command}.'
+                raise os_net_config.ConfigurationError(msg)
+
+    def add_ethtool_config(self, iface_name, data, ethtool_options):
+
+        ethtool_generic_options = {'sub-tree': [Ethernet.CONFIG_SUBTREE],
+                                   'sub-options': None,
+                                   'map': {
+                                   'speed': Ethernet.SPEED,
+                                   'autoneg': Ethernet.AUTO_NEGOTIATION,
+                                   'duplex': Ethernet.DUPLEX}
+                                   }
+        ethtool_set_ring = {'sub-tree': [Ethtool.CONFIG_SUBTREE,
+                                         Ethtool.Ring.CONFIG_SUBTREE],
+                            'sub-options': None,
+                            'map': {
+                            'rx': Ethtool.Ring.RX,
+                            'tx': Ethtool.Ring.TX,
+                            'rx-jumbo': Ethtool.Ring.RX_JUMBO,
+                            'rx-mini': Ethtool.Ring.RX_MINI}
+                            }
+        ethtool_set_pause = {'sub-tree': [Ethtool.CONFIG_SUBTREE,
+                                          Ethtool.Pause.CONFIG_SUBTREE],
+                             'sub-options': None,
+                             'map': {
+                             'autoneg': Ethtool.Pause.AUTO_NEGOTIATION,
+                             'tx': Ethtool.Pause.TX,
+                             'rx': Ethtool.Pause.RX}
+                             }
+        coalesce_map = {'adaptive-rx': Ethtool.Coalesce.ADAPTIVE_RX,
+                        'adaptive-tx': Ethtool.Coalesce.ADAPTIVE_TX,
+                        'rx-usecs': Ethtool.Coalesce.RX_USECS,
+                        'rx-frames': Ethtool.Coalesce.RX_FRAMES,
+                        'rx-usecs-irq': Ethtool.Coalesce.RX_USECS_IRQ,
+                        'rx-frames-irq': Ethtool.Coalesce.RX_FRAMES_IRQ,
+                        'tx-usecs': Ethtool.Coalesce.TX_USECS,
+                        'tx-frames': Ethtool.Coalesce.TX_FRAMES,
+                        'tx-usecs-irq': Ethtool.Coalesce.TX_USECS_IRQ,
+                        'tx-frames-irq': Ethtool.Coalesce.TX_FRAMES_IRQ,
+                        'stats-block-usecs':
+                            Ethtool.Coalesce.STATS_BLOCK_USECS,
+                        'pkt-rate-low': Ethtool.Coalesce.PKT_RATE_LOW,
+                        'rx-usecs-low': Ethtool.Coalesce.RX_USECS_LOW,
+                        'rx-frames-low': Ethtool.Coalesce.RX_FRAMES_LOW,
+                        'tx-usecs-low': Ethtool.Coalesce.TX_USECS_LOW,
+                        'tx-frames-low': Ethtool.Coalesce.TX_FRAMES_LOW,
+                        'pkt-rate-high': Ethtool.Coalesce.PKT_RATE_HIGH,
+                        'rx-usecs-high': Ethtool.Coalesce.RX_USECS_HIGH,
+                        'rx-frames-high': Ethtool.Coalesce.RX_FRAMES_HIGH,
+                        'tx-usecs-high': Ethtool.Coalesce.TX_USECS_HIGH,
+                        'tx-frames-high': Ethtool.Coalesce.TX_FRAMES_HIGH,
+                        'sample-interval': Ethtool.Coalesce.SAMPLE_INTERVAL}
+        ethtool_set_coalesce = {'sub-tree': [Ethtool.CONFIG_SUBTREE,
+                                             Ethtool.Coalesce.CONFIG_SUBTREE],
+                                'sub-options': None,
+                                'map': coalesce_map
+                                }
+        ethtool_set_features = {'sub-tree': [Ethtool.CONFIG_SUBTREE,
+                                             Ethtool.Feature.CONFIG_SUBTREE],
+                                'sub-options': 'copy',
+                                'map': {}}
+        ethtool_map = {'-G': ethtool_set_ring,
+                       '--set-ring': ethtool_set_ring,
+                       '-A': ethtool_set_pause,
+                       '--pause': ethtool_set_pause,
+                       '-C': ethtool_set_coalesce,
+                       '--coalesce': ethtool_set_coalesce,
+                       '-K': ethtool_set_features,
+                       '--features': ethtool_set_features,
+                       '--offload': ethtool_set_features,
+                       '-s': ethtool_generic_options,
+                       '--change': ethtool_generic_options}
+        if Ethernet.CONFIG_SUBTREE not in data:
+            data[Ethernet.CONFIG_SUBTREE] = {}
+        if Ethtool.CONFIG_SUBTREE not in data:
+            data[Ethtool.CONFIG_SUBTREE] = {}
+
+        for ethtool_opts in ethtool_options.split(';'):
+            ethtool_opts = ethtool_opts.strip()
+            if re.match(r'^(-[\S-]+[ ]+[\S]+)([ ]+[\S-]+[ ]+[\S]+)+',
+                        ethtool_opts):
+                # The regex pattern is strict and hence a minimum of 4 items
+                # are present in ethtool_opts.
+                command = ethtool_opts.split()
+                if len(command) < 4:
+                    msg = f"Ethtool options {command} is incomplete"
+                    raise os_net_config.ConfigurationError(msg)
+
+                option = command[0]
+                accepted_dev_names = ['${DEVICE}', '$DEVICE', iface_name]
+                if command[1] not in accepted_dev_names:
+                    msg = f'Skipping {ethtool_opts} due to incorrect device '\
+                          f'name present for interface {iface_name}'
+                    raise os_net_config.ConfigurationError(msg)
+                if option in ethtool_map.keys():
+                    self.add_ethtool_subtree(data, ethtool_map[option],
+                                             command)
+                else:
+                    msg = f'Unhandled ethtool_opts {ethtool_opts} for device'\
+                          f' {iface_name}. Option {option} is not supported.'
+                    raise os_net_config.ConfigurationError(msg)
+            else:
+                command_str = '-s ${DEVICE} ' + ethtool_opts
+                command = command_str.split()
+                option = command[0]
+                self.add_ethtool_subtree(data, ethtool_map[option], command)
 
     def _add_common(self, base_opt):
 
@@ -313,6 +446,10 @@ class NmstateNetConfig(os_net_config.NetConfig):
         if isinstance(interface, objects.Interface):
             data[Interface.TYPE] = InterfaceType.ETHERNET
             data[Ethernet.CONFIG_SUBTREE] = {}
+
+        if interface.ethtool_opts:
+            self.add_ethtool_config(interface.name, data,
+                                    interface.ethtool_opts)
 
         if interface.renamed:
             # TODO(Karthik S) Handle renamed interfaces
