@@ -17,15 +17,31 @@
 from libnmstate.schema import Ethernet
 from libnmstate.schema import Ethtool
 import os.path
+import tempfile
 import yaml
 
 import os_net_config
 from os_net_config import impl_nmstate
 from os_net_config import objects
 from os_net_config.tests import base
+from os_net_config import utils
+
 
 TEST_ENV_DIR = os.path.realpath(os.path.join(os.path.dirname(__file__),
                                              'environment'))
+
+_RT_DEFAULT = """# reserved values
+#
+255\tlocal
+254\tmain
+253\tdefault
+0\tunspec
+#
+# local
+#
+#1\tinr.ruhep\n"""
+
+_RT_CUSTOM = _RT_DEFAULT + "# Custom\n10\tcustom # Custom table\n20\ttable1\n"
 
 _BASE_IFACE_CFG = """
   -
@@ -150,13 +166,20 @@ _V6_NMCFG_MULTIPLE = _V6_NMCFG + """    - ip: 2001:abc:b::1
 class TestNmstateNetConfig(base.TestCase):
     def setUp(self):
         super(TestNmstateNetConfig, self).setUp()
-
+        self.temp_route_table_file = tempfile.NamedTemporaryFile()
         self.provider = impl_nmstate.NmstateNetConfig()
 
         def stub_is_ovs_installed():
             return True
         self.stub_out('os_net_config.utils.is_ovs_installed',
                       stub_is_ovs_installed)
+
+        def test_route_table_path():
+            return self.temp_route_table_file.name
+        self.stub_out(
+            'os_net_config.impl_nmstate.route_table_config_path',
+            test_route_table_path)
+        utils.write_config(self.temp_route_table_file.name, _RT_CUSTOM)
 
     def get_interface_config(self, name='em1'):
         return self.provider.interface_data[name]
@@ -172,11 +195,21 @@ class TestNmstateNetConfig(base.TestCase):
     def get_dns_data(self):
         return self.provider.dns_data
 
+    def get_route_table_config(self, name='custom', table_id=200):
+        return self.provider.route_table_data.get(name, table_id)
+
+    def get_rule_config(self):
+        return self.provider.rules_data
+
+    def get_route_config(self, name):
+        return self.provider.route_data.get(name, '')
+
     def test_add_base_interface(self):
         interface = objects.Interface('em1')
         self.provider.add_interface(interface)
         self.assertEqual(yaml.safe_load(_NO_IP)[0],
                          self.get_interface_config())
+        self.assertEqual('', self.get_route_config('em1'))
 
     def test_add_interface_with_v6(self):
         v6_addr = objects.Address('2001:abc:a::/64')
@@ -184,6 +217,7 @@ class TestNmstateNetConfig(base.TestCase):
         self.provider.add_interface(interface)
         self.assertEqual(yaml.safe_load(_V6_NMCFG)[0],
                          self.get_interface_config())
+        self.assertEqual('', self.get_route_config('em1'))
 
     def test_add_interface_with_v4_v6(self):
         addresses = [objects.Address('2001:abc:a::2/64'),
@@ -192,6 +226,7 @@ class TestNmstateNetConfig(base.TestCase):
         self.provider.add_interface(interface)
         self.assertEqual(yaml.safe_load(_V4_V6_NMCFG)[0],
                          self.get_interface_config())
+        self.assertEqual('', self.get_route_config('em1'))
 
     def test_add_interface_with_v6_multiple(self):
         addresses = [objects.Address('2001:abc:a::/64'),
@@ -201,6 +236,7 @@ class TestNmstateNetConfig(base.TestCase):
         self.provider.add_interface(interface)
         self.assertEqual(yaml.safe_load(_V6_NMCFG_MULTIPLE)[0],
                          self.get_interface_config())
+        self.assertEqual('', self.get_route_config('em1'))
 
     def test_interface_defroute(self):
         interface1 = objects.Interface('em1')
@@ -235,8 +271,10 @@ class TestNmstateNetConfig(base.TestCase):
 """
         self.assertEqual(yaml.safe_load(em1_config)[0],
                          self.get_interface_config('em1'))
+        self.assertEqual('', self.get_route_config('em1'))
         self.assertEqual(yaml.safe_load(em2_config)[0],
                          self.get_interface_config('em2'))
+        self.assertEqual('', self.get_route_config('em2'))
 
     def test_interface_dns_server(self):
         interface1 = objects.Interface('em1', dns_servers=['1.2.3.4'])
@@ -332,6 +370,7 @@ class TestNmstateNetConfig(base.TestCase):
         # Unsupported format
         interface9 = objects.Interface('em9',
                                        ethtool_opts='s $DEVICE rx 78')
+
         self.provider.add_interface(interface1)
         self.provider.add_interface(interface2)
         self.provider.add_interface(interface3)
@@ -401,6 +440,136 @@ class TestNmstateNetConfig(base.TestCase):
         self.assertRaises(os_net_config.ConfigurationError,
                           self.provider.add_interface,
                           interface9)
+
+    def test_add_route_table(self):
+        route_table1 = objects.RouteTable('table1', 200)
+        route_table2 = objects.RouteTable('table2', '201')
+        self.provider.add_route_table(route_table1)
+        self.provider.add_route_table(route_table2)
+        self.assertEqual("table1", self.get_route_table_config(200))
+        self.assertEqual("table2", self.get_route_table_config(201))
+
+    def test_add_route_with_table(self):
+        expected_route_table = """
+            - destination: 172.19.0.0/24
+              next-hop-address: 192.168.1.1
+              next-hop-interface: em1
+              table-id: 200
+            - destination: 172.20.0.0/24
+              next-hop-address: 192.168.1.1
+              next-hop-interface: em1
+              table-id: 201
+            - destination: 172.21.0.0/24
+              next-hop-address: 192.168.1.1
+              next-hop-interface: em1
+              table-id: 200
+        """
+        expected_rule = """
+            - ip-from: 192.0.2.0/24
+              route-table: 200
+        """
+        route_table1 = objects.RouteTable('table1', 200)
+        self.provider.add_route_table(route_table1)
+
+        route_rule1 = objects.RouteRule('from 192.0.2.0/24 table 200',
+                                        'test comment')
+        # Test route table by name
+        route1 = objects.Route('192.168.1.1', '172.19.0.0/24', False,
+                               route_table="table1")
+        # Test that table specified in route_options takes precedence
+        route2 = objects.Route('192.168.1.1', '172.20.0.0/24', False,
+                               'table 201', route_table=200)
+        # Test route table specified by integer ID
+        route3 = objects.Route('192.168.1.1', '172.21.0.0/24', False,
+                               route_table=200)
+        v4_addr = objects.Address('192.168.1.2/24')
+        interface = objects.Interface('em1', addresses=[v4_addr],
+                                      routes=[route1, route2, route3],
+                                      rules=[route_rule1])
+        self.provider.add_interface(interface)
+
+        self.assertEqual(yaml.safe_load(expected_route_table),
+                         self.get_route_config('em1'))
+        self.assertEqual(yaml.safe_load(expected_rule),
+                         self.get_rule_config())
+
+    def test_ip_rules(self):
+        expected_rule = """
+            - action: blackhole
+              ip-from: 172.19.40.0/24
+              route-table: 200
+            - action: unreachable
+              iif: em1
+              ip-from: 192.168.1.0/24
+            - family: ipv4
+              iif: em1
+              route-table: 200
+        """
+        rule1 = objects.RouteRule(
+            'add blackhole from 172.19.40.0/24 table 200', 'rule1')
+        rule2 = objects.RouteRule(
+            'add unreachable iif em1 from 192.168.1.0/24', 'rule2')
+        rule3 = objects.RouteRule('iif em1 table 200', 'rule3')
+        v4_addr = objects.Address('192.168.1.2/24')
+        interface = objects.Interface('em1', addresses=[v4_addr],
+                                      rules=[rule1, rule2, rule3])
+        self.provider.add_interface(interface)
+
+        self.assertEqual(yaml.safe_load(expected_rule),
+                         self.get_rule_config())
+
+    def test_network_with_routes(self):
+        expected_route_table = """
+            - destination: 0.0.0.0/0
+              metric: 10
+              next-hop-address: 192.168.1.1
+              next-hop-interface: em1
+            - destination: 172.19.0.0/24
+              next-hop-address: 192.168.1.1
+              next-hop-interface: em1
+            - destination: 172.20.0.0/24
+              metric: 100
+              next-hop-address: 192.168.1.5
+              next-hop-interface: em1
+        """
+        route1 = objects.Route('192.168.1.1', default=True,
+                               route_options="metric 10")
+        route2 = objects.Route('192.168.1.1', '172.19.0.0/24')
+        route3 = objects.Route('192.168.1.5', '172.20.0.0/24',
+                               route_options="metric 100")
+        v4_addr = objects.Address('192.168.1.2/24')
+        interface = objects.Interface('em1', addresses=[v4_addr],
+                                      routes=[route1, route2, route3])
+        self.provider.add_interface(interface)
+        self.assertEqual(yaml.safe_load(expected_route_table),
+                         self.get_route_config('em1'))
+
+    def test_network_with_ipv6_routes(self):
+        expected_route_table = """
+            - destination: ::/0
+              next-hop-address: 2001:db8::1
+              next-hop-interface: em1
+            - destination: 2001:db8:dead:beef:cafe::/56
+              next-hop-address: fd00:fd00:2000::1
+              next-hop-interface: em1
+            - destination: 2001:db8:dead:beff::/64
+              metric: 100
+              next-hop-address: fd00:fd00:2000::1
+              next-hop-interface: em1
+        """
+        route4 = objects.Route('2001:db8::1', default=True)
+        route5 = objects.Route('fd00:fd00:2000::1',
+                               '2001:db8:dead:beef:cafe::/56')
+        route6 = objects.Route('fd00:fd00:2000::1',
+                               '2001:db8:dead:beff::/64',
+                               route_options="metric 100")
+        v4_addr = objects.Address('192.168.1.2/24')
+        v6_addr = objects.Address('2001:abc:a::/64')
+        interface = objects.Interface('em1', addresses=[v4_addr, v6_addr],
+                                      routes=[route4, route5, route6])
+        self.provider.add_interface(interface)
+        self.assertEqual(yaml.safe_load(expected_route_table),
+                         self.get_route_config('em1'))
 
 
 class TestNmstateNetConfigApply(base.TestCase):

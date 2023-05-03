@@ -14,6 +14,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import copy
 from libnmstate import netapplier
 from libnmstate import netinfo
 from libnmstate.schema import DNS
@@ -24,12 +25,15 @@ from libnmstate.schema import InterfaceIPv4
 from libnmstate.schema import InterfaceIPv6
 from libnmstate.schema import InterfaceState
 from libnmstate.schema import InterfaceType
+from libnmstate.schema import Route as NMRoute
+from libnmstate.schema import RouteRule as NMRouteRule
 import logging
 import netaddr
 import re
 import yaml
 
 import os_net_config
+from os_net_config import common
 from os_net_config import objects
 
 logger = logging.getLogger(__name__)
@@ -37,9 +41,26 @@ logger = logging.getLogger(__name__)
 # Import the raw NetConfig object so we can call its methods
 netconfig = os_net_config.NetConfig()
 
+_OS_NET_CONFIG_MANAGED = "# os-net-config managed table"
+
+_ROUTE_TABLE_DEFAULT = """# reserved values
+#
+255\tlocal
+254\tmain
+253\tdefault
+0\tunspec
+#
+# local
+#
+#1\tinr.ruhep\n"""
+
 
 IPV4_DEFAULT_GATEWAY_DESTINATION = "0.0.0.0/0"
 IPV6_DEFAULT_GATEWAY_DESTINATION = "::/0"
+
+
+def route_table_config_path():
+    return "/etc/iproute2/rt_tables"
 
 
 def _get_type_value(str_val):
@@ -51,6 +72,16 @@ def _get_type_value(str_val):
         if str_val.lower() in ['false', 'no', 'off']:
             return False
     return str_val
+
+
+def get_route_options(route_options, key):
+
+    items = route_options.split(' ')
+    iter_list = iter(items)
+    for item in iter_list:
+        if key in item:
+            return _get_type_value(next(iter_list))
+    return
 
 
 def is_dict_subset(superset, subset):
@@ -99,13 +130,22 @@ def _add_sub_tree(data, subtree):
     return config
 
 
+def _is_any_ip_addr(address):
+    if address.lower() == 'any' or address.lower() == 'all':
+        return True
+    return False
+
+
 class NmstateNetConfig(os_net_config.NetConfig):
     """Configure network interfaces using NetworkManager via nmstate API."""
 
     def __init__(self, noop=False, root_dir=''):
         super(NmstateNetConfig, self).__init__(noop, root_dir)
         self.interface_data = {}
+        self.route_data = {}
+        self.rules_data = []
         self.dns_data = {'server': [], 'domain': []}
+        self.route_table_data = {}
         logger.info('nmstate net config provider created.')
 
     def __dump_config(self, config, msg="Applying config"):
@@ -113,6 +153,84 @@ class NmstateNetConfig(os_net_config.NetConfig):
                              allow_unicode=True, encoding=None)
         logger.debug("----------------------------")
         logger.debug(f"{msg}\n{cfg_dump}")
+
+    def get_route_tables(self):
+        """Generate configuration content for routing tables.
+
+        This method first extracts the existing route table definitions. If
+        any non-default tables exist, they will be kept unless they conflict
+        with new tables defined in the route_tables dict.
+
+        :param route_tables: A dict of RouteTable objects
+        """
+
+        rt_tables = {}
+        rt_config = common.get_file_data(route_table_config_path()).split('\n')
+        for line in rt_config:
+            # ignore comments and black lines
+            line = line.strip()
+            if not line or line.startswith('#'):
+                pass
+            else:
+                id_name = line.split()
+                if len(id_name) > 1 and id_name[0].isdigit():
+                    rt_tables[id_name[1]] = int(id_name[0])
+        self.__dump_config(rt_tables,
+                           msg='Contents of /etc/iproute2/rt_tables')
+        return rt_tables
+
+    def generate_route_table_config(self, route_tables):
+        """Generate configuration content for routing tables.
+
+        This method first extracts the existing route table definitions. If
+        any non-default tables exist, they will be kept unless they conflict
+        with new tables defined in the route_tables dict.
+
+        :param route_tables: A dict of RouteTable objects
+        """
+
+        custom_tables = {}
+        res_ids = ['0', '253', '254', '255']
+        res_names = ['unspec', 'default', 'main', 'local']
+        rt_config = common.get_file_data(route_table_config_path()).split('\n')
+        rt_defaults = _ROUTE_TABLE_DEFAULT.split("\n")
+        data = _ROUTE_TABLE_DEFAULT
+        for line in rt_config:
+            line = line.strip()
+            if line in rt_defaults:
+                continue
+            # Leave non-standard comments intact in file
+            if line.startswith('#'):
+                data += f"{line}\n"
+            # Ignore old managed entries, will be added back if in new config.
+            elif line.find(_OS_NET_CONFIG_MANAGED) == -1:
+                id_name = line.split()
+                # Keep custom tables if there is no conflict with new tables.
+                if len(id_name) > 1 and id_name[0].isdigit():
+                    if not id_name[0] in res_ids:
+                        if not id_name[1] in res_names:
+                            if not int(id_name[0]) in route_tables:
+                                if not id_name[1] in route_tables.values():
+                                    # Replicate line with any comments appended
+                                    custom_tables[id_name[0]] = id_name[1]
+                                    data += f"{line}\n"
+        if custom_tables:
+            logger.debug(f"Existing route tables: {custom_tables}")
+        for id in sorted(route_tables):
+            if str(id) in res_ids:
+                message = f"Table {route_tables[id]}({id}) conflicts with " \
+                          f"reserved table "\
+                          f"{res_names[res_ids.index(str(id))]}({id})"
+                raise os_net_config.ConfigurationError(message)
+            elif route_tables[id] in res_names:
+                message = f"Table {route_tables[id]}({id}) conflicts with "\
+                          f"reserved table {route_tables[id]}" \
+                          f"({res_ids[res_names.index(route_tables[id])]})"
+                raise os_net_config.ConfigurationError(message)
+            else:
+                data += f"{id}\t{route_tables[id]}     "\
+                        f"{_OS_NET_CONFIG_MANAGED}\n"
+        return data
 
     def iface_state(self, name=''):
         """Return the current interface state according to nmstate.
@@ -149,6 +267,39 @@ class NmstateNetConfig(os_net_config.NetConfig):
                 if not self.noop:
                     netapplier.apply(state, verify_change=True)
 
+    def route_state(self, name=''):
+        """Return the current routes set according to nmstate.
+
+        Return the current routes for all interfaces, or the named interface.
+        :param name: name of the interface to return state, otherwise all.
+        :returns: list of all interfaces, or those matching name if specified
+        """
+
+        routes = netinfo.show_running_config()[
+            NMRoute.KEY][NMRoute.CONFIG]
+        if name != "":
+            route = list(x for x in routes if x[
+                NMRoute.NEXT_HOP_INTERFACE] == name)
+            self.__dump_config(route,
+                               msg=f'Running route config for {name}')
+            return route
+        else:
+            self.__dump_config(routes, msg=f'Running routes config')
+            return routes
+
+    def rule_state(self):
+        """Return the current rules set according to nmstate.
+
+        Return the current ip rules for all interfaces, or the named interface.
+        :param name: name of the interface to return state, otherwise all.
+        :returns: list of all interfaces, or those matching name if specified
+        """
+
+        rules = netinfo.show_running_config()[
+            NMRouteRule.KEY][NMRouteRule.CONFIG]
+        self.__dump_config(rules, msg=f'List of IP rules running config')
+        return rules
+
     def set_ifaces(self, iface_data, verify=True):
         """Apply the desired state using nmstate.
 
@@ -172,6 +323,78 @@ class NmstateNetConfig(os_net_config.NetConfig):
         self.__dump_config(state, msg=f"Applying DNS")
         if not self.noop:
             netapplier.apply(state, verify_change=verify)
+
+    def set_routes(self, route_data, verify=True):
+        """Apply the desired routes using nmstate.
+
+        :param route_data: list of routes
+        :param verify: boolean that determines if config will be verified
+        """
+
+        state = {NMRoute.KEY: {NMRoute.CONFIG: route_data}}
+        self.__dump_config(state, msg=f'Applying routes')
+        if not self.noop:
+            netapplier.apply(state, verify_change=verify)
+
+    def set_rules(self, rule_data, verify=True):
+        """Apply the desired rules using nmstate.
+
+        :param rule_data: list of rules
+        :param verify: boolean that determines if config will be verified
+        """
+
+        state = {NMRouteRule.KEY: {NMRouteRule.CONFIG: rule_data}}
+        self.__dump_config(state, msg=f'Applying rules')
+        if not self.noop:
+            netapplier.apply(state, verify_change=verify)
+
+    def generate_routes(self, interface_name):
+        """Generate the route configurations required. Add/Remove routes
+
+        : param interface_name: interface name for which routes are required
+        """
+
+        reqd_route = self.route_data.get(interface_name, [])
+        curr_routes = self.route_state(interface_name)
+
+        routes = []
+        self.__dump_config(curr_routes,
+                           msg=f'Running route config for {interface_name}')
+        self.__dump_config(reqd_route,
+                           msg=f'Required route changes for {interface_name}')
+
+        for c_route in curr_routes:
+            no_metric = copy.deepcopy(c_route)
+            if NMRoute.METRIC in no_metric:
+                del no_metric[NMRoute.METRIC]
+            if c_route not in reqd_route and no_metric not in reqd_route:
+                c_route[NMRoute.STATE] = NMRoute.STATE_ABSENT
+                routes.append(c_route)
+                logger.info(f'Removing route {c_route}')
+        routes.extend(reqd_route)
+        return routes
+
+    def generate_rules(self):
+        """Generate the rule configurations required. Add/Remove rules
+
+        """
+
+        reqd_rule = self.rules_data
+        curr_rules = self.rule_state()
+
+        rules = []
+        self.__dump_config(curr_rules,
+                           msg=f'Running set of ip rules')
+
+        self.__dump_config(reqd_rule,
+                           msg=f'Required ip rules')
+        for c_rule in curr_rules:
+            if c_rule not in reqd_rule:
+                c_rule[NMRouteRule.STATE] = NMRouteRule.STATE_ABSENT
+                rules.append(c_rule)
+                logger.info(f'Removing rule {c_rule}')
+        rules.extend(reqd_rule)
+        return rules
 
     def add_ethtool_subtree(self, data, sub_config, command):
         config = _add_sub_tree(data, sub_config['sub-tree'])
@@ -412,12 +635,147 @@ class NmstateNetConfig(os_net_config.NetConfig):
         if base_opt.domain:
             self._add_dns_domain(base_opt.domain)
         if base_opt.routes:
-            msg = "Error: Routes not yet supported by impl_nmstate"
-            raise os_net_config.NotImplemented(msg)
+            self._add_routes(base_opt.name, base_opt.routes)
         if base_opt.rules:
-            msg = "Error: IP Rules are not yet supported by impl_nmstate"
-            raise os_net_config.NotImplemented(msg)
+            self._add_rules(base_opt.name, base_opt.rules)
         return data
+
+    def _add_routes(self, interface_name, routes=[]):
+
+        routes_data = []
+        logger.info(f'adding custom route for interface: {interface_name}')
+
+        for route in routes:
+            route_data = {}
+            if route.route_options:
+                value = get_route_options(route.route_options, 'metric')
+                if value:
+                    route.metric = value
+                value = get_route_options(route.route_options, 'table')
+                if value:
+                    route.route_table = value
+
+            if route.metric:
+                route_data[NMRoute.METRIC] = route.metric
+            if route.ip_netmask:
+                route_data[NMRoute.DESTINATION] = route.ip_netmask
+            if route.next_hop:
+                route_data[NMRoute.NEXT_HOP_ADDRESS] = route.next_hop
+                route_data[NMRoute.NEXT_HOP_INTERFACE] = interface_name
+                if route.default:
+                    if ":" in route.next_hop:
+                        route_data[NMRoute.DESTINATION] = \
+                            IPV6_DEFAULT_GATEWAY_DESTINATION
+                    else:
+                        route_data[NMRoute.DESTINATION] = \
+                            IPV4_DEFAULT_GATEWAY_DESTINATION
+            rt_tables = self.get_route_tables()
+            if route.route_table:
+                if str(route.route_table).isdigit():
+                    route_data[NMRoute.TABLE_ID] = route.route_table
+                elif route.route_table in rt_tables:
+                    route_data[NMRoute.TABLE_ID] = \
+                        rt_tables[route.route_table]
+                else:
+                    logger.error(f'Unidentified mapping for route_table '
+                                 '{route.route_table}')
+
+            routes_data.append(route_data)
+
+        self.route_data[interface_name] = routes_data
+        logger.debug(f'route data: {self.route_data[interface_name]}')
+
+    def add_route_table(self, route_table):
+        """Add a RouteTable object to the net config object.
+
+        :param route_table: the RouteTable object to add.
+        """
+        logger.info(f'adding route table: {route_table.table_id} '
+                    f'{route_table.name}')
+        self.route_table_data[int(route_table.table_id)] = route_table.name
+        location = route_table_config_path()
+        data = self.generate_route_table_config(self.route_table_data)
+        self.write_config(location, data)
+
+    def _parse_ip_rules(self, rule):
+        nm_rule_map = {
+            'blackhole': {'nm_key': NMRouteRule.ACTION,
+                          'nm_value': NMRouteRule.ACTION_BLACKHOLE},
+            'unreachable': {'nm_key': NMRouteRule.ACTION,
+                            'nm_value': NMRouteRule.ACTION_UNREACHABLE},
+            'prohibit': {'nm_key': NMRouteRule.ACTION,
+                         'nm_value': NMRouteRule.ACTION_PROHIBIT},
+            'fwmark': {'nm_key': NMRouteRule.FWMARK, 'nm_value': None},
+            'fwmask': {'nm_key': NMRouteRule.FWMASK, 'nm_value': None},
+            'iif': {'nm_key': NMRouteRule.IIF, 'nm_value': None},
+            'from': {'nm_key': NMRouteRule.IP_FROM, 'nm_value': None},
+            'to': {'nm_key': NMRouteRule.IP_TO, 'nm_value': None},
+            'priority': {'nm_key': NMRouteRule.PRIORITY, 'nm_value': None},
+            'table': {'nm_key': NMRouteRule.ROUTE_TABLE, 'nm_value': None}}
+        logger.debug(f"Parse Rule {rule}")
+        items = rule.split()
+        keyword = items[0]
+        parse_start_index = 1
+        rule_config = {}
+        if keyword == 'del':
+            rule_config[NMRouteRule.STATE] = NMRouteRule.STATE_ABSENT
+        elif keyword in nm_rule_map.keys():
+            parse_start_index = 0
+        elif keyword != 'add':
+            msg = f"unhandled ip rule command {rule}"
+            raise os_net_config.ConfigurationError(msg)
+
+        items_iter = iter(items[parse_start_index:])
+
+        parse_complete = True
+        while True:
+            try:
+                parse_complete = True
+                item = next(items_iter)
+                logger.debug(f"parse item {item}")
+                if item in nm_rule_map.keys():
+                    value = _get_type_value(nm_rule_map[item]['nm_value'])
+                    if not value:
+                        parse_complete = False
+                        value = _get_type_value(next(items_iter))
+                    rule_config[nm_rule_map[item]['nm_key']] = value
+                else:
+                    msg = f"unhandled ip rule command {rule}"
+                    raise os_net_config.ConfigurationError(msg)
+            except StopIteration:
+                if not parse_complete:
+                    msg = f"incomplete ip rule command {rule}"
+                    raise os_net_config.ConfigurationError(msg)
+                break
+
+        # Just remove the from/to address when its all/any
+        # the address defaults to all/any.
+        if NMRouteRule.IP_FROM in rule_config:
+            if _is_any_ip_addr(rule_config[NMRouteRule.IP_FROM]):
+                del rule_config[NMRouteRule.IP_FROM]
+        if NMRouteRule.IP_TO in rule_config:
+            if _is_any_ip_addr(rule_config[NMRouteRule.IP_TO]):
+                del rule_config[NMRouteRule.IP_TO]
+
+        # TODO(Karthik) Add support for ipv6 rules as well
+        # When neither IP_FROM nor IP_TO is set, specify the IP family
+        if (NMRouteRule.IP_FROM not in rule_config.keys() and
+                NMRouteRule.IP_TO not in rule_config.keys()):
+            rule_config[NMRouteRule.FAMILY] = NMRouteRule.FAMILY_IPV4
+
+        if NMRouteRule.PRIORITY not in rule_config.keys():
+            logger.warning(f"The ip rule {rule} doesn't have the priority set."
+                           "Its advisable to configure the priorities in "
+                           "order to have a deterministic behaviour")
+
+        return rule_config
+
+    def _add_rules(self, interface_name, rules=[]):
+        for rule in rules:
+            rule_nm = self._parse_ip_rules(rule.rule)
+            self.rules_data.append(rule_nm)
+
+        logger.debug(f'rule data: {self.rules_data}')
 
     def _add_dns_servers(self, dns_servers):
         for dns_server in dns_servers:
@@ -441,7 +799,7 @@ class NmstateNetConfig(os_net_config.NetConfig):
 
         :param interface: The Interface object to add.
         """
-        logger.info('adding interface: %s' % interface.name)
+        logger.info(f'adding interface: {interface.name}')
         data = self._add_common(interface)
         if isinstance(interface, objects.Interface):
             data[Interface.TYPE] = InterfaceType.ETHERNET
@@ -457,7 +815,7 @@ class NmstateNetConfig(os_net_config.NetConfig):
         if interface.hwaddr:
             data[Interface.MAC] = interface.hwaddr
 
-        logger.debug('interface data: %s' % data)
+        logger.debug(f'interface data: {data}')
         self.interface_data[interface.name] = data
 
     def apply(self, cleanup=False, activate=True):
@@ -480,6 +838,7 @@ class NmstateNetConfig(os_net_config.NetConfig):
             logger.info('Cleaning up all network configs...')
             self.cleanup_all_ifaces()
 
+        apply_routes = []
         updated_interfaces = {}
         logger.debug("----------------------------")
         for interface_name, iface_data in self.interface_data.items():
@@ -487,21 +846,39 @@ class NmstateNetConfig(os_net_config.NetConfig):
             if not is_dict_subset(iface_state, iface_data):
                 updated_interfaces[interface_name] = iface_data
             else:
-                logger.info('No changes required for interface: %s' %
-                            interface_name)
+                logger.info('No changes required for interface: '
+                            f'{interface_name}')
+            routes_data = self.generate_routes(interface_name)
+            logger.info(f'Routes_data {routes_data}')
+            apply_routes.extend(routes_data)
 
         if activate:
             if not self.noop:
                 try:
                     self.set_ifaces(list(updated_interfaces.values()))
                 except Exception as e:
-                    msg = 'Error setting interfaces state: %s' % str(e)
+                    msg = f'Error setting interfaces state: {str(e)}'
+                    raise os_net_config.ConfigurationError(msg)
+
+                try:
+                    self.set_routes(apply_routes)
+                except Exception as e:
+                    msg = f'Error setting routes: {str(e)}'
+                    raise os_net_config.ConfigurationError(msg)
+
+                rules_data = self.generate_rules()
+                logger.info(f'Rules_data {rules_data}')
+
+                try:
+                    self.set_rules(rules_data)
+                except Exception as e:
+                    msg = f'Error setting rules: {str(e)}'
                     raise os_net_config.ConfigurationError(msg)
 
                 try:
                     self.set_dns()
                 except Exception as e:
-                    msg = 'Error setting dns servers: %s' % str(e)
+                    msg = f'Error setting dns servers: {str(e)}'
                     raise os_net_config.ConfigurationError(msg)
 
             if self.errors:

@@ -236,12 +236,13 @@ class Route(object):
     """Base class for network routes."""
 
     def __init__(self, next_hop, ip_netmask="", default=False,
-                 route_options="", route_table=None):
+                 route_options="", route_table=None, metric=None):
         self.next_hop = next_hop
         self.ip_netmask = ip_netmask
         self.default = default
         self.route_options = route_options
         self.route_table = route_table
+        self.metric = metric
 
     @staticmethod
     def from_json(json):
@@ -266,7 +267,9 @@ class Route(object):
         default = strutils.bool_from_string(str(json.get('default', False)))
         route_options = json.get('route_options', "")
         route_table = json.get('table', "")
-        return Route(next_hop, ip_netmask, default, route_options, route_table)
+        metric = json.get('metric', "")
+        return Route(next_hop, ip_netmask, default,
+                     route_options, route_table, metric)
 
 
 class Address(object):
