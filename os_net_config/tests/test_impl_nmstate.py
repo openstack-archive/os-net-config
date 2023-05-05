@@ -184,6 +184,9 @@ class TestNmstateNetConfig(base.TestCase):
     def get_interface_config(self, name='em1'):
         return self.provider.interface_data[name]
 
+    def get_linuxbond_config(self, name='bond0'):
+        return self.provider.linuxbond_data[name]
+
     def get_nmstate_ethtool_opts(self, name):
         data = {}
         data[Ethernet.CONFIG_SUBTREE] = \
@@ -570,6 +573,105 @@ class TestNmstateNetConfig(base.TestCase):
         self.provider.add_interface(interface)
         self.assertEqual(yaml.safe_load(expected_route_table),
                          self.get_route_config('em1'))
+
+    def test_linux_bond(self):
+        expected_config1 = """
+      name: bond0
+      type: bond
+      state: up
+      link-aggregation:
+          mode: active-backup
+          port:
+              - em1
+              - em2
+          options:
+              primary: em1
+      ipv4:
+          auto-dns: True
+          enabled: True
+          dhcp: True
+          auto-routes: True
+          auto-gateway: True
+      ipv6:
+          enabled: False
+          autoconf: False
+          dhcp: False
+    """
+        expected_em1_cfg = """
+        name: em1
+        state: up
+        ethernet: {}
+        ipv4:
+            dhcp: False
+            enabled: False
+        ipv6:
+            autoconf: False
+            dhcp: False
+            enabled: False
+        type: ethernet
+        """
+        expected_em2_cfg = """
+        name: em2
+        state: up
+        ethernet: {}
+        ipv4:
+            dhcp: False
+            enabled: False
+        ipv6:
+            autoconf: False
+            dhcp: False
+            enabled: False
+        type: ethernet
+        """
+
+        expected_config2 = """
+      name: bond1
+      type: bond
+      state: up
+      link-aggregation:
+          mode: 802.3ad
+          options:
+              miimon: 100
+              updelay: 1000
+              lacp_rate: slow
+          port:
+              - em3
+              - em4
+      ipv4:
+          auto-dns: True
+          enabled: True
+          dhcp: True
+          auto-routes: True
+          auto-gateway: True
+      ipv6:
+          enabled: False
+          autoconf: False
+          dhcp: False
+    """
+        interface1 = objects.Interface('em1', primary=True)
+        interface2 = objects.Interface('em2')
+        bond = objects.LinuxBond('bond0', use_dhcp=True,
+                                 members=[interface1, interface2])
+        self.provider.add_linux_bond(bond)
+        self.provider.add_interface(interface1)
+        self.provider.add_interface(interface2)
+        self.assertEqual(yaml.safe_load(expected_config1),
+                         self.get_linuxbond_config('bond0'))
+        self.assertEqual(yaml.safe_load(expected_em1_cfg),
+                         self.get_interface_config('em1'))
+        self.assertEqual(yaml.safe_load(expected_em2_cfg),
+                         self.get_interface_config('em2'))
+
+        # primary interface is used only for active-slave bonds
+        interface1 = objects.Interface('em3')
+        interface2 = objects.Interface('em4', primary=True)
+        bond = objects.LinuxBond('bond1', use_dhcp=True,
+                                 members=[interface1, interface2],
+                                 bonding_options="mode=802.3ad "
+                                 "lacp_rate=slow updelay=1000 miimon=100")
+        self.provider.add_linux_bond(bond)
+        self.assertEqual(yaml.safe_load(expected_config2),
+                         self.get_linuxbond_config('bond1'))
 
 
 class TestNmstateNetConfigApply(base.TestCase):
