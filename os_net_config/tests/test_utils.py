@@ -716,12 +716,6 @@ class TestUtils(base.TestCase):
         def test_get_stored_pci_address(ifname, noop):
             return "0000:00:07.0"
 
-        def test_vf_by_name(ifname):
-            return True
-
-        def test_not_vf_by_name(ifname):
-            return False
-
         self.stub_out('oslo_concurrency.processutils.execute', test_execute)
         self.stub_out('os_net_config.utils.get_stored_pci_address',
                       test_get_stored_pci_address)
@@ -741,19 +735,16 @@ class TestUtils(base.TestCase):
         self.assertEqual(utils.get_dpdk_devargs(nic, False),
                          '0000:00:19.0')
         # Testing VFs of Mellanox Connect-X cards
-        self.stub_out('os_net_config.utils._is_vf_by_name',
-                      test_vf_by_name)
+        os.makedirs(os.path.join(nic_path, 'device', 'physfn'))
         self.assertEqual(utils.get_dpdk_devargs(nic, False),
                          '0000:00:19.0')
 
-        # Check if exception is raised, when the operstate is down
-        # and not VF
+        # Check if devargs is derived, when the operstate is down
+        os.rmdir(os.path.join(nic_path, 'device', 'physfn'))
         with open(os.path.join(nic_path, 'operstate'), 'w') as f:
             f.write('down')
-        self.stub_out('os_net_config.utils._is_vf_by_name',
-                      test_not_vf_by_name)
-        self.assertRaises(utils.InvalidInterfaceException,
-                          utils.get_dpdk_devargs, nic, False)
+        self.assertEqual(utils.get_dpdk_devargs(nic, False),
+                         '0000:00:19.0')
 
         # now testing the Mellanox CX3
         with open(os.path.join(nic_path, 'device', 'device'), 'w') as f:
