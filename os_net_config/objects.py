@@ -1004,6 +1004,9 @@ class LinuxBond(_BaseOpts):
         self.bonding_options = bonding_options
         self.ethtool_opts = ethtool_opts
         for member in self.members:
+            if isinstance(member, SriovPF):
+                utils.update_sriov_pf_map(member.name, member.numvfs, False,
+                                          lag_candidate=True)
             if isinstance(member, SriovVF):
                 LinuxBond.update_vf_config(member)
             member.linux_bond_name = name

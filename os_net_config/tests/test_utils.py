@@ -243,6 +243,82 @@ class TestUtils(base.TestCase):
         self.assertEqual(1, len(pf_map))
         self.assertListEqual(pf_final, pf_map)
 
+    def test_update_sriov_pf_map_new_with_lag_candidate(self):
+        def get_numvfs_stub(pf_name):
+            return 0
+        self.stub_out('os_net_config.sriov_config.get_numvfs',
+                      get_numvfs_stub)
+        utils.update_sriov_pf_map('eth1', 10, False, lag_candidate=True)
+        contents = common.get_file_data(common.SRIOV_CONFIG_FILE)
+        sriov_pf_map = yaml.safe_load(contents) if contents else []
+        self.assertEqual(1, len(sriov_pf_map))
+        test_sriov_pf_map = [{'device_type': 'pf', 'link_mode': 'legacy',
+                              'name': 'eth1', 'numvfs': 10, 'vdpa': False,
+                              'lag_candidate': True}]
+        self.assertListEqual(test_sriov_pf_map, sriov_pf_map)
+
+    def test_update_sriov_pf_map_exist_with_lag_candidate(self):
+        def get_numvfs_stub(pf_name):
+            return 10
+        self.stub_out('os_net_config.sriov_config.get_numvfs',
+                      get_numvfs_stub)
+        pf_initial = [{'device_type': 'pf', 'link_mode': 'legacy',
+                       'name': 'eth1', 'numvfs': 10, 'promisc': 'on',
+                       'vdpa': False, 'lag_candidate': False}]
+        utils.write_yaml_config(common.SRIOV_CONFIG_FILE, pf_initial)
+
+        utils.update_sriov_pf_map('eth1', 10, False, lag_candidate=True)
+        pf_final = [{'device_type': 'pf', 'link_mode': 'legacy',
+                     'name': 'eth1', 'numvfs': 10, 'promisc': 'on',
+                     'vdpa': False, 'lag_candidate': True}]
+        contents = common.get_file_data(common.SRIOV_CONFIG_FILE)
+
+        pf_map = yaml.safe_load(contents) if contents else []
+        self.assertEqual(1, len(pf_map))
+        self.assertListEqual(pf_final, pf_map)
+
+    def test_update_sriov_pf_map_exist_with_lag_candidate_not_exist_true(
+            self):
+        def get_numvfs_stub(pf_name):
+            return 10
+        self.stub_out('os_net_config.sriov_config.get_numvfs',
+                      get_numvfs_stub)
+        pf_initial = [{'device_type': 'pf', 'link_mode': 'legacy',
+                       'name': 'eth1', 'numvfs': 10, 'promisc': 'on',
+                       'vdpa': False}]
+        utils.write_yaml_config(common.SRIOV_CONFIG_FILE, pf_initial)
+
+        utils.update_sriov_pf_map('eth1', 10, False, lag_candidate=True)
+        pf_final = [{'device_type': 'pf', 'link_mode': 'legacy',
+                     'name': 'eth1', 'numvfs': 10, 'promisc': 'on',
+                     'vdpa': False, 'lag_candidate': True}]
+        contents = common.get_file_data(common.SRIOV_CONFIG_FILE)
+
+        pf_map = yaml.safe_load(contents) if contents else []
+        self.assertEqual(1, len(pf_map))
+        self.assertListEqual(pf_final, pf_map)
+
+    def test_update_sriov_pf_map_exist_with_lag_candidate_not_exist_false(
+            self):
+        def get_numvfs_stub(pf_name):
+            return 10
+        self.stub_out('os_net_config.sriov_config.get_numvfs',
+                      get_numvfs_stub)
+        pf_initial = [{'device_type': 'pf', 'link_mode': 'legacy',
+                       'name': 'eth1', 'numvfs': 10, 'promisc': 'on',
+                       'vdpa': False}]
+        utils.write_yaml_config(common.SRIOV_CONFIG_FILE, pf_initial)
+
+        utils.update_sriov_pf_map('eth1', 10, False, lag_candidate=False)
+        pf_final = [{'device_type': 'pf', 'link_mode': 'legacy',
+                     'name': 'eth1', 'numvfs': 10, 'promisc': 'on',
+                     'vdpa': False, 'lag_candidate': False}]
+        contents = common.get_file_data(common.SRIOV_CONFIG_FILE)
+
+        pf_map = yaml.safe_load(contents) if contents else []
+        self.assertEqual(1, len(pf_map))
+        self.assertListEqual(pf_final, pf_map)
+
     def test_update_sriov_vf_map_minimal_new(self):
         utils.update_sriov_vf_map('eth1', 2, 'eth1_2')
         contents = common.get_file_data(common.SRIOV_CONFIG_FILE)
