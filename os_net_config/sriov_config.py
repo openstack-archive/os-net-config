@@ -50,6 +50,7 @@ MLNX5_VDPA_KMODS = [
 ]
 
 MAX_RETRIES = 10
+MLNX_LAG_PATH = "/sys/kernel/debug/mlx5/{pf_pci}/lag/state"
 PF_FUNC_RE = re.compile(r"\.(\d+)$", 0)
 
 VF_PCI_RE = re.compile(r'/[\d]{4}\:(\d+):(\d+)\.(\d+)/net/[^\/]+$')
@@ -303,6 +304,7 @@ def configure_sriov_pf(execution_from_cli=False, restart_openvswitch=False):
 
     sriov_map = common.get_sriov_map()
     dpdk_vfs_pcis_list = []
+    vf_lag_sriov_pfs_list = []
     trigger_udev_rule = False
 
     # Cleanup the previous config by puppet-tripleo
@@ -373,6 +375,11 @@ def configure_sriov_pf(execution_from_cli=False, restart_openvswitch=False):
 
                     # Configure switchdev mode
                     configure_switchdev(item['name'])
+
+                    # Add sriovpf to vf_lag_sriov_pfs_list if it's
+                    # a linux bond member (lag_candidate)
+                    if item.get('lag_candidate', False):
+                        vf_lag_sriov_pfs_list.append(item['name'])
                 else:
                     trigger_udev_rule = add_udev_rule_for_vdpa_representors(
                         item['name']) or trigger_udev_rule
@@ -387,6 +394,12 @@ def configure_sriov_pf(execution_from_cli=False, restart_openvswitch=False):
                 if execution_from_cli:
                     if_up_interface(item['name'])
 
+    if restart_openvswitch:
+        restart_ovs_and_pfs_netdevs()
+
+    if vf_lag_sriov_pfs_list and execution_from_cli:
+        _wait_for_lag_creation(vf_lag_sriov_pfs_list)
+
     if dpdk_vfs_pcis_list and not vdpa:
         sriov_bind_pcis_map = {_MLNX_DRIVER: dpdk_vfs_pcis_list}
         if not execution_from_cli:
@@ -400,8 +413,6 @@ def configure_sriov_pf(execution_from_cli=False, restart_openvswitch=False):
         trigger_udev_rules()
 
     udev_monitor_stop(observer)
-    if restart_openvswitch:
-        restart_ovs_and_pfs_netdevs()
 
 
 def _wait_for_uplink_rep_creation(pf_name):
@@ -414,6 +425,26 @@ def _wait_for_uplink_rep_creation(pf_name):
         time.sleep(1)
     else:
         raise RuntimeError(f"{pf_name}: Timeout waiting uplink representor")
+
+
+def _wait_for_lag_creation(lag_sriov_pf_list):
+    for sriov_pf in lag_sriov_pf_list:
+        pf_pci = get_pf_pci(sriov_pf)
+        lag_path = MLNX_LAG_PATH.format(pf_pci=pf_pci)
+        if os.path.exists(lag_path):
+            for i in range(MAX_RETRIES):
+                lag_state = common.get_file_data(lag_path).strip()
+                if lag_state == "active":
+                    logger.info(f"VF-LAG is enabled for interface {sriov_pf}"
+                                f" after {i} retries")
+                    break
+                time.sleep(1)
+            else:
+                raise RuntimeError("VF-LAG is not created for interface"
+                                   f" {sriov_pf} after {i} retries")
+        else:
+            logger.warning(f"Lag path {lag_path} does not exist for this "
+                           "kernel, skipping..")
 
 
 def create_rep_link_name_script():

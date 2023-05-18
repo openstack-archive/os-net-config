@@ -375,7 +375,8 @@ def _update_dpdk_map(ifname, pci_address, mac_address, driver):
 
 
 def update_sriov_pf_map(ifname, numvfs, noop, promisc=None,
-                        link_mode='legacy', vdpa=False, steering_mode=None):
+                        link_mode='legacy', vdpa=False, steering_mode=None,
+                        lag_candidate=None):
     if not noop:
         cur_numvfs = sriov_config.get_numvfs(ifname)
         if cur_numvfs > 0 and cur_numvfs != numvfs:
@@ -391,6 +392,8 @@ def update_sriov_pf_map(ifname, numvfs, noop, promisc=None,
                 item['link_mode'] = link_mode
                 if steering_mode is not None:
                     item['steering_mode'] = steering_mode
+                if lag_candidate is not None:
+                    item['lag_candidate'] = lag_candidate
                 break
         else:
             new_item = {}
@@ -403,6 +406,8 @@ def update_sriov_pf_map(ifname, numvfs, noop, promisc=None,
             new_item['link_mode'] = link_mode
             if steering_mode is not None:
                 new_item['steering_mode'] = steering_mode
+            if lag_candidate is not None:
+                new_item['lag_candidate'] = lag_candidate
             sriov_map.append(new_item)
 
         write_yaml_config(common.SRIOV_CONFIG_FILE, sriov_map)
@@ -516,8 +521,9 @@ def _configure_sriov_config_service():
 
 def configure_sriov_pfs(execution_from_cli=False, restart_openvswitch=False):
     logger.info("Configuring PFs now")
-    sriov_config.configure_sriov_pf(execution_from_cli=execution_from_cli,
-                                    restart_openvswitch=restart_openvswitch)
+    sriov_config.configure_sriov_pf(
+        execution_from_cli=execution_from_cli,
+        restart_openvswitch=restart_openvswitch)
     _configure_sriov_config_service()
 
 
