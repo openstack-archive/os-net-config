@@ -137,11 +137,15 @@ def configure_logger(verbose=False, debug=False):
 
 def check_configure_sriov(obj):
     configure_sriov = False
-    for member in obj.members:
-        if isinstance(member, objects.SriovPF):
-            configure_sriov = True
-        elif hasattr(member, "members") and member.members is not None:
-            configure_sriov = check_configure_sriov(member)
+    if isinstance(obj, objects.SriovPF):
+        configure_sriov = True
+    elif hasattr(obj, 'members') and obj.members is not None:
+        for member in obj.members:
+            if isinstance(member, objects.SriovPF):
+                configure_sriov = True
+                break
+            else:
+                configure_sriov = check_configure_sriov(member)
     return configure_sriov
 
 
@@ -291,16 +295,13 @@ def main(argv=sys.argv):
             obj = objects.object_from_json(iface_json)
         except utils.SriovVfNotFoundException:
             continue
-        if isinstance(obj, objects.SriovPF):
+        if check_configure_sriov(obj):
             configure_sriov = True
             provider.add_object(obj)
-        elif hasattr(obj, 'members') and obj.members is not None:
-            if check_configure_sriov(obj):
-                configure_sriov = True
-                provider.add_object(obj)
-
-                sriovpf_member_of_bond_ovs_port_list.extend(
-                    get_sriovpf_member_of_bond_ovs_port(obj))
+            # Look for the presence of SriovPF as members of LinuxBond and that
+            # LinuxBond is member of OvsBridge
+            sriovpf_member_of_bond_ovs_port_list.extend(
+                get_sriovpf_member_of_bond_ovs_port(obj))
 
     # After reboot, shared_block for pf interface in switchdev mode will be
     # missing in case IPv6 is enabled on the slaves of the bond and that bond
@@ -332,7 +333,8 @@ def main(argv=sys.argv):
                 restart_openvswitch=restart_ovs)
 
     for iface_json in iface_array:
-        # All objects other than the sriov_pf will be added here.
+        # All sriov_pfs at top level or at any member level will be
+        # ignored and all other objects are parsed will be added here.
         # The VFs are expected to be available now and an exception
         # SriovVfNotFoundException shall be raised if not available.
         try:
@@ -340,7 +342,7 @@ def main(argv=sys.argv):
         except utils.SriovVfNotFoundException:
             if not opts.noop:
                 raise
-        if not isinstance(obj, objects.SriovPF):
+        if not check_configure_sriov(obj):
             provider.add_object(obj)
 
     if configure_sriov and not opts.noop:
