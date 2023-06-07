@@ -5,13 +5,8 @@
       - check-requirements
       - publish-openstack-docs-pti
       - release-notes-jobs-python3
-      - tripleo-multinode-container-minimal-pipeline
-      - tripleo-upgrades-master-pipeline
     check:
       jobs:
-        - tripleo-ci-centos-9-content-provider:
-            dependencies:
-              - openstack-tox-pep8
         - openstack-tox-pep8: &nodes
             nodeset: centos-9-stream
         - openstack-tox-py39: *nodes
