@@ -17,6 +17,8 @@
 import copy
 from libnmstate import netapplier
 from libnmstate import netinfo
+from libnmstate.schema import Bond
+from libnmstate.schema import BondMode
 from libnmstate.schema import DNS
 from libnmstate.schema import Ethernet
 from libnmstate.schema import Ethtool
@@ -130,6 +132,37 @@ def _add_sub_tree(data, subtree):
     return config
 
 
+def parse_bonding_options(bond_options_str):
+    bond_options_dict = {}
+    if bond_options_str:
+        options = re.findall(r'(.+?)=(.+?)($|\s)', bond_options_str)
+        for option in options:
+            bond_options_dict[option[0]] = _get_type_value(option[1])
+    return bond_options_dict
+
+
+def set_linux_bonding_options(bond_options, primary_iface=None):
+    linux_bond_options = ["updelay", "miimon", "lacp_rate"]
+    bond_data = {Bond.MODE: BondMode.ACTIVE_BACKUP,
+                 Bond.OPTIONS_SUBTREE: {},
+                 Bond.PORT: []}
+    bond_options_data = {}
+    if 'mode' in bond_options:
+        bond_data[Bond.MODE] = bond_options['mode']
+
+    for options in linux_bond_options:
+        if options in bond_options:
+            bond_options_data[options] = bond_options[options]
+    bond_data[Bond.OPTIONS_SUBTREE] = bond_options_data
+
+    if primary_iface and bond_data[Bond.MODE] == BondMode.ACTIVE_BACKUP:
+        bond_options_data['primary'] = primary_iface
+
+    if len(bond_data[Bond.OPTIONS_SUBTREE]) == 0:
+        del bond_data[Bond.OPTIONS_SUBTREE]
+    return bond_data
+
+
 def _is_any_ip_addr(address):
     if address.lower() == 'any' or address.lower() == 'all':
         return True
@@ -145,6 +178,8 @@ class NmstateNetConfig(os_net_config.NetConfig):
         self.route_data = {}
         self.rules_data = []
         self.dns_data = {'server': [], 'domain': []}
+        self.linuxbond_data = {}
+        self.member_names = {}
         self.route_table_data = {}
         logger.info('nmstate net config provider created.')
 
@@ -556,48 +591,13 @@ class NmstateNetConfig(os_net_config.NetConfig):
         else:
             data[Interface.STATE] = InterfaceState.DOWN
 
+        if not base_opt.nm_controlled:
+            logger.info('Using NetworkManager, nm_controlled is always true.'
+                        'Deprecating it from next release')
         if isinstance(base_opt, objects.Interface):
             if not base_opt.hotplug:
                 logger.info('Using NetworkManager, hotplug is always set to'
                             'true. Deprecating it from next release')
-        elif isinstance(base_opt, objects.Vlan) or \
-            re.match(r'\w+\.\d+$', base_opt.name):
-            msg = 'Error: VLAN interfaces not yet supported by impl_nmstate'
-            raise os_net_config.NotImplemented(msg)
-        elif isinstance(base_opt, objects.IvsInterface):
-            msg = 'Error: IVS interfaces not yet supported by impl_nmstate'
-            raise os_net_config.NotImplemented(msg)
-        elif isinstance(base_opt, objects.NfvswitchInternal):
-            msg = 'Error: NFVSwitch not yet supported by impl_nmstate'
-            raise os_net_config.NotImplemented(msg)
-        elif isinstance(base_opt, objects.IbInterface):
-            msg = 'Error: Infiniband not yet supported by impl_nmstate'
-            raise os_net_config.NotImplemented(msg)
-        elif isinstance(base_opt, objects.OvsBond):
-            msg = "Error: Ovs Bonds are not yet supported by impl_nmstate"
-            raise os_net_config.NotImplemented(msg)
-        elif isinstance(base_opt, objects.LinuxBridge):
-            msg = "Error: Linux bridges are not yet supported by impl_nmstate"
-            raise os_net_config.NotImplemented(msg)
-        elif isinstance(base_opt, objects.LinuxTeam):
-            msg = "Error: Linux Teams are not yet supported by impl_nmstate"
-            raise os_net_config.NotImplemented(msg)
-        elif isinstance(base_opt, objects.OvsTunnel):
-            msg = "Error: OVS tunnels not yet supported by impl_nmstate"
-            raise os_net_config.NotImplemented(msg)
-        elif isinstance(base_opt, objects.OvsPatchPort):
-            msg = "Error: OVS tunnels not yet supported by impl_nmstate"
-            raise os_net_config.NotImplemented(msg)
-        elif isinstance(base_opt, objects.OvsDpdkBond):
-            msg = "Error: OVS DPDK Bonds not yet supported by impl_nmstate"
-            raise os_net_config.NotImplemented(msg)
-        else:
-            msg = "Error: Unsupported interface by impl_nmstate"
-            raise os_net_config.NotImplemented(msg)
-
-        if not base_opt.nm_controlled:
-            logger.info('Using NetworkManager, nm_controlled is always true.'
-                        'Deprecating it from next release')
 
         if base_opt.mtu:
             data[Interface.MTU] = base_opt.mtu
@@ -810,13 +810,42 @@ class NmstateNetConfig(os_net_config.NetConfig):
                                     interface.ethtool_opts)
 
         if interface.renamed:
-            # TODO(Karthik S) Handle renamed interfaces
-            pass
+            logger.info(f"Interface {interface.hwname} being renamed to"
+                        f"{interface.name}")
+            self.renamed_interfaces[interface.hwname] = interface.name
         if interface.hwaddr:
             data[Interface.MAC] = interface.hwaddr
 
         logger.debug(f'interface data: {data}')
         self.interface_data[interface.name] = data
+
+    def add_linux_bond(self, bond):
+        """Add a LinuxBond object to the net config object.
+
+        :param bond: The LinuxBond object to add.
+        """
+        logger.info('adding linux bond: %s' % bond.name)
+        data = self._add_common(bond)
+
+        data[Interface.TYPE] = InterfaceType.BOND
+        data[Interface.STATE] = InterfaceState.UP
+
+        bond_options = {}
+        if bond.bonding_options:
+            bond_options = parse_bonding_options(bond.bonding_options)
+
+        bond_data = set_linux_bonding_options(
+            bond_options, primary_iface=bond.primary_interface_name)
+        if bond_data:
+            data[Bond.CONFIG_SUBTREE] = bond_data
+
+        if bond.members:
+            members = [member.name for member in bond.members]
+            self.member_names[bond.name] = members
+            data[Bond.CONFIG_SUBTREE][Bond.PORT] = members
+
+        logger.debug('bond data: %s' % data)
+        self.linuxbond_data[bond.name] = data
 
     def apply(self, cleanup=False, activate=True):
         """Apply the network configuration.
@@ -850,6 +879,17 @@ class NmstateNetConfig(os_net_config.NetConfig):
                             f'{interface_name}')
             routes_data = self.generate_routes(interface_name)
             logger.info(f'Routes_data {routes_data}')
+            apply_routes.extend(routes_data)
+
+        for bond_name, bond_data in self.linuxbond_data.items():
+            bond_state = self.iface_state(bond_name)
+            if not is_dict_subset(bond_state, bond_data):
+                updated_interfaces[bond_name] = bond_data
+            else:
+                logger.info('No changes required for bond: %s' %
+                            bond_name)
+            routes_data = self.generate_routes(bond_name)
+            logger.info('Routes_data %s' % routes_data)
             apply_routes.extend(routes_data)
 
         if activate:
@@ -889,4 +929,6 @@ class NmstateNetConfig(os_net_config.NetConfig):
                 raise os_net_config.ConfigurationError(message)
 
         self.interface_data = {}
+        self.linuxbond_data = {}
+
         return updated_interfaces
