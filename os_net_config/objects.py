@@ -54,6 +54,8 @@ def object_from_json(json):
         return OvsUserBridge.from_json(json)
     elif obj_type == "ovs_bond":
         return OvsBond.from_json(json)
+    elif obj_type == "ovs_interface":
+        return OvsInterface.from_json(json)
     elif obj_type == "linux_bond":
         return LinuxBond.from_json(json)
     elif obj_type == "team":
@@ -570,6 +572,38 @@ class IvsInterface(_BaseOpts):
         vlan_id = _get_required_field(json, 'vlan_id', 'IvsInterface')
         opts = _BaseOpts.base_opts_from_json(json)
         return IvsInterface(vlan_id, name, *opts)
+
+
+class OvsInterface(_BaseOpts):
+    """Base class for ovs interfaces.
+
+       Nmstate requires an OvS interafce to be attached to the bridge where
+       the settings like MTU, IP address could be applied. This interface is
+       created internaly to accomodate the same. Also ovs_extra / ovs_options
+       support is also added along with
+    """
+
+    def __init__(self, name, use_dhcp=False, use_dhcpv6=False, addresses=None,
+                 routes=None, rules=None, mtu=None, primary=False,
+                 nic_mapping=None, persist_mapping=False, defroute=True,
+                 dhclient_args=None, dns_servers=None, nm_controlled=False,
+                 onboot=True, domain=None):
+        addresses = addresses or []
+        routes = routes or []
+        rules = rules or []
+        dns_servers = dns_servers or []
+        super(OvsInterface, self).__init__(
+            name, use_dhcp, use_dhcpv6, addresses,
+            routes, rules, mtu, primary,
+            nic_mapping, persist_mapping, defroute,
+            dhclient_args, dns_servers,
+            nm_controlled, onboot, domain)
+
+    @staticmethod
+    def from_json(json):
+        name = _get_required_field(json, 'name', 'OvsInterface')
+        opts = _BaseOpts.base_opts_from_json(json)
+        return OvsInterface(name, *opts)
 
 
 class NfvswitchInternal(_BaseOpts):

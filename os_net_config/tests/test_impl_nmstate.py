@@ -184,6 +184,9 @@ class TestNmstateNetConfig(base.TestCase):
     def get_interface_config(self, name='em1'):
         return self.provider.interface_data[name]
 
+    def get_bridge_config(self, name):
+        return self.provider.bridge_data[name]
+
     def get_linuxbond_config(self, name='bond0'):
         return self.provider.linuxbond_data[name]
 
@@ -672,6 +675,287 @@ class TestNmstateNetConfig(base.TestCase):
         self.provider.add_linux_bond(bond)
         self.assertEqual(yaml.safe_load(expected_config2),
                          self.get_linuxbond_config('bond1'))
+
+    def test_network_ovs_bridge_with_dhcp(self):
+        expected_brctl_p_cfg = """
+        name: br-ctlplane-p
+        state: up
+        type: ovs-interface
+        ipv4:
+            auto-dns: True
+            auto-gateway: True
+            auto-routes: True
+            dhcp: True
+            enabled: True
+        ipv6:
+            autoconf: False
+            dhcp: False
+            enabled: False
+        """
+        expected_brctl_cfg = """
+        name: br-ctlplane
+        type: ovs-bridge
+        bridge:
+            options:
+                fail-mode: standalone
+                mcast-snooping-enable: False
+                rstp: False
+                stp: False
+            port:
+                - name: em1
+                - name: br-ctlplane-p
+        ovs-db:
+            external_ids: {}
+            other_config: {}
+        state: up
+        """
+
+        interface = objects.Interface('em1')
+        bridge = objects.OvsBridge('br-ctlplane', use_dhcp=True,
+                                   members=[interface])
+        self.provider.add_bridge(bridge)
+        self.assertEqual(yaml.safe_load(expected_brctl_p_cfg),
+                         self.get_interface_config('br-ctlplane-p'))
+        self.assertEqual(yaml.safe_load(expected_brctl_cfg),
+                         self.get_bridge_config('br-ctlplane'))
+
+    def test_network_ovs_bridge_with_bond(self):
+        expected_brctl2_p_cfg = """
+        name: br-ctlplane2-p
+        state: up
+        type: ovs-interface
+        ipv4:
+            auto-dns: True
+            auto-gateway: True
+            auto-routes: True
+            dhcp: True
+            enabled: True
+        ipv6:
+            autoconf: False
+            dhcp: False
+            enabled: False
+        """
+        expected_brctl2_cfg = """
+        name: br-ctlplane2
+        type: ovs-bridge
+        bridge:
+            options:
+                fail-mode: standalone
+                mcast-snooping-enable: False
+                rstp: False
+                stp: False
+            port:
+                - name: bond0
+                  link-aggregation:
+                      mode: active-backup
+                      port:
+                          - name: em2
+                          - name: em3
+                - name: br-ctlplane2-p
+        ovs-db:
+            external_ids: {}
+            other_config: {}
+        state: up
+        """
+
+        interface1 = objects.Interface('em2')
+        interface2 = objects.Interface('em3')
+        bond = objects.OvsBond('bond0', members=[interface1, interface2])
+        bridge = objects.OvsBridge('br-ctlplane2', use_dhcp=True,
+                                   members=[bond])
+        self.provider.add_bridge(bridge)
+        self.assertEqual(yaml.safe_load(expected_brctl2_p_cfg),
+                         self.get_interface_config('br-ctlplane2-p'))
+        self.assertEqual(yaml.safe_load(expected_brctl2_cfg),
+                         self.get_bridge_config('br-ctlplane2'))
+
+    def test_network_ovs_bridge_with_bond_options(self):
+        expected_brctl2_cfg = """
+        name: br-ctlplane2
+        type: ovs-bridge
+        bridge:
+            options:
+                fail-mode: standalone
+                mcast-snooping-enable: False
+                rstp: False
+                stp: False
+            port:
+                - name: bond0
+                  link-aggregation:
+                      bond-updelay: 1000
+                      mode: balance-slb
+                      port:
+                          - name: em2
+                          - name: em3
+                - name: br-ctlplane2-p
+        state: up
+        ovs-db:
+            external_ids: {}
+            other_config:
+                bond-detect-mode: miimon
+                bond-miimon-interval: 100
+                bond-rebalance-interval: 10000
+                lacp-fallback-ab: true
+                lacp-time: fast
+        """
+        interface1 = objects.Interface('em2')
+        interface2 = objects.Interface('em3')
+
+        ovs_options = 'bond_mode=balance-slb ' \
+                      'other-config:lacp-fallback-ab=true ' \
+                      'other_config:lacp-time=fast ' \
+                      'other_config:bond-detect-mode=miimon ' \
+                      'other_config:bond-miimon-interval=100 ' \
+                      'bond_updelay=1000 ' \
+                      'other_config:bond-rebalance-interval=10000'
+        bond = objects.OvsBond('bond0', members=[interface1, interface2],
+                               ovs_options=ovs_options)
+        bridge = objects.OvsBridge('br-ctlplane2', use_dhcp=True,
+                                   members=[bond])
+        self.provider.add_bridge(bridge)
+        self.assertEqual(yaml.safe_load(expected_brctl2_cfg),
+                         self.get_bridge_config('br-ctlplane2'))
+
+    def test_network_ovs_bridge_with_ovs_extra(self):
+        expected_brctl2_cfg = """
+        name: br-ctlplane2
+        type: ovs-bridge
+        bridge:
+            options:
+                fail-mode: standalone
+                mcast-snooping-enable: True
+                rstp: True
+                stp: True
+            port:
+                - name: bond0
+                  link-aggregation:
+                      mode: balance-slb
+                      port:
+                          - name: em2
+                          - name: em3
+                - name: br-ctlplane2-p
+                  vlan:
+                      tag: 70
+                      mode: access
+        ovs-db:
+            external_ids:
+                bridge-id: br-ctlplane
+            other_config:
+                stp-priority: '0x7800'
+        state: up
+        """
+        interface1 = objects.Interface('em2')
+        interface2 = objects.Interface('em3')
+        ovs_extra = [
+            "br-set-external-id br-ctlplane2 bridge-id br-ctlplane",
+            "set bridge {name} stp_enable=true rstp_enable=true",
+            "set bridge {name} fail_mode=standalone",
+            "set bridge br-ctlplane2 mcast_snooping_enable=true",
+            "set Bridge {name} other_config:stp-priority=0x7800",
+            "set port {name} tag=70"]
+
+        ovs_options = 'bond_mode=balance-slb'
+        bond = objects.OvsBond('bond0', members=[interface1, interface2],
+                               ovs_options=ovs_options)
+        bridge = objects.OvsBridge('br-ctlplane2', use_dhcp=True,
+                                   members=[bond], ovs_extra=ovs_extra)
+        self.provider.add_bridge(bridge)
+        self.assertEqual(yaml.safe_load(expected_brctl2_cfg),
+                         self.get_bridge_config('br-ctlplane2'))
+
+    def test_network_ovs_bridge_without_bond_with_ovs_extra(self):
+        expected_brctl2_cfg = """
+        name: br-ctlplane2
+        type: ovs-bridge
+        bridge:
+            options:
+                fail-mode: standalone
+                mcast-snooping-enable: True
+                rstp: True
+                stp: True
+            port:
+                - name: em2
+                - name: em3
+                - name: br-ctlplane2-p
+                  vlan:
+                      tag: 70
+                      mode: access
+        ovs-db:
+            external_ids:
+                bridge-id: br-ctlplane
+            other_config:
+                stp-priority: '0x7800'
+        state: up
+        """
+        interface1 = objects.Interface('em2')
+        interface2 = objects.Interface('em3')
+        ovs_extra = [
+            "br-set-external-id br-ctlplane2 bridge-id br-ctlplane",
+            "set bridge {name} stp_enable=true rstp_enable=true",
+            "set bridge {name} fail_mode=standalone",
+            "set bridge br-ctlplane2 mcast_snooping_enable=true",
+            "set Bridge {name} other_config:stp-priority=0x7800",
+            "set port {name} tag=70"]
+
+        bridge = objects.OvsBridge('br-ctlplane2', use_dhcp=True,
+                                   members=[interface1, interface2],
+                                   ovs_extra=ovs_extra)
+        self.provider.add_bridge(bridge)
+        self.assertEqual(yaml.safe_load(expected_brctl2_cfg),
+                         self.get_bridge_config('br-ctlplane2'))
+
+    def test_network_ovs_bridge_with_linux_bond(self):
+        expected_brctl2_cfg = """
+        name: br-ctlplane2
+        type: ovs-bridge
+        bridge:
+            options:
+                fail-mode: standalone
+                mcast-snooping-enable: False
+                rstp: False
+                stp: False
+            port:
+                - name: bond0
+                - name: br-ctlplane2-p
+        ovs-db:
+            external_ids: {}
+            other_config: {}
+        state: up
+        ovs-db:
+            external_ids: {}
+            other_config: {}
+        """
+        expected_bond0_config = """
+      name: bond0
+      type: bond
+      state: up
+      link-aggregation:
+          mode: active-backup
+          port:
+              - em3
+              - em2
+          options:
+              primary: em3
+      ipv4:
+          enabled: False
+          dhcp: False
+      ipv6:
+          enabled: False
+          autoconf: False
+          dhcp: False
+    """
+        interface1 = objects.Interface('em2')
+        interface2 = objects.Interface('em3', primary=True)
+
+        bond = objects.LinuxBond('bond0', members=[interface1, interface2])
+        bridge = objects.OvsBridge('br-ctlplane2', use_dhcp=True,
+                                   members=[bond])
+        self.provider.add_bridge(bridge)
+        self.provider.add_linux_bond(bond)
+        self.assertEqual(yaml.safe_load(expected_brctl2_cfg),
+                         self.get_bridge_config('br-ctlplane2'))
+        self.assertCountEqual(yaml.safe_load(expected_bond0_config),
+                              self.get_linuxbond_config('bond0'))
 
 
 class TestNmstateNetConfigApply(base.TestCase):

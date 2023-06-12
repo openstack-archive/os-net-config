@@ -27,6 +27,9 @@ from libnmstate.schema import InterfaceIPv4
 from libnmstate.schema import InterfaceIPv6
 from libnmstate.schema import InterfaceState
 from libnmstate.schema import InterfaceType
+from libnmstate.schema import OVSBridge
+from libnmstate.schema import OvsDB
+from libnmstate.schema import OVSInterface
 from libnmstate.schema import Route as NMRoute
 from libnmstate.schema import RouteRule as NMRouteRule
 import logging
@@ -37,6 +40,7 @@ import yaml
 import os_net_config
 from os_net_config import common
 from os_net_config import objects
+from os_net_config import utils
 
 logger = logging.getLogger(__name__)
 
@@ -163,6 +167,36 @@ def set_linux_bonding_options(bond_options, primary_iface=None):
     return bond_data
 
 
+def set_ovs_bonding_options(bond_options):
+    ovs_other_config = ["other-config:lacp-fallback-ab",
+                        "other_config:lacp-time",
+                        "other_config:bond-detect-mode",
+                        "other_config:bond-miimon-interval",
+                        "other_config:bond-rebalance-interval"]
+    bond_data = {OVSBridge.Port.LinkAggregation.MODE: 'active-backup',
+                 OVSBridge.PORT_SUBTREE:
+                     [{OVSBridge.Port.LinkAggregation.PORT_SUBTREE: []}]}
+    other_config = {}
+
+    if 'bond_mode' in bond_options:
+        bond_data[OVSBridge.Port.LinkAggregation.MODE
+                  ] = bond_options['bond_mode']
+    elif 'lacp' in bond_options and bond_options['lacp'] == 'active':
+        bond_data[OVSBridge.Port.LinkAggregation.MODE
+                  ] = OVSBridge.Port.LinkAggregation.Mode.LACP
+
+    if 'bond_updelay' in bond_options:
+        bond_data[OVSBridge.Port.LinkAggregation.Options.UP_DELAY
+                  ] = bond_options['bond_updelay']
+
+    for options in ovs_other_config:
+        if options in bond_options:
+            other_config[options[len("other_config:"):]
+                         ] = bond_options[options]
+
+    return bond_data, other_config
+
+
 def _is_any_ip_addr(address):
     if address.lower() == 'any' or address.lower() == 'all':
         return True
@@ -178,8 +212,13 @@ class NmstateNetConfig(os_net_config.NetConfig):
         self.route_data = {}
         self.rules_data = []
         self.dns_data = {'server': [], 'domain': []}
+        self.bridge_data = {}
+
         self.linuxbond_data = {}
+        self.ovs_port_data = {}
         self.member_names = {}
+        self.renamed_interfaces = {}
+        self.bond_primary_ifaces = {}
         self.route_table_data = {}
         logger.info('nmstate net config provider created.')
 
@@ -430,6 +469,26 @@ class NmstateNetConfig(os_net_config.NetConfig):
                 logger.info(f'Removing rule {c_rule}')
         rules.extend(reqd_rule)
         return rules
+
+    def get_ovs_ports(self, members):
+        bps = []
+        for member in members:
+            if member.startswith('vlan'):
+                vlan_id = int(member.strip('vlan'))
+                port = {
+                    OVSBridge.Port.NAME: member,
+                    OVSBridge.Port.VLAN_SUBTREE: {
+                        OVSBridge.Port.Vlan.MODE: 'access',
+                        OVSBridge.Port.Vlan.TAG: vlan_id
+                    }
+                }
+                bps.append(port)
+            else:
+                port = {'name': member}
+                bps.append(port)
+
+        logger.debug(f"Adding ovs ports {bps}")
+        return bps
 
     def add_ethtool_subtree(self, data, sub_config, command):
         config = _add_sub_tree(data, sub_config['sub-tree'])
@@ -819,6 +878,377 @@ class NmstateNetConfig(os_net_config.NetConfig):
         logger.debug(f'interface data: {data}')
         self.interface_data[interface.name] = data
 
+    def _ovs_extra_cfg_eq_val(self, ovs_extra, cmd_map, data):
+        index = 0
+        logger.info(f'Current ovs_extra {ovs_extra}')
+        for a, b in zip(ovs_extra, cmd_map['command']):
+            if not re.match(b, a, re.IGNORECASE):
+                return False
+            index = index + 1
+        for idx in range(index, len(ovs_extra)):
+            value = None
+            for cfg in cmd_map['action']:
+                if re.match(cfg['config'], ovs_extra[idx], re.IGNORECASE):
+                    value = None
+                    if 'value' in cfg:
+                        value = cfg['value']
+                    elif 'value_pattern' in cfg:
+                        m = re.search(cfg['value_pattern'], ovs_extra[idx])
+                        if m:
+                            value = _get_type_value(m.group(1))
+                    if value is None:
+                        msg = "Invalid ovs_extra format detected. "\
+                              f"{' '.join(ovs_extra)}"
+                        raise os_net_config.ConfigurationError(msg)
+                    config = _add_sub_tree(data, cfg['sub_tree'])
+                    if cfg['nm_config']:
+                        config[cfg['nm_config']] = value
+                    elif cfg['nm_config_regex']:
+                        logger.info(f'Regex pattern seen for {ovs_extra}')
+                        m = re.search(cfg['nm_config_regex'], ovs_extra[idx])
+                        if m:
+                            config[m.group(1)] = value
+                        else:
+                            msg = "Invalid ovs_extra format detected. "\
+                                  f"{' '.join(ovs_extra)}"
+                            raise os_net_config.ConfigurationError(msg)
+                    else:
+                        msg = 'NM config not found'
+                        raise os_net_config.ConfigurationError(msg)
+                    logger.info(f"Adding ovs_extra {config} in "
+                                f"{cfg['sub_tree']}")
+
+    def _ovs_extra_cfg_val(self, ovs_extra, cmd_map, data):
+        index = 0
+        for a, b in zip(ovs_extra, cmd_map['command']):
+            if not re.match(b, a, re.IGNORECASE):
+                return False
+            index = index + 1
+        if len(ovs_extra) > (index + 1):
+            value = None
+            for cfg in cmd_map['action']:
+                if re.match(cfg['config'], ovs_extra[index], re.IGNORECASE):
+                    value = None
+                    if 'value' in cfg:
+                        value = cfg['value']
+                    elif 'value_pattern' in cfg:
+                        m = re.search(cfg['value_pattern'],
+                                      ovs_extra[index + 1])
+                        if m:
+                            value = _get_type_value(m.group(1))
+                    if value is None:
+                        msg = f"Invalid ovs_extra format detected."\
+                              f"{' '.join(ovs_extra)}"
+                        raise os_net_config.ConfigurationError(msg)
+                    config = _add_sub_tree(data, cfg['sub_tree'])
+                    if cfg['nm_config']:
+                        config[cfg['nm_config']] = value
+                    elif cfg['nm_config_regex']:
+                        m = re.search(cfg['nm_config_regex'], ovs_extra[index])
+                        if m:
+                            config[m.group(1)] = value
+                        else:
+                            msg = f"Invalid ovs_extra format detected."\
+                                  f"{' '.join(ovs_extra)}"
+                            raise os_net_config.ConfigurationError(msg)
+                    else:
+                        msg = 'NM config not found'
+                        raise os_net_config.ConfigurationError(msg)
+                    logger.info(f"Adding ovs_extra {config} in "
+                                f"{cfg['sub_tree']}")
+
+    def parse_ovs_extra(self, ovs_extras, name, data):
+
+        bridge_cfg = [{'config': r'^fail_mode=[\w+]',
+                       'sub_tree': [OVSBridge.CONFIG_SUBTREE,
+                                    OVSBridge.OPTIONS_SUBTREE],
+                       'nm_config': OVSBridge.Options.FAIL_MODE,
+                       'value_pattern': r'^fail_mode=(.+?)$'},
+                      {'config': r'^mcast_snooping_enable=[\w+]',
+                       'sub_tree': [OVSBridge.CONFIG_SUBTREE,
+                                    OVSBridge.OPTIONS_SUBTREE],
+                       'nm_config': OVSBridge.Options.MCAST_SNOOPING_ENABLED,
+                       'value_pattern': r'^mcast_snooping_enable=(.+?)$'},
+                      {'config': r'^rstp_enable=[\w+]',
+                       'sub_tree': [OVSBridge.CONFIG_SUBTREE,
+                                    OVSBridge.OPTIONS_SUBTREE],
+                       'nm_config': OVSBridge.Options.RSTP,
+                       'value_pattern': r'^rstp_enable=(.+?)$'},
+                      {'config': r'^stp_enable=[\w+]',
+                       'sub_tree': [OVSBridge.CONFIG_SUBTREE,
+                                    OVSBridge.OPTIONS_SUBTREE],
+                       'nm_config': OVSBridge.Options.STP,
+                       'value_pattern': r'^stp_enable=(.+?)$'},
+                      {'config': r'^other_config:[\w+]',
+                       'sub_tree': [OvsDB.KEY, OvsDB.OTHER_CONFIG],
+                       'nm_config': None,
+                       'nm_config_regex': r'^other_config:(.+?)=',
+                       'value_pattern': r'^other_config:.*=(.+?)$'}]
+
+        iface_cfg = [{'config': r'^other_config:[\w+]',
+                      'sub_tree': [OvsDB.KEY, OvsDB.OTHER_CONFIG],
+                      'nm_config': None,
+                      'nm_config_regex': r'^other_config:(.+?)=',
+                      'value_pattern': r'^other_config:.*=(.+?)$'}]
+
+        external_id_cfg = [{'sub_tree': [OvsDB.KEY, OvsDB.EXTERNAL_IDS],
+                            'config': r'.*',
+                            'nm_config': None,
+                            'nm_config_regex': r'^(.+?)$',
+                            'value_pattern': r'^(.+?)$'}]
+        cfg_eq_val_pair = [{'command': ['set', 'bridge', '({name}|%s)' % name],
+                            'action': bridge_cfg},
+                           {'command': ['set', 'interface',
+                                        '({name}|%s)' % name],
+                            'action': iface_cfg}]
+
+        cfg_val_pair = [{'command': ['br-set-external-id',
+                                     '({name}|%s)' % name],
+                         'action': external_id_cfg}]
+        # ovs-vsctl set Bridge $name <config>=<value>
+        # ovs-vsctl set Interface $name <config>=<value>
+        # ovs-vsctl br-set-external-id $name key [value]
+        for ovs_extra in ovs_extras:
+            ovs_extra_cmd = ovs_extra.split(' ')
+            for cmd_map in cfg_eq_val_pair:
+                self._ovs_extra_cfg_eq_val(ovs_extra_cmd, cmd_map, data)
+            for cmd_map in cfg_val_pair:
+                self._ovs_extra_cfg_val(ovs_extra_cmd, cmd_map, data)
+
+    def parse_ovs_extra_for_ports(self, ovs_extras, bridge_name, data):
+        port_vlan_cfg = [{'config': r'^tag=[\w+]',
+                          'sub_tree': [OVSBridge.Port.VLAN_SUBTREE],
+                          'nm_config': OVSBridge.Port.Vlan.TAG,
+                          'value_pattern': r'^tag=(.+?)$'},
+                         {'config': r'^tag=[\w+]',
+                          'sub_tree': [OVSBridge.Port.VLAN_SUBTREE],
+                          'nm_config': OVSBridge.Port.Vlan.MODE,
+                          'value': 'access'}]
+        cfg_eq_val_pair = [{'command': ['set', 'port',
+                                        '({name}|%s)' % bridge_name],
+                            'action': port_vlan_cfg}]
+        for ovs_extra in ovs_extras:
+            ovs_extra_cmd = ovs_extra.split(' ')
+            for cmd_map in cfg_eq_val_pair:
+                self._ovs_extra_cfg_eq_val(ovs_extra_cmd, cmd_map, data)
+
+    def add_bridge(self, bridge, dpdk=False):
+        """Add an OvsBridge object to the net config object.
+
+        :param bridge: The OvsBridge object to add.
+        """
+
+        # Create the internal ovs interface. Some of the settings of the
+        # bridge like MTU, ip address are to be applied on this interface
+        ovs_port_name = f"{bridge.name}-p"
+        ovs_interface_port = objects.OvsInterface(
+            ovs_port_name, use_dhcp=bridge.use_dhcp,
+            use_dhcpv6=bridge.use_dhcpv6,
+            addresses=bridge.addresses, routes=bridge.routes,
+            rules=bridge.rules, mtu=bridge.mtu, primary=False,
+            nic_mapping=None, persist_mapping=None,
+            defroute=bridge.defroute, dhclient_args=bridge.dhclient_args,
+            dns_servers=bridge.dns_servers,
+            nm_controlled=None, onboot=bridge.onboot,
+            domain=bridge.domain)
+        self.add_ovs_interface(ovs_interface_port)
+
+        ovs_int_port = {'name': ovs_interface_port.name}
+        if bridge.ovs_extra:
+            logger.info(f"Parsing ovs_extra for ports: {bridge.ovs_extra}")
+            self.parse_ovs_extra_for_ports(bridge.ovs_extra,
+                                           bridge.name, ovs_int_port)
+
+        logger.info(f'adding bridge: {bridge.name}')
+
+        # Clear the settings from the bridge, since these will be applied
+        # on the interface
+        if bridge.routes:
+            bridge.routes.clear()
+        bridge.defroute = False
+        if bridge.dns_servers:
+            bridge.dns_servers.clear()
+        if bridge.domain:
+            bridge.domain.clear()
+        if bridge.mtu:
+            bridge.mtu = None
+        data = self._add_common(bridge)
+
+        data[Interface.TYPE] = OVSBridge.TYPE
+        # address bits can't be on the ovs-bridge
+        del data[Interface.IPV4]
+        del data[Interface.IPV6]
+        ovs_bridge_options = {OVSBridge.Options.FAIL_MODE:
+                              objects.DEFAULT_OVS_BRIDGE_FAIL_MODE,
+                              OVSBridge.Options.MCAST_SNOOPING_ENABLED: False,
+                              OVSBridge.Options.RSTP: False,
+                              OVSBridge.Options.STP: False}
+        data[OVSBridge.CONFIG_SUBTREE] = {
+            OVSBridge.OPTIONS_SUBTREE: ovs_bridge_options,
+            OVSBridge.PORT_SUBTREE: [],
+        }
+        data[OvsDB.KEY] = {OvsDB.EXTERNAL_IDS: {},
+                           OvsDB.OTHER_CONFIG: {}}
+        if bridge.ovs_extra:
+            logger.info(f"Parsing ovs_extra : {bridge.ovs_extra}")
+            self.parse_ovs_extra(bridge.ovs_extra, bridge.name, data)
+
+        if dpdk:
+            ovs_bridge_options[OVSBridge.Options.DATAPATH] = 'netdev'
+        if bridge.members:
+            members = []
+            ovs_bond = False
+            ovs_port = False
+            for member in bridge.members:
+                if (isinstance(member, objects.OvsBond) or
+                        isinstance(member, objects.OvsDpdkBond)):
+                    if ovs_port:
+                        msg = "Ovs Bond and ovs port can't be members to "\
+                              "the ovs bridge"
+                        raise os_net_config.ConfigurationError(msg)
+                    bond_options = parse_bonding_options(member.ovs_options)
+                    bond_data, other_config = set_ovs_bonding_options(
+                        bond_options)
+                    bond_port = [{
+                        OVSBridge.Port.LINK_AGGREGATION_SUBTREE: bond_data,
+                        OVSBridge.Port.NAME: member.name},
+                        ovs_int_port]
+                    data[OVSBridge.CONFIG_SUBTREE
+                         ][OVSBridge.PORT_SUBTREE] = bond_port
+
+                    # TODO(Karthik) Is primary interface required now
+                    # if bridge.primary_interface_name:
+                    #     primary_name = member.primary_interface_name
+                    #     self.bond_primary_ifaces[member.name] = primary_name
+                    ovs_bond = True
+                    logger.debug("OVS Bond members %s added" % members)
+                    if member.members:
+                        members = [m.name for m in member.members]
+                elif ovs_bond:
+                    msg = "Ovs Bond and ovs port can't be members to "\
+                          "the ovs bridge"
+                    raise os_net_config.ConfigurationError(msg)
+                else:
+                    ovs_port = True
+                    logger.debug("Adding member ovs port %s" % member.name)
+                    members.append(member.name)
+            if members:
+                logger.debug("Add ovs ports and vlans to ovs bridge")
+                bps = self.get_ovs_ports(members)
+            else:
+                msg = "No members added for ovs bridge"
+                raise os_net_config.ConfigurationError(msg)
+
+            self.member_names[bridge.name] = members
+
+            if ovs_port:
+                # Add the internal ovs interface
+                bps.append(ovs_int_port)
+                data[OVSBridge.CONFIG_SUBTREE][OVSBridge.PORT_SUBTREE] = bps
+            elif ovs_bond:
+                bond_data[OVSBridge.Port.LinkAggregation.PORT_SUBTREE] = bps
+                data[OvsDB.KEY][OvsDB.OTHER_CONFIG].update(other_config)
+
+        if bridge.primary_interface_name:
+            mac = utils.interface_mac(bridge.primary_interface_name)
+            data[Interface.MAC] = mac
+
+        self.bridge_data[bridge.name] = data
+        logger.debug('bridge data: %s' % data)
+
+    def add_ovs_user_bridge(self, bridge):
+        """Add an OvsUserBridge object to the net config object.
+
+        :param bridge: The OvsUserBridge object to add.
+        """
+        logger.info('adding ovs user bridge: %s' % bridge.name)
+        self.add_bridge(bridge, dpdk=True)
+
+    def add_ovs_interface(self, ovs_interface):
+        """Add a OvsDpdkPort object to the net config object.
+
+        :param ovs_dpdk_port: The OvsDpdkPort object to add.
+        """
+        logger.info('adding ovs dpdk port: %s' % ovs_interface.name)
+        data = self._add_common(ovs_interface)
+        data[Interface.TYPE] = OVSInterface.TYPE
+        data[Interface.STATE] = InterfaceState.UP
+        logger.debug(f'add ovs_interface data: {data}')
+        self.interface_data[ovs_interface.name] = data
+
+    def add_ovs_dpdk_port(self, ovs_dpdk_port):
+        """Add a OvsDpdkPort object to the net config object.
+
+        :param ovs_dpdk_port: The OvsDpdkPort object to add.
+        """
+        logger.info('adding ovs dpdk port: %s' % ovs_dpdk_port.name)
+
+        # DPDK Port will have only one member of type Interface, validation
+        # checks are added at the object creation stage.
+        ifname = ovs_dpdk_port.members[0].name
+
+        # Bind the dpdk interface
+        utils.bind_dpdk_interfaces(ifname, ovs_dpdk_port.driver, self.noop)
+        data = self._add_common(ovs_dpdk_port)
+        data[Interface.TYPE] = OVSInterface.TYPE
+        data[Interface.STATE] = InterfaceState.UP
+
+        pci_address = utils.get_dpdk_devargs(ifname, noop=False)
+
+        data[OVSInterface.DPDK_CONFIG_SUBTREE
+             ] = {OVSInterface.Dpdk.DEVARGS: pci_address}
+        if ovs_dpdk_port.rx_queue:
+            data[OVSInterface.DPDK_CONFIG_SUBTREE
+                 ][OVSInterface.Dpdk.RX_QUEUE] = ovs_dpdk_port.rx_queue
+        if ovs_dpdk_port.rx_queue_size:
+            data[OVSInterface.DPDK_CONFIG_SUBTREE
+                 ][OVSInterface.Dpdk.N_RXQ_DESC] = ovs_dpdk_port.rx_queue_size
+        if ovs_dpdk_port.tx_queue_size:
+            data[OVSInterface.DPDK_CONFIG_SUBTREE
+                 ][OVSInterface.Dpdk.N_TXQ_DESC] = ovs_dpdk_port.tx_queue_size
+        data[OvsDB.KEY] = {OvsDB.EXTERNAL_IDS: {},
+                           OvsDB.OTHER_CONFIG: {}}
+        if ovs_dpdk_port.ovs_extra:
+            logger.info(f"Parsing ovs_extra : {ovs_dpdk_port.ovs_extra}")
+            self.parse_ovs_extra(ovs_dpdk_port.ovs_extra,
+                                 ovs_dpdk_port.name, data)
+
+        logger.debug(f'ovs dpdk port data: {data}')
+        self.interface_data[ovs_dpdk_port.name] = data
+
+    def add_linux_bridge(self, bridge):
+        """Add a LinuxBridge object to the net config object.
+
+        :param bridge: The LinuxBridge object to add.
+        """
+        logger.info(f'adding linux bridge: {bridge.name}')
+        data = self._add_common(bridge)
+        logger.debug('bridge data: %s' % data)
+        self.linuxbridge_data[bridge.name] = data
+
+    def add_bond(self, bond):
+        """Add an OvsBond object to the net config object.
+
+        :param bond: The OvsBond object to add.
+        """
+        # The ovs bond is already added in add_bridge()x
+        logger.info('adding bond: %s' % bond.name)
+        return
+
+    def add_ovs_dpdk_bond(self, bond):
+        """Add an OvsDpdkBond object to the net config object.
+
+        :param bond: The OvsBond object to add.
+        """
+        logger.info('adding Ovs DPDK Bond: %s' % bond.name)
+        for member in bond.members:
+            if bond.mtu:
+                member.mtu = bond.mtu
+            if bond.rx_queue:
+                member.rx_queue = bond.rx_queue
+            self.add_ovs_dpdk_port(member)
+        return
+
     def add_linux_bond(self, bond):
         """Add a LinuxBond object to the net config object.
 
@@ -881,6 +1311,19 @@ class NmstateNetConfig(os_net_config.NetConfig):
             logger.info(f'Routes_data {routes_data}')
             apply_routes.extend(routes_data)
 
+        for bridge_name, bridge_data in self.bridge_data.items():
+
+            bridge_state = self.iface_state(bridge_name)
+            if not is_dict_subset(bridge_state, bridge_data):
+                updated_interfaces[bridge_name] = bridge_data
+            else:
+                logger.info('No changes required for bridge: %s' %
+                            bridge_name)
+
+            routes_data = self.generate_routes(bridge_name)
+            logger.info(f'Routes_data {routes_data}')
+            apply_routes.extend(routes_data)
+
         for bond_name, bond_data in self.linuxbond_data.items():
             bond_state = self.iface_state(bond_name)
             if not is_dict_subset(bond_state, bond_data):
@@ -929,6 +1372,7 @@ class NmstateNetConfig(os_net_config.NetConfig):
                 raise os_net_config.ConfigurationError(message)
 
         self.interface_data = {}
+        self.bridge_data = {}
         self.linuxbond_data = {}
 
         return updated_interfaces
