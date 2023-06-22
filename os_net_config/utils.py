@@ -323,7 +323,7 @@ def get_dpdk_devargs(ifname, noop):
     if not noop:
         vendor_id = common.get_vendor_id(ifname)
         device_id = common.get_device_id(ifname)
-        if vendor_id == "0x15b3":
+        if vendor_id == common.MLNX_VENDOR_ID:
             logger.info("Getting devargs for Mellanox cards")
             if device_id == "0x1007":
                 # Some NICs (i.e. Mellanox ConnectX-3) have only one PCI
@@ -331,18 +331,12 @@ def get_dpdk_devargs(ifname, noop):
                 # device won’t work. Instead, we should use
                 # "class=eth,mac=<MAC>"
                 dpdk_devargs = f"class=eth,mac={common.interface_mac(ifname)}"
-            elif is_active_nic(ifname):
-                # Other Mellanox devices are active and they are not stored
-                # in dpdk_mapping.yaml file, so we need to get their pci
-                # address with ethtool.
-                dpdk_devargs = get_pci_address(ifname, noop)
-            elif common.is_vf_by_name(ifname):
-                # For Mellanox devices the VFs bound with DPDK shall
-                # be treated the same as VFs of other devices
-                dpdk_devargs = get_pci_address(ifname, noop)
             else:
-                msg = ("Unable to get devargs for interface %s" % ifname)
-                raise InvalidInterfaceException(msg)
+                # Get the PCI address of the devices other than CX-3.
+                # It includes the VFs as well. For all Other Mellanox devices
+                # the PCI address are not stored in dpdk_mapping.yaml file,
+                # so we need to get their pci address with ethtool.
+                dpdk_devargs = get_pci_address(ifname, noop)
         else:
             logger.info("Getting stored PCI address as devarg")
             dpdk_devargs = get_stored_pci_address(ifname, noop)
