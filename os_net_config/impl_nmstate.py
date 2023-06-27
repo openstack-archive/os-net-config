@@ -32,6 +32,7 @@ from libnmstate.schema import OvsDB
 from libnmstate.schema import OVSInterface
 from libnmstate.schema import Route as NMRoute
 from libnmstate.schema import RouteRule as NMRouteRule
+from libnmstate.schema import VLAN
 import logging
 import netaddr
 import re
@@ -209,6 +210,7 @@ class NmstateNetConfig(os_net_config.NetConfig):
     def __init__(self, noop=False, root_dir=''):
         super(NmstateNetConfig, self).__init__(noop, root_dir)
         self.interface_data = {}
+        self.vlan_data = {}
         self.route_data = {}
         self.rules_data = []
         self.dns_data = {'server': [], 'domain': []}
@@ -475,6 +477,18 @@ class NmstateNetConfig(os_net_config.NetConfig):
         for member in members:
             if member.startswith('vlan'):
                 vlan_id = int(member.strip('vlan'))
+                port = {
+                    OVSBridge.Port.NAME: member,
+                    OVSBridge.Port.VLAN_SUBTREE: {
+                        OVSBridge.Port.Vlan.MODE: 'access',
+                        OVSBridge.Port.Vlan.TAG: vlan_id
+                    }
+                }
+                bps.append(port)
+            # if the member is of type interface but a vlan
+            # like eth0.605
+            elif re.match(r'\w+\.\d+$', member):
+                vlan_id = int(member.split('.')[1])
                 port = {
                     OVSBridge.Port.NAME: member,
                     OVSBridge.Port.VLAN_SUBTREE: {
@@ -858,6 +872,23 @@ class NmstateNetConfig(os_net_config.NetConfig):
 
         :param interface: The Interface object to add.
         """
+        if re.match(r'\w+\.\d+$', interface.name):
+            vlan_id = int(interface.name.split('.')[1])
+            device = interface.name.split('.')[0]
+            vlan_port = objects.Vlan(
+                device, vlan_id,
+                use_dhcp=interface.use_dhcp, use_dhcpv6=interface.use_dhcpv6,
+                addresses=interface.addresses, routes=interface.routes,
+                rules=interface.rules, mtu=interface.mtu,
+                primary=interface.primary, nic_mapping=None,
+                persist_mapping=None, defroute=interface.defroute,
+                dhclient_args=interface.dhclient_args,
+                dns_servers=interface.dns_servers, nm_controlled=True,
+                onboot=interface.onboot, domain=interface.domain)
+            vlan_port.name = interface.name
+            self.add_vlan(vlan_port)
+            return
+
         logger.info(f'adding interface: {interface.name}')
         data = self._add_common(interface)
         if isinstance(interface, objects.Interface):
@@ -877,6 +908,32 @@ class NmstateNetConfig(os_net_config.NetConfig):
 
         logger.debug(f'interface data: {data}')
         self.interface_data[interface.name] = data
+
+    def add_vlan(self, vlan):
+        """Add a Vlan object to the net config object.
+
+        :param vlan: The vlan object to add.
+        """
+        logger.info(f'adding vlan: {vlan.name}')
+
+        data = self._add_common(vlan)
+        if vlan.device:
+            base_iface = vlan.device
+        elif vlan.linux_bond_name:
+            base_iface = vlan.linux_bond_name
+
+        if vlan.bridge_name:
+            # Handle the VLANs for ovs bridges
+            # vlans on OVS bridges are internal ports (no device, etc)
+            data[Interface.TYPE] = InterfaceType.OVS_INTERFACE
+        else:
+            data[Interface.TYPE] = InterfaceType.VLAN
+            data[VLAN.CONFIG_SUBTREE] = {}
+            data[VLAN.CONFIG_SUBTREE][VLAN.ID] = vlan.vlan_id
+            data[VLAN.CONFIG_SUBTREE][VLAN.BASE_IFACE] = base_iface
+
+        logger.debug(f'vlan data: {data}')
+        self.vlan_data[vlan.name] = data
 
     def _ovs_extra_cfg_eq_val(self, ovs_extra, cmd_map, data):
         index = 0
@@ -1335,6 +1392,17 @@ class NmstateNetConfig(os_net_config.NetConfig):
             logger.info('Routes_data %s' % routes_data)
             apply_routes.extend(routes_data)
 
+        for vlan_name, vlan_data in self.vlan_data.items():
+            vlan_state = self.iface_state(vlan_name)
+            if not is_dict_subset(vlan_state, vlan_data):
+                updated_interfaces[vlan_name] = vlan_data
+            else:
+                logger.info('No changes required for vlan interface: %s' %
+                            vlan_name)
+            routes_data = self.generate_routes(vlan_name)
+            logger.info('Routes_data %s' % routes_data)
+            apply_routes.extend(routes_data)
+
         if activate:
             if not self.noop:
                 try:
@@ -1374,5 +1442,6 @@ class NmstateNetConfig(os_net_config.NetConfig):
         self.interface_data = {}
         self.bridge_data = {}
         self.linuxbond_data = {}
+        self.vlan_data = {}
 
         return updated_interfaces

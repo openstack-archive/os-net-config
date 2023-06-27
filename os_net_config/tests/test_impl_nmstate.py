@@ -184,6 +184,9 @@ class TestNmstateNetConfig(base.TestCase):
     def get_interface_config(self, name='em1'):
         return self.provider.interface_data[name]
 
+    def get_vlan_config(self, name):
+        return self.provider.vlan_data[name]
+
     def get_bridge_config(self, name):
         return self.provider.bridge_data[name]
 
@@ -956,6 +959,260 @@ class TestNmstateNetConfig(base.TestCase):
                          self.get_bridge_config('br-ctlplane2'))
         self.assertCountEqual(yaml.safe_load(expected_bond0_config),
                               self.get_linuxbond_config('bond0'))
+
+    def test_vlan_interface(self):
+        expected_vlan1_cfg = """
+        name: vlan502
+        type: vlan
+        vlan:
+            base-iface: em2
+            id: 502
+        state: up
+        ipv4:
+            dhcp: false
+            enabled: false
+        ipv6:
+            address:
+                - ip: "2001:abc:a::"
+                  prefix-length: 64
+            autoconf: false
+            dhcp: false
+            enabled: true
+        """
+        v6_addr = objects.Address('2001:abc:a::/64')
+        vlan1 = objects.Vlan('em2', 502, addresses=[v6_addr])
+        self.provider.add_vlan(vlan1)
+        self.assertEqual(yaml.safe_load(expected_vlan1_cfg),
+                         self.get_vlan_config('vlan502'))
+
+    def test_vlan_as_interface(self):
+        expected_vlan1_cfg = """
+        name: em2.502
+        type: vlan
+        vlan:
+            base-iface: em2
+            id: 502
+        state: up
+        ipv4:
+            dhcp: false
+            enabled: false
+        ipv6:
+            address:
+                - ip: "2001:abc:a::"
+                  prefix-length: 64
+            autoconf: false
+            dhcp: false
+            enabled: true
+        """
+        v6_addr = objects.Address('2001:abc:a::/64')
+        em2 = objects.Interface('em2.502', addresses=[v6_addr])
+        self.provider.add_interface(em2)
+        self.assertEqual(yaml.safe_load(expected_vlan1_cfg),
+                         self.get_vlan_config('em2.502'))
+
+    def test_add_vlan_ovs(self):
+        expected_vlan1_cfg = """
+        name: vlan5
+        ipv4:
+            dhcp: false
+            enabled: false
+        ipv6:
+            autoconf: false
+            dhcp: false
+            enabled: false
+        state: up
+        type: ovs-interface
+        """
+        expected_bridge_cfg = """
+        name: br-ctlplane
+        bridge:
+            options:
+                fail-mode: standalone
+                mcast-snooping-enable: false
+                rstp: false
+                stp: false
+            port:
+                - name: em2
+                - name: vlan5
+                  vlan:
+                      mode: access
+                      tag: 5
+                - name: br-ctlplane-p
+        ovs-db:
+            external_ids: {}
+            other_config: {}
+        state: up
+        type: ovs-bridge
+        """
+        interface1 = objects.Interface('em2')
+        vlan = objects.Vlan(None, 5)
+        bridge = objects.OvsBridge('br-ctlplane', use_dhcp=True,
+                                   members=[interface1, vlan])
+        self.provider.add_bridge(bridge)
+        self.provider.add_vlan(vlan)
+        self.assertEqual(yaml.safe_load(expected_vlan1_cfg),
+                         self.get_vlan_config('vlan5'))
+        self.assertEqual(yaml.safe_load(expected_bridge_cfg),
+                         self.get_bridge_config('br-ctlplane'))
+
+    def test_add_vlan_mtu_1500(self):
+        expected_vlan1_cfg = """
+        name: vlan5
+        type: vlan
+        vlan:
+            base-iface: em1
+            id: 5
+        state: up
+        mtu: 1500
+        ipv4:
+            dhcp: false
+            enabled: false
+        ipv6:
+            autoconf: false
+            dhcp: false
+            enabled: false
+        """
+        vlan = objects.Vlan('em1', 5, mtu=1500)
+        self.provider.add_vlan(vlan)
+        self.assertEqual(yaml.safe_load(expected_vlan1_cfg),
+                         self.get_vlan_config('vlan5'))
+
+    def test_add_ovs_bridge_with_vlan(self):
+        expected_vlan1_cfg = """
+        name: vlan5
+        ipv4:
+            dhcp: false
+            enabled: false
+        ipv6:
+            autoconf: false
+            dhcp: false
+            enabled: false
+        state: up
+        type: ovs-interface
+        """
+        expected_bridge_cfg = """
+        name: br-ctlplane
+        bridge:
+            options:
+                fail-mode: standalone
+                mcast-snooping-enable: false
+                rstp: false
+                stp: false
+            port:
+                - name: vlan5
+                  vlan:
+                      mode: access
+                      tag: 5
+                - name: br-ctlplane-p
+        ovs-db:
+            external_ids: {}
+            other_config: {}
+        state: up
+        type: ovs-bridge
+        """
+        vlan = objects.Vlan('em2', 5)
+        bridge = objects.OvsBridge('br-ctlplane', use_dhcp=True,
+                                   members=[vlan])
+        self.provider.add_vlan(vlan)
+        self.provider.add_bridge(bridge)
+        self.assertEqual(yaml.safe_load(expected_bridge_cfg),
+                         self.get_bridge_config('br-ctlplane'))
+        self.assertEqual(yaml.safe_load(expected_vlan1_cfg),
+                         self.get_vlan_config('vlan5'))
+
+    def test_vlan_over_linux_bond(self):
+        expected_vlan1_cfg = """
+        name: vlan5
+        type: vlan
+        vlan:
+            base-iface: bond0
+            id: 5
+        state: up
+        ipv4:
+            dhcp: false
+            enabled: false
+        ipv6:
+            autoconf: false
+            dhcp: false
+            enabled: false
+        """
+        interface1 = objects.Interface('em1', primary=True)
+        interface2 = objects.Interface('em2')
+        bond = objects.LinuxBond('bond0', use_dhcp=True,
+                                 members=[interface1, interface2])
+        vlan = objects.Vlan('bond0', 5)
+        self.provider.add_linux_bond(bond)
+        self.provider.add_interface(interface1)
+        self.provider.add_interface(interface2)
+        self.provider.add_vlan(vlan)
+        self.assertEqual(yaml.safe_load(expected_vlan1_cfg),
+                         self.get_vlan_config('vlan5'))
+
+    def test_add_vlan_route_rules(self):
+        expected_vlan1_cfg = """
+        name: vlan5
+        type: vlan
+        vlan:
+            base-iface: em1
+            id: 5
+        state: up
+        ipv4:
+            dhcp: false
+            enabled: true
+            address:
+                - ip: 192.168.1.2
+                  prefix-length: 24
+        ipv6:
+            autoconf: false
+            dhcp: false
+            enabled: false
+        """
+
+        expected_route_table = """
+            - destination: 172.19.0.0/24
+              next-hop-address: 192.168.1.1
+              next-hop-interface: vlan5
+              table-id: 200
+            - destination: 172.20.0.0/24
+              next-hop-address: 192.168.1.1
+              next-hop-interface: vlan5
+              table-id: 201
+            - destination: 172.21.0.0/24
+              next-hop-address: 192.168.1.1
+              next-hop-interface: vlan5
+              table-id: 200
+        """
+        expected_rule = """
+            - ip-from: 192.0.2.0/24
+              route-table: 200
+        """
+
+        route_table1 = objects.RouteTable('table1', 200)
+        self.provider.add_route_table(route_table1)
+
+        route_rule1 = objects.RouteRule('from 192.0.2.0/24 table 200',
+                                        'test comment')
+        # Test route table by name
+        route1 = objects.Route('192.168.1.1', '172.19.0.0/24', False,
+                               route_table="table1")
+
+        # Test that table specified in route_options takes precedence
+        route2 = objects.Route('192.168.1.1', '172.20.0.0/24', False,
+                               'table 201', route_table=200)
+        # Test route table specified by integer ID
+        route3 = objects.Route('192.168.1.1', '172.21.0.0/24', False,
+                               route_table=200)
+        v4_addr = objects.Address('192.168.1.2/24')
+        vlan = objects.Vlan('em1', 5, addresses=[v4_addr],
+                            routes=[route1, route2, route3],
+                            rules=[route_rule1])
+        self.provider.add_vlan(vlan)
+        self.assertEqual(yaml.safe_load(expected_vlan1_cfg),
+                         self.get_vlan_config('vlan5'))
+        self.assertEqual(yaml.safe_load(expected_route_table),
+                         self.get_route_config('vlan5'))
+        self.assertEqual(yaml.safe_load(expected_rule),
+                         self.get_rule_config())
 
 
 class TestNmstateNetConfigApply(base.TestCase):
