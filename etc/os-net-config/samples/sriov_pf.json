@@ -32,7 +32,8 @@
           "macaddr": "00:78:90:80:cc:30",
           "trust": true,
           "state": "auto",
-          "promisc": false
+          "promisc": false,
+          "ethtool_opts": "speed 1000 duplex full"
         },
         {
             "type": "ovs_bridge",

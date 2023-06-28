@@ -75,6 +75,8 @@ network_config:
     # referred to as unmatched traffic.
     # The default value is false. Requires the enabling of trust mode
     promisc: false
+    # Set ethtool options (optional)
+    ethtool_opts: "speed 1000 duplex full"
   # Attach a SR-IOV VF to a ovs bridge
   - type: ovs_bridge
     name: br-vfs
