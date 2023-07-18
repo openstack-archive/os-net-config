@@ -438,6 +438,8 @@ definitions:
                 $ref: "#/definitions/bool_or_param"
             domain:
                 $ref: "#/definitions/list_of_domain_name_string_or_domain_name_string"
+            ethtool_opts:
+                $ref: "#/definitions/string_or_param"
         required:
           - type
           - device

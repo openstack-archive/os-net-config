@@ -1429,7 +1429,8 @@ class SriovVF(_BaseOpts):
                  defroute=True, dhclient_args=None, dns_servers=None,
                  nm_controlled=False, onboot=True, domain=None, vlan_id=0,
                  qos=0, spoofcheck=None, trust=None, state=None, macaddr=None,
-                 promisc=None, min_tx_rate=0, max_tx_rate=0):
+                 promisc=None, min_tx_rate=0, max_tx_rate=0,
+                 ethtool_opts=None):
         addresses = addresses or []
         routes = routes or []
         rules = rules or []
@@ -1462,7 +1463,7 @@ class SriovVF(_BaseOpts):
         self.promisc = promisc
         self.pci_address = pci_address
         self.driver = None
-
+        self.ethtool_opts = ethtool_opts
         utils.update_sriov_vf_map(device, self.vfid, name,
                                   vlan_id=self.vlan_id,
                                   qos=self.qos,
@@ -1512,10 +1513,12 @@ class SriovVF(_BaseOpts):
             msg = 'Expecting state to match auto/enable/disable'
             raise InvalidConfigException(msg)
         macaddr = json.get('macaddr')
+        ethtool_opts = json.get('ethtool_opts', None)
         return SriovVF(device, vfid, *opts, vlan_id=vlan_id, qos=qos,
                        spoofcheck=spoofcheck, trust=trust, state=state,
                        macaddr=macaddr, promisc=promisc,
-                       min_tx_rate=min_tx_rate, max_tx_rate=max_tx_rate)
+                       min_tx_rate=min_tx_rate, max_tx_rate=max_tx_rate,
+                       ethtool_opts=ethtool_opts)
 
 
 class SriovPF(_BaseOpts):
