@@ -316,7 +316,7 @@ def main(argv=sys.argv, main_logger=None):
         # wouldn't have changed.
         pf_files_changed = provider.apply(cleanup=opts.cleanup,
                                           activate=not opts.no_activate)
-        if not opts.noop:
+        if opts.provider == 'ifcfg' and not opts.noop:
             restart_ovs = bool(sriovpf_bond_ovs_ports)
             # Avoid ovs restart for os-net-config re-runs, which will
             # dirupt the offload configuration
@@ -340,7 +340,7 @@ def main(argv=sys.argv, main_logger=None):
         if not _is_sriovpf_obj_found(obj):
             provider.add_object(obj)
 
-    if configure_sriov and not opts.noop:
+    if opts.provider == 'ifcfg' and configure_sriov and not opts.noop:
         utils.configure_sriov_vfs()
 
     files_changed = provider.apply(cleanup=opts.cleanup,

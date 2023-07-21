@@ -1214,6 +1214,275 @@ class TestNmstateNetConfig(base.TestCase):
         self.assertEqual(yaml.safe_load(expected_rule),
                          self.get_rule_config())
 
+    def test_sriov_pf_without_nicpart(self):
+        nic_mapping = {'nic1': 'eth0', 'nic2': 'eth1', 'nic3': 'eth2'}
+        self.stubbed_mapped_nics = nic_mapping
+
+        def update_sriov_pf_map_stub(ifname, numvfs, noop, promisc=None,
+                                     link_mode='legacy', vdpa=False,
+                                     steering_mode=None, lag_candidate=None):
+            return
+        self.stub_out('os_net_config.utils.update_sriov_pf_map',
+                      update_sriov_pf_map_stub)
+
+        pf = objects.SriovPF(name='nic3', numvfs=10)
+        self.provider.add_sriov_pf(pf)
+        exp_pf_config = """
+        name: eth2
+        state: up
+        type: ethernet
+        ethernet:
+           sr-iov:
+               total-vfs: 10
+        ipv4:
+            dhcp: False
+            enabled: False
+        ipv6:
+            autoconf: False
+            dhcp: False
+            enabled: False
+        """
+        self.assertEqual(yaml.safe_load(exp_pf_config),
+                         self.get_interface_config('eth2'))
+
+    def test_sriov_pf_with_nicpart_ovs(self):
+        nic_mapping = {'nic1': 'eth0', 'nic2': 'eth1', 'nic3': 'eth2'}
+        self.stubbed_mapped_nics = nic_mapping
+
+        def update_sriov_pf_map_stub(ifname, numvfs, noop, promisc=None,
+                                     link_mode='legacy', vdpa=False,
+                                     steering_mode=None, lag_candidate=None):
+            return
+        self.stub_out('os_net_config.utils.update_sriov_pf_map',
+                      update_sriov_pf_map_stub)
+
+        def test_get_vf_devname(device, vfid):
+            return device + '_' + str(vfid)
+        self.stub_out('os_net_config.utils.get_vf_devname',
+                      test_get_vf_devname)
+
+        pf1 = objects.SriovPF(name='nic3', numvfs=10)
+        self.provider.add_sriov_pf(pf1)
+        pf2 = objects.SriovPF(name='nic2', numvfs=10)
+        self.provider.add_sriov_pf(pf2)
+
+        ovs_config = """
+        type: ovs_bridge
+        name: br-bond
+        use_dhcp: true
+        members:
+        -
+            type: ovs_bond
+            name: bond_vf
+            ovs_options: "bond_mode=active-backup"
+            members:
+            -
+                type: sriov_vf
+                device: nic3
+                vfid: 2
+                vlan_id: 112
+                qos: 4
+                primary: true
+            -
+                type: sriov_vf
+                device: nic2
+                vfid: 2
+                vlan_id: 112
+                qos: 4
+        """
+
+        ovs_obj = objects.object_from_json(yaml.safe_load(ovs_config))
+        self.provider.add_bridge(ovs_obj)
+        self.provider.add_sriov_vf(ovs_obj.members[0].members[0])
+        self.provider.add_sriov_vf(ovs_obj.members[0].members[1])
+
+        exp_pf_config = """
+        - name: eth2
+          state: up
+          type: ethernet
+          ethernet:
+              sr-iov:
+                  total-vfs: 10
+                  vfs:
+                  - id: 2
+                    spoof-check: false
+                    trust: true
+                    vlan-id: 112
+                    qos: 4
+          ipv4:
+              dhcp: False
+              enabled: False
+          ipv6:
+              autoconf: False
+              dhcp: False
+              enabled: False
+        - name: eth1
+          state: up
+          type: ethernet
+          ethernet:
+              sr-iov:
+                  total-vfs: 10
+                  vfs:
+                  - id: 2
+                    spoof-check: false
+                    trust: true
+                    vlan-id: 112
+                    qos: 4
+          ipv4:
+              dhcp: False
+              enabled: False
+          ipv6:
+              autoconf: False
+              dhcp: False
+              enabled: False
+        """
+
+        exp_bridge_config = """
+        name: br-bond
+        state: up
+        type: ovs-bridge
+        bridge:
+            options:
+                fail-mode: standalone
+                mcast-snooping-enable: False
+                rstp: False
+                stp: False
+            port:
+                - name: bond_vf
+                  link-aggregation:
+                      mode: active-backup
+                      port:
+                          - name: eth2_2
+                          - name: eth1_2
+                - name: br-bond-p
+        ovs-db:
+            external_ids: {}
+            other_config: {}
+        """
+
+        vf_config = self.provider.prepare_sriov_vf_config()
+        self.assertEqual(yaml.safe_load(exp_pf_config),
+                         vf_config)
+        self.assertEqual(yaml.safe_load(exp_bridge_config),
+                         self.get_bridge_config('br-bond'))
+
+    def test_sriov_pf_with_nicpart_linux_bond(self):
+        nic_mapping = {'nic1': 'eth0', 'nic2': 'eth1', 'nic3': 'eth2'}
+        self.stubbed_mapped_nics = nic_mapping
+
+        def update_sriov_pf_map_stub(ifname, numvfs, noop, promisc=None,
+                                     link_mode='legacy', vdpa=False,
+                                     steering_mode=None, lag_candidate=None):
+            return
+        self.stub_out('os_net_config.utils.update_sriov_pf_map',
+                      update_sriov_pf_map_stub)
+
+        def test_get_vf_devname(device, vfid):
+            return device + '_' + str(vfid)
+        self.stub_out('os_net_config.utils.get_vf_devname',
+                      test_get_vf_devname)
+
+        pf1 = objects.SriovPF(name='nic3', numvfs=10)
+        self.provider.add_sriov_pf(pf1)
+        pf2 = objects.SriovPF(name='nic2', numvfs=10)
+        self.provider.add_sriov_pf(pf2)
+
+        lnxbond_config = """
+        type: linux_bond
+        name: bond_lnx
+        use_dhcp: true
+        bonding_options: "mode=active-backup"
+        members:
+        -
+          type: sriov_vf
+          device: eth1
+          vfid: 3
+          vlan_id: 113
+          qos: 5
+          primary: true
+        -
+          type: sriov_vf
+          device: eth2
+          vfid: 3
+          vlan_id: 113
+          qos: 5
+        """
+
+        lb_obj = objects.object_from_json(yaml.safe_load(lnxbond_config))
+        self.provider.add_linux_bond(lb_obj)
+        self.provider.add_sriov_vf(lb_obj.members[0])
+        self.provider.add_sriov_vf(lb_obj.members[1])
+
+        exp_pf_config = """
+        - name: eth2
+          state: up
+          type: ethernet
+          ethernet:
+              sr-iov:
+                  total-vfs: 10
+                  vfs:
+                  - id: 3
+                    spoof-check: false
+                    trust: true
+                    vlan-id: 113
+                    qos: 5
+          ipv4:
+              dhcp: False
+              enabled: False
+          ipv6:
+              autoconf: False
+              dhcp: False
+              enabled: False
+        - name: eth1
+          state: up
+          type: ethernet
+          ethernet:
+              sr-iov:
+                  total-vfs: 10
+                  vfs:
+                  - id: 3
+                    spoof-check: false
+                    trust: true
+                    vlan-id: 113
+                    qos: 5
+          ipv4:
+              dhcp: False
+              enabled: False
+          ipv6:
+              autoconf: False
+              dhcp: False
+              enabled: False
+        """
+
+        exp_bond_config = """
+        name: bond_lnx
+        state: up
+        type: bond
+        ipv4:
+            auto-dns: true
+            auto-gateway: true
+            auto-routes: true
+            dhcp: true
+            enabled: true
+        ipv6:
+            autoconf: false
+            dhcp: false
+            enabled: false
+        link-aggregation:
+            mode: active-backup
+            options:
+                primary: eth1_3
+            port:
+                - eth1_3
+                - eth2_3
+        """
+
+        vf_config = self.provider.prepare_sriov_vf_config()
+        self.assertEqual(yaml.safe_load(exp_pf_config),
+                         vf_config)
+        self.assertEqual(yaml.safe_load(exp_bond_config),
+                         self.get_linuxbond_config('bond_lnx'))
+
 
 class TestNmstateNetConfigApply(base.TestCase):
 

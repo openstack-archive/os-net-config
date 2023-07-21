@@ -215,13 +215,14 @@ class NmstateNetConfig(os_net_config.NetConfig):
         self.rules_data = []
         self.dns_data = {'server': [], 'domain': []}
         self.bridge_data = {}
-
         self.linuxbond_data = {}
         self.ovs_port_data = {}
         self.member_names = {}
         self.renamed_interfaces = {}
         self.bond_primary_ifaces = {}
         self.route_table_data = {}
+        self.sriov_pf_data = {}
+        self.sriov_vf_data = {}
         logger.info('nmstate net config provider created.')
 
     def __dump_config(self, config, msg="Applying config"):
@@ -229,6 +230,58 @@ class NmstateNetConfig(os_net_config.NetConfig):
                              allow_unicode=True, encoding=None)
         logger.debug("----------------------------")
         logger.debug(f"{msg}\n{cfg_dump}")
+
+    def get_vf_config(self, sriov_vf):
+        """Identify the nmstate schema for the given VF
+
+        :param sriov_vf: The SriovVF object to add
+        """
+        vf_config = {}
+        vf_config[Ethernet.SRIOV.VFS.ID] = sriov_vf.vfid
+        if sriov_vf.macaddr:
+            vf_config[Ethernet.SRIOV.VFS.MAC_ADDRESS] = sriov_vf.macaddr
+        if sriov_vf.spoofcheck:
+            if sriov_vf.spoofcheck == 'on':
+                vf_config[Ethernet.SRIOV.VFS.SPOOF_CHECK] = True
+            else:
+                vf_config[Ethernet.SRIOV.VFS.SPOOF_CHECK] = False
+        if sriov_vf.trust:
+            if sriov_vf.trust == 'on':
+                vf_config[Ethernet.SRIOV.VFS.TRUST] = True
+            else:
+                vf_config[Ethernet.SRIOV.VFS.TRUST] = False
+        if sriov_vf.min_tx_rate:
+            vf_config[Ethernet.SRIOV.VFS.MIN_TX_RATE] = sriov_vf.min_tx_rate
+        if sriov_vf.max_tx_rate:
+            vf_config[Ethernet.SRIOV.VFS.MAX_TX_RATE] = sriov_vf.max_tx_rate
+        if sriov_vf.vlan_id:
+            vf_config[Ethernet.SRIOV.VFS.VLAN_ID] = sriov_vf.vlan_id
+            if sriov_vf.qos:
+                vf_config[Ethernet.SRIOV.VFS.QOS] = sriov_vf.qos
+        return vf_config
+
+    def prepare_sriov_vf_config(self):
+        iface_schema = []
+
+        for pf in self.sriov_vf_data.keys():
+            required_vfs = []
+            if pf in self.sriov_pf_data:
+                pf_state = self.sriov_pf_data[pf]
+
+            else:
+                msg = f"{pf} not found"
+                raise os_net_config.ConfigurationError(msg)
+
+            for vf in self.sriov_vf_data[pf]:
+                if vf:
+                    required_vfs.append(vf)
+
+            pf_state[
+                Ethernet.CONFIG_SUBTREE][
+                Ethernet.SRIOV_SUBTREE][
+                Ethernet.SRIOV.VFS_SUBTREE] = required_vfs
+            iface_schema.append(pf_state)
+        return iface_schema
 
     def get_route_tables(self):
         """Generate configuration content for routing tables.
@@ -1174,9 +1227,6 @@ class NmstateNetConfig(os_net_config.NetConfig):
                          ][OVSBridge.PORT_SUBTREE] = bond_port
 
                     # TODO(Karthik) Is primary interface required now
-                    # if bridge.primary_interface_name:
-                    #     primary_name = member.primary_interface_name
-                    #     self.bond_primary_ifaces[member.name] = primary_name
                     ovs_bond = True
                     logger.debug("OVS Bond members %s added" % members)
                     if member.members:
@@ -1334,6 +1384,65 @@ class NmstateNetConfig(os_net_config.NetConfig):
         logger.debug('bond data: %s' % data)
         self.linuxbond_data[bond.name] = data
 
+    def add_sriov_pf(self, sriov_pf):
+        """Add a SriovPF object to the net config object
+
+        :param sriov_pf: The SriovPF object to add
+        """
+        logger.info(f'adding sriov pf: {sriov_pf.name}')
+        data = self._add_common(sriov_pf)
+        data[Interface.TYPE] = InterfaceType.ETHERNET
+        data[Ethernet.CONFIG_SUBTREE] = {}
+        data[Ethernet.CONFIG_SUBTREE][Ethernet.SRIOV_SUBTREE] = {
+            Ethernet.SRIOV.TOTAL_VFS: sriov_pf.numvfs}
+
+        if sriov_pf.promisc:
+            data[Interface.ACCEPT_ALL_MAC_ADDRESSES] = True
+        if sriov_pf.link_mode == 'switchdev':
+            data[Ethtool.CONFIG_SUBTREE] = {}
+            data[Ethtool.CONFIG_SUBTREE][Ethtool.Feature.CONFIG_SUBTREE] = {
+                'hw-tc-offload': True}
+        if sriov_pf.promisc:
+            data[Interface.ACCEPT_ALL_MAC_ADDRESSES] = True
+
+        if sriov_pf.ethtool_opts:
+            self.add_ethtool_config(sriov_pf.name, data,
+                                    sriov_pf.ethtool_opts)
+
+        logger.debug('sriov pf data: %s' % data)
+        self.sriov_vf_data[sriov_pf.name] = [None] * sriov_pf.numvfs
+        self.interface_data[sriov_pf.name] = data
+        self.sriov_pf_data[sriov_pf.name] = data
+
+    def add_sriov_vf(self, sriov_vf):
+        """Add a SriovVF object to the net config object
+
+        :param sriov_vf: The SriovVF object to add
+        """
+        logger.info('adding sriov vf: %s for pf: %s, vfid: %d'
+                    % (sriov_vf.name, sriov_vf.device, sriov_vf.vfid))
+        data = self._add_common(sriov_vf)
+        data[Interface.TYPE] = InterfaceType.ETHERNET
+        data[Ethernet.CONFIG_SUBTREE] = {}
+        if sriov_vf.promisc:
+            data[Interface.ACCEPT_ALL_MAC_ADDRESSES] = True
+        logger.debug('sriov vf data: %s' % data)
+        self.interface_data[sriov_vf.name] = data
+        vf_config = self.get_vf_config(sriov_vf)
+        logger.debug("Adding vf config %s" % vf_config)
+
+        # sriov_vf_data is a list of vf configuration data of size numvfs.
+        # The vfid is used as index.
+        if sriov_vf.device not in self.sriov_vf_data:
+            msg = f"VF configuration is seen while the parent device"\
+                  f" {sriov_vf.device} is not availavle"
+            raise os_net_config.ConfigurationError(msg)
+
+        self.sriov_vf_data[sriov_vf.device][sriov_vf.vfid] = vf_config
+        if sriov_vf.ethtool_opts:
+            self.add_ethtool_config(sriov_vf.name, data,
+                                    sriov_vf.ethtool_opts)
+
     def apply(self, cleanup=False, activate=True):
         """Apply the network configuration.
 
@@ -1357,6 +1466,9 @@ class NmstateNetConfig(os_net_config.NetConfig):
         apply_routes = []
         updated_interfaces = {}
         logger.debug("----------------------------")
+
+        vf_config = self.prepare_sriov_vf_config()
+        self.set_ifaces(vf_config, verify=True)
         for interface_name, iface_data in self.interface_data.items():
             iface_state = self.iface_state(interface_name)
             if not is_dict_subset(iface_state, iface_data):

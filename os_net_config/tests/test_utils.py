@@ -27,7 +27,6 @@ from os_net_config import objects
 from os_net_config import sriov_config
 from os_net_config.tests import base
 from os_net_config import utils
-
 from oslo_concurrency import processutils
 
 
