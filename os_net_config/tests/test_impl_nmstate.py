@@ -1495,6 +1495,55 @@ class TestNmstateNetConfig(base.TestCase):
         self.assertEqual(yaml.safe_load(exp_bond_config),
                          self.get_linuxbond_config('bond_lnx'))
 
+    def test_infiniband_parent(self):
+        expected_ib_config = """
+        ipv4:
+            dhcp: False
+            enabled: False
+        ipv6:
+            autoconf: False
+            dhcp: False
+            enabled: False
+        mtu: 1400
+        name: ib0
+        state: up
+        type: infiniband
+        infiniband:
+            mode: datagram
+        """
+
+        interface1 = objects.Interface('ib0', mtu=1400)
+        self.provider.add_ib_interface(interface1)
+        self.assertEqual(yaml.safe_load(expected_ib_config),
+                         self.get_interface_config('ib0'))
+
+        expected_ib2_config = """
+        name: ib0.8064
+        ipv4:
+            dhcp: False
+            enabled: True
+            address:
+                - ip: 192.168.1.2
+                  prefix-length: 24
+        ipv6:
+            autoconf: False
+            dhcp: False
+            enabled: False
+        state: up
+        type: infiniband
+        infiniband:
+            pkey: "0x8064"
+            base-iface: ib0
+            mode: datagram
+        """
+        v4_addr = objects.Address('192.168.1.2/24')
+        interface2 = objects.IbChildInterface(parent='ib0',
+                                              pkey_id=100,
+                                              addresses=[v4_addr])
+        self.provider.add_ib_child_interface(interface2)
+        self.assertEqual(yaml.safe_load(expected_ib2_config),
+                         self.get_interface_config('ib0.8064'))
+
 
 class TestNmstateNetConfigApply(base.TestCase):
 

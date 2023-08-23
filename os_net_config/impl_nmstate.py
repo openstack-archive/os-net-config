@@ -22,6 +22,7 @@ from libnmstate.schema import BondMode
 from libnmstate.schema import DNS
 from libnmstate.schema import Ethernet
 from libnmstate.schema import Ethtool
+from libnmstate.schema import InfiniBand
 from libnmstate.schema import Interface
 from libnmstate.schema import InterfaceIPv4
 from libnmstate.schema import InterfaceIPv6
@@ -1478,6 +1479,44 @@ class NmstateNetConfig(os_net_config.NetConfig):
         if sriov_vf.ethtool_opts:
             self.add_ethtool_config(sriov_vf.name, data,
                                     sriov_vf.ethtool_opts)
+
+    def add_ib_interface(self, ib_interface):
+        """Add an InfiniBand interface object to the net config object.
+
+        :param ib_interface: The InfiniBand interface object to add.
+        """
+        logger.info('adding ib_interface: %s' % ib_interface.name)
+        data = self._add_common(ib_interface)
+        logger.debug('ib_interface data: %s' % data)
+        data[Interface.TYPE] = InterfaceType.INFINIBAND
+        if ib_interface.ethtool_opts:
+            self.add_ethtool_config(ib_interface.name, data,
+                                    ib_interface.ethtool_opts)
+        # Default mode is set to 'datagram' since 'connected' is not
+        # supported in some devices
+        config = {}
+        config[InfiniBand.MODE] = InfiniBand.Mode.DATAGRAM
+        data[InfiniBand.CONFIG_SUBTREE] = config
+        self.interface_data[ib_interface.name] = data
+
+    def add_ib_child_interface(self, ib_child_interface):
+        """Add an InfiniBand child interface object to the net config object.
+
+        :param ib_child_interface: The InfiniBand child
+         interface object to add.
+        """
+        logger.info('adding ib_child_interface: %s' % ib_child_interface.name)
+        data = self._add_common(ib_child_interface)
+        logger.debug('ib_child_interface data: %s' % data)
+        data[Interface.TYPE] = InterfaceType.INFINIBAND
+        config = {}
+        config[InfiniBand.PKEY] = ib_child_interface.pkey_id
+        config[InfiniBand.BASE_IFACE] = ib_child_interface.parent
+        # Default mode is set to 'datagram' since 'connected' is not
+        # supported in some devices
+        config[InfiniBand.MODE] = InfiniBand.Mode.DATAGRAM
+        data[InfiniBand.CONFIG_SUBTREE] = config
+        self.interface_data[ib_child_interface.name] = data
 
     def apply(self, cleanup=False, activate=True):
         """Apply the network configuration.
