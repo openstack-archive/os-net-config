@@ -754,6 +754,9 @@ class TestNmstateNetConfig(base.TestCase):
                       port:
                           - name: em2
                           - name: em3
+                      ovs-db:
+                          other_config:
+                              bond-primary: em2
                 - name: br-ctlplane2-p
         ovs-db:
             external_ids: {}
@@ -787,6 +790,14 @@ class TestNmstateNetConfig(base.TestCase):
                   link-aggregation:
                       bond-updelay: 1000
                       mode: balance-slb
+                      ovs-db:
+                          other_config:
+                              bond-detect-mode: miimon
+                              bond-miimon-interval: 100
+                              bond-rebalance-interval: 10000
+                              bond-primary: em2
+                              lacp-fallback-ab: true
+                              lacp-time: fast
                       port:
                           - name: em2
                           - name: em3
@@ -794,19 +805,14 @@ class TestNmstateNetConfig(base.TestCase):
         state: up
         ovs-db:
             external_ids: {}
-            other_config:
-                bond-detect-mode: miimon
-                bond-miimon-interval: 100
-                bond-rebalance-interval: 10000
-                lacp-fallback-ab: true
-                lacp-time: fast
+            other_config: {}
         """
         interface1 = objects.Interface('em2')
         interface2 = objects.Interface('em3')
 
         ovs_options = 'bond_mode=balance-slb ' \
                       'other-config:lacp-fallback-ab=true ' \
-                      'other_config:lacp-time=fast ' \
+                      'other-config:lacp-time=fast ' \
                       'other_config:bond-detect-mode=miimon ' \
                       'other_config:bond-miimon-interval=100 ' \
                       'bond_updelay=1000 ' \
@@ -836,6 +842,9 @@ class TestNmstateNetConfig(base.TestCase):
                       port:
                           - name: em2
                           - name: em3
+                      ovs-db:
+                          other_config:
+                             bond-primary: em2
                 - name: br-ctlplane2-p
                   vlan:
                       tag: 70
@@ -1351,6 +1360,9 @@ class TestNmstateNetConfig(base.TestCase):
                 - name: bond_vf
                   link-aggregation:
                       mode: active-backup
+                      ovs-db:
+                          other_config:
+                              bond-primary: eth2_2
                       port:
                           - name: eth2_2
                           - name: eth1_2

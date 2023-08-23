@@ -169,15 +169,25 @@ def set_linux_bonding_options(bond_options, primary_iface=None):
 
 
 def set_ovs_bonding_options(bond_options):
-    ovs_other_config = ["other-config:lacp-fallback-ab",
+    # Duplicate entries for other-config are added so as to avoid
+    # the confusion around other-config vs other_config in ovs
+    ovs_other_config = ["other_config:lacp-fallback-ab",
                         "other_config:lacp-time",
                         "other_config:bond-detect-mode",
                         "other_config:bond-miimon-interval",
-                        "other_config:bond-rebalance-interval"]
+                        "other_config:bond-rebalance-interval",
+                        "other_config:bond-primary",
+                        "other-config:lacp-fallback-ab",
+                        "other-config:lacp-time",
+                        "other-config:bond-detect-mode",
+                        "other-config:bond-miimon-interval",
+                        "other-config:bond-rebalance-interval",
+                        "other-config:bond-primary"]
+    other_config = {}
     bond_data = {OVSBridge.Port.LinkAggregation.MODE: 'active-backup',
                  OVSBridge.PORT_SUBTREE:
-                     [{OVSBridge.Port.LinkAggregation.PORT_SUBTREE: []}]}
-    other_config = {}
+                     [{OVSBridge.Port.LinkAggregation.PORT_SUBTREE: []}],
+                 OvsDB.KEY: {OvsDB.OTHER_CONFIG: other_config}}
 
     if 'bond_mode' in bond_options:
         bond_data[OVSBridge.Port.LinkAggregation.MODE
@@ -195,7 +205,7 @@ def set_ovs_bonding_options(bond_options):
             other_config[options[len("other_config:"):]
                          ] = bond_options[options]
 
-    return bond_data, other_config
+    return bond_data
 
 
 def _is_any_ip_addr(address):
@@ -524,6 +534,11 @@ class NmstateNetConfig(os_net_config.NetConfig):
                 logger.info(f'Removing rule {c_rule}')
         rules.extend(reqd_rule)
         return rules
+
+    def interface_mac(self, iface):
+        iface_data = self.iface_state(iface)
+        if iface_data and Interface.MAC in iface_data:
+            return iface_data[Interface.MAC]
 
     def get_ovs_ports(self, members):
         bps = []
@@ -1093,13 +1108,23 @@ class NmstateNetConfig(os_net_config.NetConfig):
                        'sub_tree': [OvsDB.KEY, OvsDB.OTHER_CONFIG],
                        'nm_config': None,
                        'nm_config_regex': r'^other_config:(.+?)=',
-                       'value_pattern': r'^other_config:.*=(.+?)$'}]
+                       'value_pattern': r'^other_config:.*=(.+?)$'},
+                      {'config': r'^other-config:[\w+]',
+                       'sub_tree': [OvsDB.KEY, OvsDB.OTHER_CONFIG],
+                       'nm_config': None,
+                       'nm_config_regex': r'^other-config:(.+?)=',
+                       'value_pattern': r'^other-config:.*=(.+?)$'}]
 
         iface_cfg = [{'config': r'^other_config:[\w+]',
                       'sub_tree': [OvsDB.KEY, OvsDB.OTHER_CONFIG],
                       'nm_config': None,
                       'nm_config_regex': r'^other_config:(.+?)=',
-                      'value_pattern': r'^other_config:.*=(.+?)$'}]
+                      'value_pattern': r'^other_config:.*=(.+?)$'},
+                     {'config': r'^other-config:[\w+]',
+                      'sub_tree': [OvsDB.KEY, OvsDB.OTHER_CONFIG],
+                      'nm_config': None,
+                      'nm_config_regex': r'^other-config:(.+?)=',
+                      'value_pattern': r'^other-config:.*=(.+?)$'}]
 
         external_id_cfg = [{'sub_tree': [OvsDB.KEY, OvsDB.EXTERNAL_IDS],
                             'config': r'.*',
@@ -1199,6 +1224,10 @@ class NmstateNetConfig(os_net_config.NetConfig):
         }
         data[OvsDB.KEY] = {OvsDB.EXTERNAL_IDS: {},
                            OvsDB.OTHER_CONFIG: {}}
+        if bridge.primary_interface_name:
+            mac = self.interface_mac(bridge.primary_interface_name)
+            bridge.ovs_extra.append("set bridge %s other_config:hwaddr=%s" %
+                                    (bridge.name, mac))
         if bridge.ovs_extra:
             logger.info(f"Parsing ovs_extra : {bridge.ovs_extra}")
             self.parse_ovs_extra(bridge.ovs_extra, bridge.name, data)
@@ -1216,9 +1245,18 @@ class NmstateNetConfig(os_net_config.NetConfig):
                         msg = "Ovs Bond and ovs port can't be members to "\
                               "the ovs bridge"
                         raise os_net_config.ConfigurationError(msg)
+                    if member.primary_interface_name:
+                        add_bond_setting = "other_config:bond-primary="\
+                                           f"{member.primary_interface_name}"
+                        if member.ovs_options:
+                            member.ovs_options = member.ovs_options + " " +\
+                                add_bond_setting
+                        else:
+                            member.ovs_options = add_bond_setting
+
+                    logger.info(f"OVS Options are {member.ovs_options}")
                     bond_options = parse_bonding_options(member.ovs_options)
-                    bond_data, other_config = set_ovs_bonding_options(
-                        bond_options)
+                    bond_data = set_ovs_bonding_options(bond_options)
                     bond_port = [{
                         OVSBridge.Port.LINK_AGGREGATION_SUBTREE: bond_data,
                         OVSBridge.Port.NAME: member.name},
@@ -1226,7 +1264,6 @@ class NmstateNetConfig(os_net_config.NetConfig):
                     data[OVSBridge.CONFIG_SUBTREE
                          ][OVSBridge.PORT_SUBTREE] = bond_port
 
-                    # TODO(Karthik) Is primary interface required now
                     ovs_bond = True
                     logger.debug("OVS Bond members %s added" % members)
                     if member.members:
@@ -1254,10 +1291,9 @@ class NmstateNetConfig(os_net_config.NetConfig):
                 data[OVSBridge.CONFIG_SUBTREE][OVSBridge.PORT_SUBTREE] = bps
             elif ovs_bond:
                 bond_data[OVSBridge.Port.LinkAggregation.PORT_SUBTREE] = bps
-                data[OvsDB.KEY][OvsDB.OTHER_CONFIG].update(other_config)
 
         if bridge.primary_interface_name:
-            mac = utils.interface_mac(bridge.primary_interface_name)
+            mac = self.interface_mac(bridge.primary_interface_name)
             data[Interface.MAC] = mac
 
         self.bridge_data[bridge.name] = data
