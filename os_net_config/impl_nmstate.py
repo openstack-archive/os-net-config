@@ -439,18 +439,17 @@ class NmstateNetConfig(os_net_config.NetConfig):
         self.__dump_config(rules, msg=f'List of IP rules running config')
         return rules
 
-    def set_ifaces(self, iface_data, verify=True):
+    def set_ifaces(self, iface_data):
         """Apply the desired state using nmstate.
 
         :param iface_data: interface config json
         :param verify: boolean that determines if config will be verified
         """
         state = {Interface.KEY: iface_data}
-        self.__dump_config(state, msg=f"Applying interface config")
-        if not self.noop:
-            netapplier.apply(state, verify_change=verify)
+        self.__dump_config(state, msg=f"Overall interface config")
+        return state
 
-    def set_dns(self, verify=True):
+    def set_dns(self):
         """Apply the desired DNS using nmstate.
 
         :param dns_data:  config json
@@ -459,11 +458,10 @@ class NmstateNetConfig(os_net_config.NetConfig):
 
         state = {DNS.KEY: {DNS.CONFIG: {DNS.SERVER: self.dns_data['server'],
                                         DNS.SEARCH: self.dns_data['domain']}}}
-        self.__dump_config(state, msg=f"Applying DNS")
-        if not self.noop:
-            netapplier.apply(state, verify_change=verify)
+        self.__dump_config(state, msg=f"Overall DNS")
+        return state
 
-    def set_routes(self, route_data, verify=True):
+    def set_routes(self, route_data):
         """Apply the desired routes using nmstate.
 
         :param route_data: list of routes
@@ -471,11 +469,10 @@ class NmstateNetConfig(os_net_config.NetConfig):
         """
 
         state = {NMRoute.KEY: {NMRoute.CONFIG: route_data}}
-        self.__dump_config(state, msg=f'Applying routes')
-        if not self.noop:
-            netapplier.apply(state, verify_change=verify)
+        self.__dump_config(state, msg=f'Overall routes')
+        return state
 
-    def set_rules(self, rule_data, verify=True):
+    def set_rules(self, rule_data,):
         """Apply the desired rules using nmstate.
 
         :param rule_data: list of rules
@@ -483,9 +480,13 @@ class NmstateNetConfig(os_net_config.NetConfig):
         """
 
         state = {NMRouteRule.KEY: {NMRouteRule.CONFIG: rule_data}}
-        self.__dump_config(state, msg=f'Applying rules')
+        self.__dump_config(state, msg=f'Overall rules')
+        return state
+
+    def nmstate_apply(self, new_state, verify=True):
+        self.__dump_config(new_state, msg=f'Applying the config with nmstate')
         if not self.noop:
-            netapplier.apply(state, verify_change=verify)
+            netapplier.apply(new_state, verify_change=verify)
 
     def generate_routes(self, interface_name):
         """Generate the route configurations required. Add/Remove routes
@@ -1502,9 +1503,10 @@ class NmstateNetConfig(os_net_config.NetConfig):
         apply_routes = []
         updated_interfaces = {}
         logger.debug("----------------------------")
-
         vf_config = self.prepare_sriov_vf_config()
-        self.set_ifaces(vf_config, verify=True)
+        apply_data = {}
+        apply_data.update(self.set_ifaces(vf_config))
+
         for interface_name, iface_data in self.interface_data.items():
             iface_state = self.iface_state(interface_name)
             if not is_dict_subset(iface_state, iface_data):
@@ -1551,34 +1553,19 @@ class NmstateNetConfig(os_net_config.NetConfig):
             logger.info('Routes_data %s' % routes_data)
             apply_routes.extend(routes_data)
 
+        apply_data.update(self.set_ifaces(list(updated_interfaces.values())))
+        apply_data.update(self.set_routes(apply_routes))
+
+        rules_data = self.generate_rules()
+        logger.info(f'Rules_data {rules_data}')
+
+        apply_data.update(self.set_rules(rules_data))
+
+        apply_data.update(self.set_dns())
+
         if activate:
             if not self.noop:
-                try:
-                    self.set_ifaces(list(updated_interfaces.values()))
-                except Exception as e:
-                    msg = f'Error setting interfaces state: {str(e)}'
-                    raise os_net_config.ConfigurationError(msg)
-
-                try:
-                    self.set_routes(apply_routes)
-                except Exception as e:
-                    msg = f'Error setting routes: {str(e)}'
-                    raise os_net_config.ConfigurationError(msg)
-
-                rules_data = self.generate_rules()
-                logger.info(f'Rules_data {rules_data}')
-
-                try:
-                    self.set_rules(rules_data)
-                except Exception as e:
-                    msg = f'Error setting rules: {str(e)}'
-                    raise os_net_config.ConfigurationError(msg)
-
-                try:
-                    self.set_dns()
-                except Exception as e:
-                    msg = f'Error setting dns servers: {str(e)}'
-                    raise os_net_config.ConfigurationError(msg)
+                self.nmstate_apply(apply_data, verify=True)
 
             if self.errors:
                 message = 'Failure(s) occurred when applying configuration'
