@@ -186,9 +186,11 @@ def main(argv=sys.argv, main_logger=None):
         if os.path.exists('%s/etc/sysconfig/network-scripts/' % opts.root_dir):
             provider = impl_ifcfg.IfcfgNetConfig(noop=opts.noop,
                                                  root_dir=opts.root_dir)
+            opts.provider = "ifcfg"
         elif os.path.exists('%s/etc/network/' % opts.root_dir):
             provider = impl_eni.ENINetConfig(noop=opts.noop,
                                              root_dir=opts.root_dir)
+            opts.provider = "eni"
         else:
             main_logger.error("Unable to set provider for this operating "
                               "system.")
