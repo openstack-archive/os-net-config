@@ -1963,7 +1963,8 @@ class IfcfgNetConfig(os_net_config.NetConfig):
 
             for bond in self.bond_primary_ifaces:
                 self.ovs_appctl('bond/set-active-slave', bond,
-                                self.bond_primary_ifaces[bond])
+                                self.bond_primary_ifaces[bond],
+                                ignore_err=True)
 
             if ivs_uplinks or ivs_interfaces:
                 logger.info("Attach to ivs with "
