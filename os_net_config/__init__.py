@@ -367,7 +367,7 @@ class NetConfig(object):
         self.execute(msg, '/sbin/ip',
                      'link', 'set', 'dev', newname, 'up')
 
-    def ovs_appctl(self, action, *parameters):
+    def ovs_appctl(self, action, *parameters, ignore_err=False):
         """Run 'ovs-appctl' with the specified action
 
          Its possible the command may fail due to timing if, for example,
@@ -383,4 +383,5 @@ class NetConfig(object):
             self.execute(msg, '/bin/ovs-appctl', action, *parameters,
                          delay_on_retry=True, attempts=5)
         except processutils.ProcessExecutionError as e:
-            self.errors.append(e)
+            if not ignore_err:
+                self.errors.append(e)
