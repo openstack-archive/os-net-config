@@ -1003,6 +1003,10 @@ class LinuxBond(_BaseOpts):
         for member in self.members:
             if isinstance(member, SriovPF):
                 utils.update_sriov_pf_map(member.name, member.numvfs, False,
+                                          promisc=member.promisc,
+                                          steering_mode=member.steering_mode,
+                                          link_mode=member.link_mode,
+                                          vdpa=member.vdpa,
                                           lag_candidate=True)
             if isinstance(member, SriovVF):
                 LinuxBond.update_vf_config(member)
