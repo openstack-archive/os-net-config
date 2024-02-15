@@ -329,9 +329,10 @@ class NetConfig(object):
         if not self.noop:
             os.remove(filename)
 
-    def ifdown(self, interface, iftype='interface'):
-        msg = 'running ifdown on %s: %s' % (iftype, interface)
-        self.execute(msg, '/sbin/ifdown', interface, check_exit_code=False)
+    def ifdown(self, interface, iftype='interface', cleanup=True):
+        if cleanup:
+            msg = 'running ifdown on %s: %s' % (iftype, interface)
+            self.execute(msg, '/sbin/ifdown', interface, check_exit_code=False)
         if utils.is_active_nic(interface):
             msg = '%s %s is up, trying with ip command' % (iftype, interface)
             self.execute(msg, '/sbin/ip',

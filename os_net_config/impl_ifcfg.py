@@ -1873,7 +1873,7 @@ class IfcfgNetConfig(os_net_config.NetConfig):
                         break
 
             for vlan in restart_vlans:
-                self.ifdown(vlan)
+                self.ifdown(vlan, iftype='interface', cleanup=cleanup)
 
             for ib_child in restart_ib_childs:
                 self.ifdown(ib_child)
